@@ -12,7 +12,12 @@ export function Topbar({
   return (
     <div className="topbar">
       <div className="brand">
-        <div className="mark">◈</div>
+        <img
+          src="/logo.png"
+          alt="SHIFT"
+          className="mark"
+          style={{ objectFit: "cover", padding: 0 }}
+        />
         <div>
           <h1 className="display">SHIFT</h1>
         </div>
