@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { API } from "../../shared/lib/api";
 import { CardSkeleton } from "../../shared/ui/Skeleton";
+import { DayDetailDrawer } from "../month/DayDetailDrawer";
 
 export function WeekSummary() {
   const [data, setData] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<any | null>(null);
   useEffect(() => {
     API.reportWeek()
       .then(setData)
@@ -47,14 +49,16 @@ export function WeekSummary() {
           <motion.div
             key={r.date}
             className="row"
+            onClick={() => setSelectedDay(r)}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.04 * i }}
-            style={
-              r.work_mode === "remote"
+            style={{
+              cursor: "pointer",
+              ...(r.work_mode === "remote"
                 ? { borderStyle: "dashed", borderColor: "var(--violet)", background: "rgba(124,58,237,.08)" }
-                : undefined
-            }
+                : {})
+            }}
           >
             <div>
               <b>{r.label}</b>
@@ -113,6 +117,12 @@ export function WeekSummary() {
           </pre>
         </details>
       )}
+
+      <DayDetailDrawer
+        open={Boolean(selectedDay)}
+        onClose={() => setSelectedDay(null)}
+        day={selectedDay}
+      />
     </div>
   );
 }

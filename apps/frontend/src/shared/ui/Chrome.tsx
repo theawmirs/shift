@@ -1,4 +1,4 @@
-import { Clock3, BarChart3, ListChecks, Settings2, Sun, Moon } from "lucide-react";
+import { Clock3, BarChart3, Calendar, ListChecks, Settings2, Sun, Moon } from "lucide-react";
 
 export interface TopbarProps {
   theme: "light" | "dark" | string;
@@ -37,7 +37,8 @@ export function Topbar({
 export function BottomNav({ active, onChange }: { active: string; onChange: (to: string) => void }) {
   const items = [
     { k: "today", to: "/", label: "امروز", Icon: Clock3 },
-    { k: "week", to: "/week", label: "هفته", Icon: BarChart3 },
+    { k: "reports", to: "/reports", label: "گزارش‌ها", Icon: BarChart3 },
+    { k: "calendar", to: "/calendar", label: "تقویم", Icon: Calendar },
     { k: "tasks", to: "/tasks", label: "تسک‌ها", Icon: ListChecks },
     { k: "settings", to: "/settings", label: "تنظیمات", Icon: Settings2 },
   ];

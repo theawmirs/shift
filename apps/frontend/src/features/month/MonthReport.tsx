@@ -1,12 +1,15 @@
+import { useState } from "react";
 import { ChevronDown, Trash2 } from "lucide-react";
 import { CardSkeleton } from "../../shared/ui/Skeleton";
 import { useMonthReport } from "./useMonthReport";
+import { DayDetailDrawer } from "./DayDetailDrawer";
 
 function fmtFa(v: any) {
   return v == null ? "—" : Number(v) === 0 ? "۰ ساعت" : `${Number(v).toFixed(2)} ساعت`;
 }
 
 export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "success" | "error") => void }) {
+  const [selectedDay, setSelectedDay] = useState<any | null>(null);
   const {
     months,
     selMonth,
@@ -225,8 +228,10 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
               <div
                 key={r.date}
                 className="row"
+                onClick={() => setSelectedDay(r)}
                 style={{
                   padding: "8px 10px",
+                  cursor: "pointer",
                   borderStyle: r.work_mode === "remote" ? "dashed" : undefined,
                   borderColor: r.work_mode === "remote" ? "var(--violet)" : undefined,
                 }}
@@ -251,6 +256,12 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
           )}
         </div>
       </details>
+
+      <DayDetailDrawer
+        open={Boolean(selectedDay)}
+        onClose={() => setSelectedDay(null)}
+        day={selectedDay}
+      />
     </div>
   );
 }

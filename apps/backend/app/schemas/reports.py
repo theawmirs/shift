@@ -55,3 +55,11 @@ class MonthItem(BaseModel):
 
 class MonthListResponse(BaseModel):
     months: list[MonthItem]
+
+class HolidayItem(BaseModel):
+    date: str
+    name: str
+
+class HolidayListResponse(BaseModel):
+    holidays: list[HolidayItem]
+

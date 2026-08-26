@@ -5,7 +5,8 @@ from fastapi.responses import FileResponse
 from app.api.deps import get_db, get_current_user_optional
 from app.schemas.reports import (
     MonthReportResponse, WeekReportResponse,
-    TodayReportResponse, MonthListResponse, MonthItem
+    TodayReportResponse, MonthListResponse, MonthItem,
+    HolidayListResponse, HolidayItem
 )
 from app.services import report_service, record_service
 from app.core import jalali
@@ -67,3 +68,13 @@ def export_excel(month: str | None = None, uid: int | None = Depends(get_current
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         filename=os.path.basename(path),
     )
+
+@router.get("/holidays", response_model=HolidayListResponse, summary="Get list of holidays")
+@router.get("/holidays/{year}", response_model=HolidayListResponse, summary="Get list of holidays for a specific year")
+def get_holidays(year: int | None = None, conn: sqlite3.Connection = Depends(get_db)):
+    if year is not None:
+        rows = conn.execute("SELECT date, name FROM holidays WHERE substr(date,1,4)=? ORDER BY date ASC", (f"{year:04d}",)).fetchall()
+    else:
+        rows = conn.execute("SELECT date, name FROM holidays ORDER BY date ASC").fetchall()
+    return HolidayListResponse(holidays=[HolidayItem(date=r["date"], name=r["name"]) for r in rows])
+

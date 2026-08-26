@@ -37,7 +37,8 @@ def get_status(uid: int | None = Depends(get_current_user_optional), conn: sqlit
         live = round(max(0.0, gross_live - leave_closed), 2)
 
     day_ds, day_dsl, day_dsr = record_service.compute_day_status(is_hol, d["in"], d["out"], d["leave_open"], hol_name)
-    settings_dict = {r["key"]: r["value"] for r in conn.execute("SELECT key, value FROM settings").fetchall()}
+    from app.db.schema import get_user_settings
+    settings_dict = get_user_settings(conn, user_id=uid)
 
     return StatusResponse(
         date=sdate,
