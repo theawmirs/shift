@@ -306,3 +306,29 @@ def test_csv_import_and_export(test_env):
     assert "1405-06-10" in export_res.text
     assert "1405-06-11" in export_res.text
 
+def test_day_edit_and_create(test_env):
+    client = test_env["client"]
+
+    # Edit past date 1405-05-15
+    edit_res = client.post(
+        "/api/day/edit",
+        json={
+            "date": "1405-05-15",
+            "in_time": "08:15",
+            "out_time": "17:30",
+            "leave_hours": 1.0,
+            "overtime_hours": 0.25,
+            "work_mode": "office",
+            "notes": "ثبت دستی گذشته",
+        },
+    )
+    assert edit_res.status_code == 200
+    d = edit_res.json()["day"]
+    assert d["date"] == "1405-05-15"
+    assert d["in"] == "08:15"
+    assert d["out"] == "17:30"
+    assert d["leave"] == 1.0
+    assert d["overtime"] == 0.25
+    assert d["work_mode"] == "office"
+
+

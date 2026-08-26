@@ -1,13 +1,45 @@
+import { useState, useEffect } from "react";
 import { Drawer } from "../../shared/ui/Drawer";
 import { fmtHoursFa } from "../../shared/lib/format";
+import { Edit3, Building2, Home, Trash2 } from "lucide-react";
+import { API } from "../../shared/lib/api";
+import { useToast } from "../../shared/ui/Toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 export interface DayDetailDrawerProps {
   open: boolean;
   onClose: () => void;
   day: any | null;
+  onUpdated?: (updatedDay?: any) => void;
 }
 
-export function DayDetailDrawer({ open, onClose, day }: DayDetailDrawerProps) {
+export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDrawerProps) {
+  const { push } = useToast();
+  const queryClient = useQueryClient();
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Form states
+  const [inTime, setInTime] = useState("");
+  const [outTime, setOutTime] = useState("");
+  const [leaveHours, setLeaveHours] = useState("0");
+  const [overtimeHours, setOvertimeHours] = useState("0");
+  const [workMode, setWorkMode] = useState<"office" | "remote">("office");
+  const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    if (day) {
+      setIsEditing(false);
+      setInTime(day.in || "");
+      setOutTime(day.out || "");
+      setLeaveHours(String(day.leave || 0));
+      setOvertimeHours(String(day.overtime || 0));
+      setWorkMode(day.work_mode === "remote" ? "remote" : "office");
+      setNotes(day.note || "");
+    }
+  }, [day]);
+
   if (!day) return null;
 
   const title = day.label || (day.date ? `جزئیات روز ${day.date}` : "جزئیات روز");
@@ -27,150 +59,330 @@ export function DayDetailDrawer({ open, onClose, day }: DayDetailDrawerProps) {
   const hasDeficit = day.deficit != null && Number(day.deficit) > 0;
   const hasLate = day.late != null && Number(day.late) > 0;
   const hasWork = hasIn || hasOut || hasNet || hasGross || Boolean(day.has_events);
-  const standardHours = 8; // standard workday regular hours
+  const standardHours = 8;
+
+  const handleSaveEdit = async () => {
+    setLoading(true);
+    try {
+      const res = await API.editDay({
+        date: day.date,
+        in_time: inTime.trim() || null,
+        out_time: outTime.trim() || null,
+        leave_hours: parseFloat(leaveHours) || 0,
+        overtime_hours: parseFloat(overtimeHours) || 0,
+        work_mode: workMode,
+        notes: notes.trim() || null,
+      });
+      push(`✅ ساعت کاری تاریخ ${day.date} ذخیره شد`);
+      queryClient.invalidateQueries();
+      setIsEditing(false);
+      onUpdated?.(res.day);
+      onClose();
+    } catch (e: any) {
+      push(`❌ خطا در ذخیره: ${e.message}`, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClearDay = async () => {
+    if (!confirm(`آیا از پاک کردن تمام ساعات کاری ثبت‌شده برای تاریخ ${day.date} اطمینان دارید؟`)) return;
+    setLoading(true);
+    try {
+      const res = await API.editDay({
+        date: day.date,
+        in_time: null,
+        out_time: null,
+        leave_hours: 0,
+        overtime_hours: 0,
+        work_mode: "office",
+        notes: null,
+      });
+      push(`🗑 ساعات کاری تاریخ ${day.date} پاک شد`);
+      queryClient.invalidateQueries();
+      setIsEditing(false);
+      onUpdated?.(res.day);
+      onClose();
+    } catch (e: any) {
+      push(`❌ خطا: ${e.message}`, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Drawer open={open} onClose={onClose} title={title}>
       <div style={{ display: "grid", gap: 10 }}>
-        {/* Holiday Banner if holiday */}
-        {day.is_holiday && (
-          <div className="row" style={{ borderColor: "#ef4444", background: "rgba(239,68,68,0.08)" }}>
-            <b>مناسبت تعطیلی</b>
-            <span className="mono" style={{ fontWeight: 800, color: "#dc2626" }}>
-              {day.holiday_name || "تعطیلی رسمی / جمعه"}
-            </span>
-          </div>
-        )}
+        {/* Toggle Edit Button in Drawer Top */}
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 2 }}>
+          <button
+            className="btn btn-ghost mono"
+            style={{
+              padding: "6px 12px",
+              fontSize: 12,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: isEditing ? "var(--amber)" : "#fff",
+              color: "#0F172A",
+            }}
+            onClick={() => setIsEditing(!isEditing)}
+          >
+            <Edit3 size={13} />
+            <span>{isEditing ? "انصراف از ویرایش" : hasWork ? "ویرایش ساعت کاری" : "ثبت کارکرد برای این روز"}</span>
+          </button>
+        </div>
 
-        {/* Status and Work Mode Header */}
-        {(hasWork || day.daily_leave) && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-            <span className="badge badge-muted mono" style={{ fontSize: 12 }}>
-              {day.day_status_label || (day.is_holiday ? "تعطیل (کاری)" : "کاری")}
-            </span>
-            {day.work_mode === "remote" && (
-              <span className="badge" style={{ background: "#DDD6FE", color: "#4C1D95", borderColor: "#000" }}>
-                🏠 دورکار
-              </span>
-            )}
-            {day.is_holiday && hasWork && (
-              <span className="badge badge-warn">
-                ⚡ کار در تعطیلی
-              </span>
-            )}
-          </div>
-        )}
+        {/* ── EDIT FORM VIEW ── */}
+        {isEditing ? (
+          <div style={{ display: "grid", gap: 12, padding: "4px 0" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 800 }}>ساعت ورود (HH:MM):</span>
+                <input
+                  type="time"
+                  value={inTime}
+                  onChange={(e) => setInTime(e.target.value)}
+                  className="mono"
+                  style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center" }}
+                />
+              </label>
 
-        {/* No work recorded message */}
-        {!hasWork && !day.daily_leave && (
-          <div style={{ color: "var(--muted)", fontSize: 13, textAlign: "center", padding: "10px 0" }}>
-            {day.is_holiday ? "در این روز تعطیل کارکردی ثبت نشده است." : "ثبت کاری برای این روز وجود ندارد."}
-          </div>
-        )}
-
-        {/* Check-in (ورود) */}
-        {hasIn && (
-          <div className="row">
-            <b>ورود</b>
-            <span className="mono" style={{ fontWeight: 800 }}>
-              {day.in}
-            </span>
-          </div>
-        )}
-
-        {/* Check-out (خروج) */}
-        {hasOut && (
-          <div className="row">
-            <b>خروج</b>
-            <span className="mono" style={{ fontWeight: 800 }}>
-              {day.out}
-            </span>
-          </div>
-        )}
-
-        {/* Hourly Leave Start/Return (مرخصی ساعتی) */}
-        {hasLeaveIntervals && (
-          <div className="row" style={{ flexDirection: "column", alignItems: "stretch", gap: 6 }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <b>مرخصی ساعتی</b>
-              <span className="mono">{fmtH(day.leave) || "—"}</span>
+              <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 800 }}>ساعت خروج (HH:MM):</span>
+                <input
+                  type="time"
+                  value={outTime}
+                  onChange={(e) => setOutTime(e.target.value)}
+                  className="mono"
+                  style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center" }}
+                />
+              </label>
             </div>
-            <div style={{ display: "grid", gap: 4 }}>
-              {day.leave_intervals.map((inv: [string, string], idx: number) => (
-                <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--muted)" }}>
-                  <span>بازه {idx + 1}:</span>
-                  <span className="mono">{inv[0]} تا {inv[1]}</span>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 800 }}>مرخصی ساعتی (ساعت):</span>
+                <input
+                  type="number"
+                  step="0.25"
+                  min="0"
+                  max="12"
+                  value={leaveHours}
+                  onChange={(e) => setLeaveHours(e.target.value)}
+                  className="mono"
+                  placeholder="0"
+                  style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center" }}
+                />
+              </label>
+
+              <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 800 }}>اضافه‌کاری (ساعت):</span>
+                <input
+                  type="number"
+                  step="0.25"
+                  min="0"
+                  max="12"
+                  value={overtimeHours}
+                  onChange={(e) => setOvertimeHours(e.target.value)}
+                  className="mono"
+                  placeholder="0"
+                  style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center" }}
+                />
+              </label>
+            </div>
+
+            {/* Work Mode Selector */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 2px" }}>
+              <span style={{ fontSize: 12, fontWeight: 800 }}>نحوه حضور:</span>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  type="button"
+                  className={`btn ${workMode === "office" ? "btn-primary" : "btn-ghost"}`}
+                  style={{ padding: "6px 12px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
+                  onClick={() => setWorkMode("office")}
+                >
+                  <Building2 size={13} /> حضوری
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${workMode === "remote" ? "btn-primary" : "btn-ghost"}`}
+                  style={{ padding: "6px 12px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
+                  onClick={() => setWorkMode("remote")}
+                >
+                  <Home size={13} /> دورکار
+                </button>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+              <button
+                className="btn btn-primary"
+                style={{ flex: 2, padding: "10px", fontWeight: 800, fontSize: 13 }}
+                onClick={handleSaveEdit}
+                disabled={loading}
+              >
+                {loading ? "در حال ذخیره..." : "ذخیره ساعت کاری"}
+              </button>
+
+              {hasWork && (
+                <button
+                  className="btn btn-ghost"
+                  style={{ flex: 1, padding: "10px", color: "var(--red)", borderColor: "var(--red)" }}
+                  onClick={handleClearDay}
+                  disabled={loading}
+                  title="حذف کامل ثبت کارکرد این روز"
+                >
+                  <Trash2 size={15} /> پاک‌کردن
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* ── READ-ONLY SUMMARY VIEW ── */
+          <>
+            {/* Holiday Banner if holiday */}
+            {day.is_holiday && (
+              <div className="row" style={{ borderColor: "#ef4444", background: "rgba(239,68,68,0.08)" }}>
+                <b>مناسبت تعطیلی</b>
+                <span className="mono" style={{ fontWeight: 800, color: "#dc2626" }}>
+                  {day.holiday_name || "تعطیلی رسمی / جمعه"}
+                </span>
+              </div>
+            )}
+
+            {/* Status and Work Mode Header */}
+            {(hasWork || day.daily_leave) && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                <span className="badge badge-muted mono" style={{ fontSize: 12 }}>
+                  {day.day_status_label || (day.is_holiday ? "تعطیل (کاری)" : "کاری")}
+                </span>
+                {day.work_mode === "remote" && (
+                  <span className="badge" style={{ background: "#DDD6FE", color: "#4C1D95", borderColor: "#000" }}>
+                    🏠 دورکار
+                  </span>
+                )}
+                {day.is_holiday && hasWork && (
+                  <span className="badge badge-warn">
+                    ⚡ کار در تعطیلی
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* No work recorded message */}
+            {!hasWork && !day.daily_leave && (
+              <div style={{ color: "var(--muted)", fontSize: 13, textAlign: "center", padding: "14px 0" }}>
+                {day.is_holiday ? "در این روز تعطیل کارکردی ثبت نشده است." : "ثبت کاری برای این روز وجود ندارد."}
+              </div>
+            )}
+
+            {/* Check-in (ورود) */}
+            {hasIn && (
+              <div className="row">
+                <b>ورود</b>
+                <span className="mono" style={{ fontWeight: 800 }}>
+                  {day.in}
+                </span>
+              </div>
+            )}
+
+            {/* Check-out (خروج) */}
+            {hasOut && (
+              <div className="row">
+                <b>خروج</b>
+                <span className="mono" style={{ fontWeight: 800 }}>
+                  {day.out}
+                </span>
+              </div>
+            )}
+
+            {/* Hourly Leave Start/Return (مرخصی ساعتی) */}
+            {hasLeaveIntervals && (
+              <div className="row" style={{ flexDirection: "column", alignItems: "stretch", gap: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <b>مرخصی ساعتی</b>
+                  <span className="mono">{fmtH(day.leave) || "—"}</span>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+                <div style={{ display: "grid", gap: 4 }}>
+                  {day.leave_intervals.map((inv: [string, string], idx: number) => (
+                    <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--muted)" }}>
+                      <span>بازه {idx + 1}:</span>
+                      <span className="mono">{inv[0]} تا {inv[1]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-        {/* Total Duration (کارکرد کل / ناخالص) */}
-        {hasGross && (
-          <div className="row">
-            <b>کارکرد کل (ناخالص)</b>
-            <span className="mono">{fmtH(day.gross)}</span>
-          </div>
-        )}
+            {/* Total Duration (کارکرد کل / ناخالص) */}
+            {hasGross && (
+              <div className="row">
+                <b>کارکرد کل (ناخالص)</b>
+                <span className="mono">{fmtH(day.gross)}</span>
+              </div>
+            )}
 
-        {/* Net Duration (کارکرد خالص) */}
-        {hasNet && (
-          <div className="row">
-            <b>کارکرد خالص</b>
-            <span className="mono" style={{ fontWeight: 800 }}>
-              {fmtH(day.net)}
-            </span>
-          </div>
-        )}
+            {/* Net Duration (کارکرد خالص) */}
+            {hasNet && (
+              <div className="row">
+                <b>کارکرد خالص</b>
+                <span className="mono" style={{ fontWeight: 800 }}>
+                  {fmtH(day.net)}
+                </span>
+              </div>
+            )}
 
-        {/* Regular Hours (ساعت موظفی) */}
-        {!day.is_holiday && hasWork && (
-          <div className="row">
-            <b>ساعت موظفی</b>
-            <span className="mono">{standardHours} ساعت</span>
-          </div>
-        )}
+            {/* Regular Hours (ساعت موظفی) */}
+            {!day.is_holiday && hasWork && (
+              <div className="row">
+                <b>ساعت موظفی</b>
+                <span className="mono">{standardHours} ساعت</span>
+              </div>
+            )}
 
-        {/* Overtime Hours (اضافه‌کاری) */}
-        {hasOvertime && (
-          <div className="row" style={{ borderColor: "var(--green)", background: "rgba(16,185,129,0.06)" }}>
-            <b>اضافه‌کاری</b>
-            <span className="mono" style={{ fontWeight: 800, color: "var(--green)" }}>
-              {fmtH(day.overtime)}
-            </span>
-          </div>
-        )}
+            {/* Overtime Hours (اضافه‌کاری) */}
+            {hasOvertime && (
+              <div className="row" style={{ borderColor: "var(--green)", background: "rgba(16,185,129,0.06)" }}>
+                <b>اضافه‌کاری</b>
+                <span className="mono" style={{ fontWeight: 800, color: "var(--green)" }}>
+                  {fmtH(day.overtime)}
+                </span>
+              </div>
+            )}
 
-        {/* Deficit Hours (کسری کار) */}
-        {hasDeficit && (
-          <div className="row" style={{ borderColor: "var(--red)", background: "rgba(239,68,68,0.06)" }}>
-            <b>کسری کار</b>
-            <span className="mono" style={{ fontWeight: 800, color: "var(--red)" }}>
-              {fmtH(day.deficit)}
-            </span>
-          </div>
-        )}
+            {/* Deficit Hours (کسری کار) */}
+            {hasDeficit && (
+              <div className="row" style={{ borderColor: "var(--red)", background: "rgba(239,68,68,0.06)" }}>
+                <b>کسری کار</b>
+                <span className="mono" style={{ fontWeight: 800, color: "var(--red)" }}>
+                  {fmtH(day.deficit)}
+                </span>
+              </div>
+            )}
 
-        {/* Late (تأخیر) */}
-        {hasLate && (
-          <div className="row" style={{ borderColor: "var(--red)" }}>
-            <b>تأخیر</b>
-            <span className="mono" style={{ fontWeight: 800, color: "var(--red)" }}>
-              {fmtH(day.late)}
-            </span>
-          </div>
-        )}
+            {/* Late (تأخیر) */}
+            {hasLate && (
+              <div className="row" style={{ borderColor: "var(--red)" }}>
+                <b>تأخیر</b>
+                <span className="mono" style={{ fontWeight: 800, color: "var(--red)" }}>
+                  {fmtH(day.late)}
+                </span>
+              </div>
+            )}
 
-        {/* Daily Leave details if any */}
-        {day.daily_leave && (
-          <div className="row" style={{ background: "rgba(96,165,250,.08)", borderColor: "#60a5fa" }}>
-            <b>مرخصی روزانه</b>
-            <span className="mono" style={{ fontSize: 12 }}>
-              {day.daily_leave.label || day.daily_leave.type} ({day.daily_leave.hours || 8} ساعت)
-              {day.daily_leave.reason ? ` · ${day.daily_leave.reason}` : ""}
-            </span>
-          </div>
+            {/* Daily Leave details if any */}
+            {day.daily_leave && (
+              <div className="row" style={{ background: "rgba(96,165,250,.08)", borderColor: "#60a5fa" }}>
+                <b>مرخصی روزانه</b>
+                <span className="mono" style={{ fontSize: 12 }}>
+                  {day.daily_leave.label || day.daily_leave.type} ({day.daily_leave.hours || 8} ساعت)
+                  {day.daily_leave.reason ? ` · ${day.daily_leave.reason}` : ""}
+                </span>
+              </div>
+            )}
+          </>
         )}
       </div>
     </Drawer>
