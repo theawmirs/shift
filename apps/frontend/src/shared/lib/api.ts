@@ -322,4 +322,36 @@ export const API = {
   getHolidays(year?: number): Promise<any> {
     return this.jget(year ? `/api/holidays/${year}` : "/api/holidays");
   },
+
+  // ── CSV Import / Export ──
+  csvExportBlob(month?: string): Promise<Blob> {
+    return this.jblob(month ? `/api/data/export/csv?month=${encodeURIComponent(month)}` : "/api/data/export/csv");
+  },
+  csvSampleBlob(): Promise<Blob> {
+    return this.jblob("/api/data/sample/csv");
+  },
+  async csvImport(file: File, mode: "upsert" | "skip" = "upsert"): Promise<any> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("mode", mode);
+
+    const headers: Record<string, string> = {};
+    const token = this.getToken();
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const r = await this._fetchWithRefresh("/api/data/import/csv", {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+    if (!r.ok) {
+      let msg = r.statusText;
+      try {
+        const j = await r.json();
+        msg = j.detail || j.message || msg;
+      } catch {}
+      throw new Error(msg);
+    }
+    return r.json();
+  },
 };
