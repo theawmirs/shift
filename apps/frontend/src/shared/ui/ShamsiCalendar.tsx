@@ -205,8 +205,7 @@ export function ShamsiCalendar({ value, onPick, minDate, maxDate, marks, onMonth
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, width: "100%" }}>
         <button
-          className="btn btn-ghost"
-          style={{ padding: "4px 8px", borderRadius: 8, fontSize: 11, minHeight: "auto", height: "auto" }}
+          style={navBtnStyle}
           onClick={() => nav(-1)}
           aria-label="قبلی"
         >
@@ -216,8 +215,7 @@ export function ShamsiCalendar({ value, onPick, minDate, maxDate, marks, onMonth
           {MONTHS[jm - 1]} {jy}
         </b>
         <button
-          className="btn btn-ghost"
-          style={{ padding: "4px 8px", borderRadius: 8, fontSize: 11, minHeight: "auto", height: "auto" }}
+          style={navBtnStyle}
           onClick={() => nav(1)}
           aria-label="بعدی"
         >
