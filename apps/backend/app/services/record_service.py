@@ -288,5 +288,26 @@ def record_overtime(conn: sqlite3.Connection, hours: str, date_str: str | None =
         conn.execute("UPDATE events SET note=? WHERE shamsi_date=? AND event_type='out' AND user_id IS NULL", (f"ot:{ot_val}", sdate))
     else:
         conn.execute("UPDATE events SET note=? WHERE shamsi_date=? AND event_type='out' AND user_id=?", (f"ot:{ot_val}", sdate, user_id))
+
+    # Automatically create a task reminder to fill the overtime form if > 0
+    if ot_val > 0:
+        total_mins = int(round(ot_val * 60))
+        h = total_mins // 60
+        m = total_mins % 60
+        dur_str = f"{h} ساعت و {m} دقیقه" if h > 0 and m > 0 else f"{h} ساعت" if h > 0 else f"{m} دقیقه"
+        task_title = f"📝 پر کردن برگه اضافه‌کاری ({dur_str} - {sdate})"
+        
+        # Check if task already exists
+        existing_task = conn.execute(
+            "SELECT id FROM tasks WHERE shamsi_date=? AND title=? AND ((? IS NULL AND user_id IS NULL) OR user_id=?)",
+            (sdate, task_title, user_id, user_id),
+        ).fetchone()
+        if not existing_task:
+            now_str = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            conn.execute(
+                "INSERT INTO tasks(shamsi_date, title, done, user_id, created_at) VALUES(?, ?, 0, ?, ?)",
+                (sdate, task_title, user_id, now_str),
+            )
+
     conn.commit()
     return f"✅ اضافه‌کاری {ot_val:.1f} ساعت برای تاریخ {sdate} ثبت شد"

@@ -1,16 +1,19 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { LogIn, LogOut, Coffee, Undo2, Home, Building2, Clock } from "lucide-react";
+import { LogIn, LogOut, Coffee, Undo2, Home, Building2, Clock, Sparkles } from "lucide-react";
 import { Drawer } from "../../shared/ui/Drawer";
+import { fmtHoursFa } from "../../shared/lib/format";
 
 export interface ActionGridProps {
-  onAction: (k: string, at?: string) => void;
+  onAction: (k: string, at?: string, otHours?: number) => void;
   onRemoteToggle: () => void;
   workMode?: string | null;
   day_status?: string | null;
   day_status_reason?: string | null;
   disabledReason?: string | null;
   leave_open?: boolean;
+  liveMinutes?: number;
+  standardHours?: number;
 }
 
 export function ActionGrid({
@@ -21,11 +24,14 @@ export function ActionGrid({
   day_status_reason,
   disabledReason,
   leave_open,
+  liveMinutes = 0,
+  standardHours = 8,
 }: ActionGridProps) {
   const isRemote = workMode === "remote";
   const effectiveReason = day_status_reason ?? disabledReason ?? null;
 
   const [overrideModal, setOverrideModal] = useState<"in" | "out" | null>(null);
+  const [otModal, setOtModal] = useState<{ open: boolean; extraHours: number; at?: string } | null>(null);
   const [customTime, setCustomTime] = useState<string>(() => {
     const d = new Date();
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -80,9 +86,31 @@ export function ActionGrid({
     { k: "back", title: "برگشتم", desc: "پایان مرخصی", Icon: Undo2, cls: "action--back" },
   ];
 
+  const handleActionClick = (k: string) => {
+    if (k === "out") {
+      const liveHours = liveMinutes / 60;
+      if (liveHours > standardHours) {
+        const extra = Math.round((liveHours - standardHours) * 100) / 100;
+        setOtModal({ open: true, extraHours: extra });
+        return;
+      }
+    }
+    onAction(k);
+  };
+
   const handleManualSubmit = () => {
     if (!overrideModal || !customTime) return;
-    onAction(overrideModal, customTime.trim());
+    const at = customTime.trim();
+    if (overrideModal === "out") {
+      const liveHours = liveMinutes / 60;
+      if (liveHours > standardHours) {
+        const extra = Math.round((liveHours - standardHours) * 100) / 100;
+        setOverrideModal(null);
+        setOtModal({ open: true, extraHours: extra, at });
+        return;
+      }
+    }
+    onAction(overrideModal, at);
     setOverrideModal(null);
   };
 
@@ -113,7 +141,7 @@ export function ActionGrid({
               whileTap={dis ? undefined : { scale: 0.98 }}
               onClick={() => {
                 if (dis) return;
-                onAction(it.k);
+                handleActionClick(it.k);
               }}
             >
               <span className="ico">
@@ -163,6 +191,68 @@ export function ActionGrid({
           </button>
         </div>
       )}
+
+      {/* Overtime Decision Modal */}
+      <Drawer
+        open={Boolean(otModal?.open)}
+        onClose={() => {
+          if (otModal) {
+            onAction("out", otModal.at);
+            setOtModal(null);
+          }
+        }}
+        title="ثبت اضافه‌کاری امروز"
+        height="auto"
+      >
+        {otModal && (
+          <div style={{ display: "grid", gap: 14, padding: "8px 0" }}>
+            <div
+              className="row"
+              style={{
+                borderColor: "var(--amber)",
+                background: "rgba(245,158,11,0.08)",
+                flexDirection: "column",
+                alignItems: "stretch",
+                gap: 8,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Sparkles size={18} style={{ color: "var(--amber)" }} />
+                <b style={{ fontSize: 14 }}>
+                  شما {fmtHoursFa(otModal.extraHours)} بیشتر از موظفی حضور داشتید!
+                </b>
+              </div>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
+                آیا مایلید این زمان به عنوان اضافه‌کاری در سامانه ثبت شده و یادآور پر کردن فرم برایتان فعال گردد؟
+              </p>
+            </div>
+
+            <div style={{ display: "grid", gap: 8 }}>
+              <button
+                className="btn btn-primary"
+                style={{ padding: "12px", fontWeight: 800, fontSize: 13 }}
+                onClick={() => {
+                  onAction("out", otModal.at, otModal.extraHours);
+                  setOtModal(null);
+                }}
+              >
+                ✅ بله، {fmtHoursFa(otModal.extraHours)} اضافه‌کاری ثبت شود
+              </button>
+
+              <button
+                className="btn btn-ghost"
+                style={{ padding: "10px", fontSize: 12 }}
+                onClick={() => {
+                  onAction("out", otModal.at);
+                  setOtModal(null);
+                }}
+              >
+                خیر، فقط خروج ثبت شود (بدون اضافه‌کار)
+              </button>
+            </div>
+          </div>
+        )}
+      </Drawer>
 
       {/* Override Time Drawer */}
       <Drawer
