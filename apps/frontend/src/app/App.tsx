@@ -11,6 +11,8 @@ import { TodayPage } from "./TodayPage";
 import { WeekPage } from "./WeekPage";
 import { TasksPage } from "./TasksPage";
 import { SettingsPage } from "./SettingsPage";
+import { CalendarPage } from "../pages/CalendarPage";
+import { LeavesPage } from "./LeavesPage";
 import { LoginPage } from "./LoginPage";
 import { API } from "../shared/lib/api";
 import { User } from "../shared/types";
@@ -114,8 +116,11 @@ function Shell() {
           <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname}>
               <Route path="/" element={<TodayPage />} />
+              <Route path="/reports" element={<WeekPage />} />
               <Route path="/week" element={<WeekPage />} />
+              <Route path="/calendar" element={<CalendarPage />} />
               <Route path="/tasks" element={<TasksPage />} />
+              <Route path="/leaves" element={<LeavesPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Routes>
           </AnimatePresence>
