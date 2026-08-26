@@ -1,0 +1,9 @@
+{
+  "name": "shift",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build:frontend": "npm run build --prefix apps/frontend",
+    "test:backend": "pytest apps/backend/tests"
+  }
+}

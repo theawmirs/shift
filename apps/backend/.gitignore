@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.pytest_cache/
+exports/*.xlsx
+data/*.db
+data/*.db.bak*
+.env

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.hermes/
+*.db
+__pycache__/
+*.py[cod]
+.pytest_cache/
+venv/
+.env
