@@ -279,3 +279,30 @@ def test_holidays_endpoint(test_env):
     assert resp_empty.status_code == 200
     assert len(resp_empty.json()["holidays"]) == 0
 
+def test_csv_import_and_export(test_env):
+    client = test_env["client"]
+
+    # Sample template test
+    sample_res = client.get("/api/data/sample/csv")
+    assert sample_res.status_code == 200
+    assert "date,in,out,leave_hours,work_mode,notes" in sample_res.text
+
+    # Import CSV data
+    csv_payload = "date,in,out,leave_hours,work_mode,notes\n1405-06-10,08:30,17:00,0,office,تست شیفت\n1405-06-11,09:00,18:00,1,remote,جلسه\n"
+    import_res = client.post(
+        "/api/data/import/csv",
+        data={"mode": "upsert"},
+        files={"file": ("test.csv", csv_payload.encode("utf-8"), "text/csv")},
+    )
+    assert import_res.status_code == 200
+    res_data = import_res.json()
+    assert res_data["ok"] is True
+    assert res_data["imported"] == 2
+    assert len(res_data["errors"]) == 0
+
+    # Export CSV data
+    export_res = client.get("/api/data/export/csv?month=1405-06")
+    assert export_res.status_code == 200
+    assert "1405-06-10" in export_res.text
+    assert "1405-06-11" in export_res.text
+
