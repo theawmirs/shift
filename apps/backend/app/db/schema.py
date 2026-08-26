@@ -141,6 +141,14 @@ def init_db(conn: sqlite3.Connection):
     );
     CREATE INDEX IF NOT EXISTS idx_summaries_user ON monthly_summaries(user_id);
 
+    CREATE TABLE IF NOT EXISTS user_settings (
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      key TEXT NOT NULL,
+      value TEXT NOT NULL,
+      PRIMARY KEY(user_id, key)
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_settings ON user_settings(user_id, key);
+
     CREATE TABLE IF NOT EXISTS holidays (
       date TEXT PRIMARY KEY,
       name TEXT
@@ -161,3 +169,22 @@ def init_db(conn: sqlite3.Connection):
         conn.execute("INSERT OR IGNORE INTO holidays(date, name) VALUES(?, ?)", (d, n))
 
     conn.commit()
+
+def get_user_settings(conn: sqlite3.Connection, user_id: int | None = None) -> dict[str, str]:
+    """Get settings for user with fallback to DEFAULT_SETTINGS."""
+    res = dict(DEFAULT_SETTINGS)
+    if user_id is not None:
+        rows = conn.execute("SELECT key, value FROM user_settings WHERE user_id=?", (user_id,)).fetchall()
+        for r in rows:
+            res[r["key"]] = r["value"]
+    return res
+
+def set_user_setting(conn: sqlite3.Connection, user_id: int, key: str, value: str) -> None:
+    """Set or update setting for specific user."""
+    conn.execute(
+        "INSERT INTO user_settings(user_id, key, value) VALUES(?, ?, ?) "
+        "ON CONFLICT(user_id, key) DO UPDATE SET value=excluded.value",
+        (user_id, key, value),
+    )
+    conn.commit()
+

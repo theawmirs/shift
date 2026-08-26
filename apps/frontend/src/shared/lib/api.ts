@@ -317,4 +317,9 @@ export const API = {
   putSetting(key: string, value: any): Promise<any> {
     return this.jput("/api/settings", { key, value });
   },
+
+  // holidays
+  getHolidays(year?: number): Promise<any> {
+    return this.jget(year ? `/api/holidays/${year}` : "/api/holidays");
+  },
 };
