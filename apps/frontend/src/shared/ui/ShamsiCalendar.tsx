@@ -176,6 +176,23 @@ export function ShamsiCalendar({ value, onPick, minDate, maxDate, marks, onMonth
     onMonthChange?.(y, m, `${y}-${_pad(m)}`);
   };
 
+  const navBtnStyle: React.CSSProperties = {
+    width: 32,
+    height: 32,
+    minWidth: 32,
+    padding: 0,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 8,
+    border: "1.5px solid #000",
+    boxShadow: "2px 2px 0 #000",
+    background: "#fff",
+    color: "#0F172A",
+    cursor: "pointer",
+    flexShrink: 0,
+  };
+
   return (
     <div
       style={{
@@ -186,7 +203,7 @@ export function ShamsiCalendar({ value, onPick, minDate, maxDate, marks, onMonth
         padding: 10,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, width: "100%" }}>
         <button
           className="btn btn-ghost"
           style={{ padding: "4px 8px", borderRadius: 8, fontSize: 11, minHeight: "auto", height: "auto" }}
@@ -195,7 +212,7 @@ export function ShamsiCalendar({ value, onPick, minDate, maxDate, marks, onMonth
         >
           <ChevronRight size={14} />
         </button>
-        <b className="mono" style={{ fontSize: 13 }}>
+        <b className="mono" style={{ fontSize: 13, textAlign: "center", flex: 1 }}>
           {MONTHS[jm - 1]} {jy}
         </b>
         <button
