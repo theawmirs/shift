@@ -7,6 +7,7 @@ export const queryKeys = {
   months: ["months"] as const,
   leaves: ["leaves"] as const,
   settings: ["settings"] as const,
+  holidays: (year?: number) => ["holidays", year ?? "all"] as const,
   me: ["me"] as const,
 };
 
@@ -44,6 +45,25 @@ export function useSettingsQuery() {
   return useQuery({
     queryKey: queryKeys.settings,
     queryFn: () => API.getSettings(),
+  });
+}
+
+export function useUpdateSettingsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ key, value }: { key: string; value: any }) => API.putSetting(key, value),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+      queryClient.invalidateQueries({ queryKey: queryKeys.today });
+      queryClient.invalidateQueries({ queryKey: ["month"] });
+    },
+  });
+}
+
+export function useHolidaysQuery(year?: number) {
+  return useQuery({
+    queryKey: queryKeys.holidays(year),
+    queryFn: () => API.getHolidays(year),
   });
 }
 
