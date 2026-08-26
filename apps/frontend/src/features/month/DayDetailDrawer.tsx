@@ -1,4 +1,5 @@
 import { Drawer } from "../../shared/ui/Drawer";
+import { fmtHoursFa } from "../../shared/lib/format";
 
 export interface DayDetailDrawerProps {
   open: boolean;
@@ -14,7 +15,7 @@ export function DayDetailDrawer({ open, onClose, day }: DayDetailDrawerProps) {
   // Format helpers
   const fmtH = (val: any) => {
     if (val == null || Number(val) === 0) return null;
-    return `${Number(val).toFixed(2)} ساعت`;
+    return fmtHoursFa(val);
   };
 
   const hasIn = Boolean(day.in);
