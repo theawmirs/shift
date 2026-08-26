@@ -115,14 +115,20 @@ export function CalendarPage() {
   const [jm, setJm] = useState(_tm);
   const [selectedHoliday, setSelectedHoliday] = useState<{ date: string; name: string; isFriday?: boolean } | null>(null);
 
-  const { data: holidaysData } = useHolidaysQuery(jy);
+  const { data: holidaysData } = useHolidaysQuery();
 
   // Map holidays by date "YYYY-MM-DD"
   const holidayMap = useMemo(() => {
     const map = new Map<string, string>();
     if (holidaysData?.holidays) {
       for (const h of holidaysData.holidays) {
-        map.set(h.date, h.name);
+        // Normalize date format "1405-6-8" vs "1405-06-08"
+        const parts = h.date.split("-");
+        if (parts.length === 3) {
+          const norm = `${parseInt(parts[0], 10)}-${parseInt(parts[1], 10)}-${parseInt(parts[2], 10)}`;
+          map.set(norm, h.name);
+          map.set(h.date, h.name);
+        }
       }
     }
     return map;
@@ -218,8 +224,9 @@ export function CalendarPage() {
               return <div key={`empty-${i}`} style={{ aspectRatio: "1" }} />;
             }
             const dateStr = jalaliStr(jy, jm, d);
+            const dateNorm = `${jy}-${jm}-${d}`;
             const isFriday = i % 7 === 6;
-            const officialHolidayName = holidayMap.get(dateStr);
+            const officialHolidayName = holidayMap.get(dateStr) || holidayMap.get(dateNorm);
             const isHoliday = isFriday || Boolean(officialHolidayName);
             const today = isToday(d);
 

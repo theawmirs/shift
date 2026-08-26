@@ -39,7 +39,7 @@ export function BottomNav({ active, onChange }: { active: string; onChange: (to:
     { k: "today", to: "/", label: "امروز", Icon: Clock3 },
     { k: "reports", to: "/reports", label: "گزارش‌ها", Icon: BarChart3 },
     { k: "calendar", to: "/calendar", label: "تقویم", Icon: Calendar },
-    { k: "leaves", to: "/leaves", label: "مرخصی", Icon: ListChecks },
+    { k: "tasks", to: "/tasks", label: "تسک‌ها", Icon: ListChecks },
     { k: "settings", to: "/settings", label: "تنظیمات", Icon: Settings2 },
   ];
   return (
