@@ -26,8 +26,9 @@ def month_days(jy: int, jm: int) -> list[str]:
     return [jalali.jalali_date_str(jy, jm, d) for d in range(1, days_in_month + 1)]
 
 def leave_balance(conn: sqlite3.Connection, jy: int, user_id: int | None = None) -> tuple[float, float]:
-    row = conn.execute("SELECT value FROM settings WHERE key='leave_quota_hours'").fetchone()
-    quota = float(row["value"]) if row else 208.0
+    from app.db.schema import get_user_settings
+    u_settings = get_user_settings(conn, user_id=user_id)
+    quota = float(u_settings.get("leave_quota_hours", "208") or 208.0)
     
     # Calculate hourly leave from all events in year
     if user_id is None:

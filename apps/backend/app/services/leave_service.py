@@ -83,7 +83,9 @@ def create_daily_leave(conn: sqlite3.Connection, user_id: int, start_date: str, 
     hours = float(workdays * 8)
     if leave_type == "annual":
         jy = int(start_date.split("-")[0])
-        quota = float(conn.execute("SELECT value FROM settings WHERE key='leave_quota_hours'").fetchone()["value"] or "208")
+        from app.db.schema import get_user_settings
+        u_settings = get_user_settings(conn, user_id=user_id)
+        quota = float(u_settings.get("leave_quota_hours", "208") or 208.0)
         from app.services import report_service
         _, hourly_consumed = report_service.leave_balance(conn, jy, user_id=user_id)
         annual_daily = daily_leave_annual_hours_in_year(conn, user_id, jy)
