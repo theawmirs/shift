@@ -5,7 +5,8 @@ from app.api.deps import get_db, get_current_user_optional
 from app.schemas.attendance import (
     StatusResponse, RecordRequest, RecordResponse,
     OvertimeResponse, WorkModeRequest, WorkModeResponse,
-    TaskListResponse, TaskAddRequest, TaskPatchRequest, TaskActionResponse, TaskItem
+    TaskListResponse, TaskAddRequest, TaskPatchRequest, TaskActionResponse, TaskItem,
+    DayEditRequest, DayEditResponse,
 )
 from app.services import record_service
 from app.core.config import settings
@@ -76,6 +77,24 @@ def api_record(body: RecordRequest, uid: int | None = Depends(get_current_user_o
         return RecordResponse(ok=True, message=msg)
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
+
+@router.post("/day/edit", response_model=DayEditResponse, summary="Edit or insert full workday records for a specific date")
+def api_edit_day(body: DayEditRequest, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
+    try:
+        updated_day = record_service.edit_or_create_day_record(
+            conn=conn,
+            sdate=body.date,
+            in_time=body.in_time,
+            out_time=body.out_time,
+            leave_hours=body.leave_hours,
+            overtime_hours=body.overtime_hours,
+            work_mode=body.work_mode,
+            notes=body.notes,
+            user_id=uid,
+        )
+        return DayEditResponse(ok=True, message=f"ساعت کاری تاریخ {body.date} با موفقیت ویرایش/ثبت شد", day=updated_day)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/ot", response_model=OvertimeResponse, summary="Declare overtime hours after clock out")
 def api_ot(hours: str, date: str | None = None, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):

@@ -62,6 +62,20 @@ class RecordResponse(BaseModel):
     ok: bool
     message: str
 
+class DayEditRequest(BaseModel):
+    date: str
+    in_time: str | None = None
+    out_time: str | None = None
+    leave_hours: float = 0.0
+    overtime_hours: float = 0.0
+    work_mode: str = "office"
+    notes: str | None = None
+
+class DayEditResponse(BaseModel):
+    ok: bool
+    message: str
+    day: dict[str, Any]
+
 class OvertimeRequest(BaseModel):
     hours: str
     date: str | None = None

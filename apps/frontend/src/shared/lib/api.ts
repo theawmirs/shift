@@ -303,6 +303,17 @@ export const API = {
   record(event_type: string, at?: string, date?: string): Promise<any> {
     return this.jpost("/api/record", { event_type, at, date });
   },
+  editDay(body: {
+    date: string;
+    in_time?: string | null;
+    out_time?: string | null;
+    leave_hours?: number;
+    overtime_hours?: number;
+    work_mode?: string;
+    notes?: string | null;
+  }): Promise<any> {
+    return this.jpost("/api/day/edit", body);
+  },
   ot(hours: number | string, date?: string): Promise<any> {
     return this.jpost(
       `/api/ot?hours=${encodeURIComponent(hours)}${date ? `&date=${encodeURIComponent(date)}` : ""}`,

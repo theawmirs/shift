@@ -39,16 +39,22 @@ export function TodayPage() {
   const { data: status, error, refetch } = useTodayQuery();
   const recordMutation = useRecordMutation();
 
-  const onAction = async (k: string, at?: string) => {
+  const onAction = async (k: string, at?: string, otHours?: number) => {
     const map: Record<string, string> = { in: "in", out: "out", leave: "leave_start", back: "leave_end" };
     const et = map[k] || k;
     try {
       const r = await recordMutation.mutateAsync({ event_type: et, at });
+      if (k === "out" && otHours && otHours > 0) {
+        try {
+          await API.ot(otHours);
+        } catch {}
+      }
       push(
         r.message ||
           (k === "in" ? `✅ ورود ثبت شد${at ? ` (${at})` : ""}` : k === "out" ? `✅ خروج ثبت شد${at ? ` (${at})` : ""}` : k === "leave" ? "🟡 مرخصی شروع شد" : "🔵 برگشتم")
       );
-      if (k === "out") navigate("/week");
+      await refetch();
+      if (k === "out") navigate("/reports");
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
     }
@@ -180,6 +186,8 @@ export function TodayPage() {
             day_status_reason={day_status_reason}
             disabledReason={bannerReason}
             leave_open={!!status.day?.leave_open}
+            liveMinutes={liveMinutes}
+            standardHours={Number(status.settings?.standard_hours || 8)}
           />
         </>
       )}

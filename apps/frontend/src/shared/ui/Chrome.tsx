@@ -35,14 +35,13 @@ export function Topbar({
           style={{
             background: isSettings ? "var(--amber)" : "#fff",
             color: "#0F172A",
-            padding: "8px 12px",
+            padding: "8px",
             display: "inline-flex",
             alignItems: "center",
-            gap: 6,
+            justifyContent: "center",
           }}
         >
-          <Settings size={16} />
-          <span>تنظیمات</span>
+          <Settings size={18} />
         </button>
         <button className="theme-btn" onClick={onToggleTheme} aria-label="toggle theme">
           {theme === "dark" ? (

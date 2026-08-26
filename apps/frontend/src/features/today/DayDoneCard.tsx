@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { CheckCircle2, LogIn, LogOut, Coffee, BarChart3, ListChecks } from "lucide-react";
+import { CheckCircle2, LogIn, LogOut, Coffee, BarChart3, ListChecks, FileEdit } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { fmtHoursFa } from "../../shared/lib/format";
 
@@ -70,6 +70,34 @@ export function DayDoneCard({ day, weekday, shamsi }: DayDoneCardProps) {
           خروج امروزت ثبت شده و عملکردت برای گزارش محاسبه شد.
         </p>
       </div>
+
+      {/* Overtime Form Submission Reminder Banner if overtime exists */}
+      {overtime > 0 && (
+        <div
+          className="row"
+          style={{
+            marginBottom: 12,
+            borderColor: "var(--amber)",
+            background: "rgba(245,158,11,0.12)",
+            color: "var(--text)",
+            flexDirection: "column",
+            alignItems: "stretch",
+            gap: 6,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 800, color: "var(--amber-2)" }}>
+              <FileEdit size={16} /> یادآوری برگه اضافه‌کاری
+            </span>
+            <span className="badge" style={{ background: "var(--amber)", color: "#0F172A", fontWeight: 800, fontSize: 10 }}>
+              {fmtHoursFa(overtime)}
+            </span>
+          </div>
+          <p style={{ margin: 0, fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
+            تسک یادآور برای پر کردن فرم اضافه‌کاری در بخش «تسک‌ها» ثبت شد. لطفاً فرم را تحویل دهید.
+          </p>
+        </div>
+      )}
 
       {/* Clock In / Out Summary Chips */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>

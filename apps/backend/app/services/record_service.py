@@ -1,19 +1,21 @@
-import sqlite3
 import datetime
-from zoneinfo import ZoneInfo
+import re
+import sqlite3
 from app.core.config import settings
 from app.core import jalali
 
 DAY_STATUS_LABELS = {
-    "holiday": "تعطیل",
-    "done": "تمام‌شده",
-    "on_leave": "در مرخصی",
-    "working": "مشغول به کار",
     "idle": "آماده ورود",
+    "working": "مشغول به کار",
+    "on_leave": "در مرخصی ساعتی",
+    "done": "پایان روز کاری",
+    "holiday": "تعطیل",
 }
 
-WORK_MODES = ("office", "remote")
-WORK_MODE_LABEL = {"office": "حضوری", "remote": "دورکاری"}
+WORK_MODE_LABEL = {
+    "office": "حضوری",
+    "remote": "دورکاری",
+}
 
 def now_tehran() -> datetime.datetime:
     return datetime.datetime.now(settings.tehran_tz)
@@ -21,25 +23,24 @@ def now_tehran() -> datetime.datetime:
 def today_str() -> str:
     now = now_tehran()
     jy, jm, jd = jalali.gregorian_to_jalali(now.year, now.month, now.day)
-    return jalali.jalali_date_str(jy, jm, jd)
+    return f"{jy:04d}-{jm:02d}-{jd:02d}"
 
 def parse_date(s: str) -> tuple[int, int, int]:
-    m = s.strip().split("-")
-    if len(m) != 3:
-        raise ValueError(f"Invalid Shamsi date format: {s}")
-    jy, jm, jd = map(int, m)
-    if not (1300 <= jy <= 1500 and 1 <= jm <= 12 and 1 <= jd <= 31):
-        raise ValueError(f"Invalid date values: {s}")
-    return jy, jm, jd
+    try:
+        parts = s.split("-")
+        return int(parts[0]), int(parts[1]), int(parts[2])
+    except Exception:
+        raise ValueError(f"فرمت تاریخ نامعتبر است: {s}")
 
 def holiday_name(conn: sqlite3.Connection, sdate: str) -> tuple[bool, str | None]:
-    jy, jm, jd = parse_date(sdate)
-    gy, gm, gd = jalali.jalali_to_gregorian(jy, jm, jd)
-    if jalali.is_friday(gy, gm, gd):
-        return True, "جمعه"
     row = conn.execute("SELECT name FROM holidays WHERE date=?", (sdate,)).fetchone()
     if row:
         return True, row["name"]
+    jy, jm, jd = parse_date(sdate)
+    gy, gm, gd = jalali.jalali_to_gregorian(jy, jm, jd)
+    dt = datetime.date(gy, gm, gd)
+    if dt.weekday() == 4: # Friday
+        return True, "جمعه"
     return False, None
 
 def get_work_mode(conn: sqlite3.Connection, sdate: str, user_id: int | None = None) -> str:
@@ -50,32 +51,33 @@ def get_work_mode(conn: sqlite3.Connection, sdate: str, user_id: int | None = No
     return row["mode"] if row else "office"
 
 def set_work_mode(conn: sqlite3.Connection, sdate: str, mode: str, user_id: int | None = None) -> None:
-    if mode not in WORK_MODES:
-        raise ValueError(f"Invalid work mode: {mode}")
     if user_id is None:
-        conn.execute("INSERT OR REPLACE INTO day_work_mode(shamsi_date, user_id, mode) VALUES(?, NULL, ?)", (sdate, mode))
+        conn.execute("INSERT OR REPLACE INTO day_work_mode(shamsi_date, mode, user_id) VALUES(?, ?, NULL)", (sdate, mode))
     else:
-        conn.execute("INSERT OR REPLACE INTO day_work_mode(shamsi_date, user_id, mode) VALUES(?, ?, ?)", (sdate, user_id, mode))
+        conn.execute("INSERT OR REPLACE INTO day_work_mode(shamsi_date, mode, user_id) VALUES(?, ?, ?)", (sdate, mode, user_id))
     conn.commit()
 
 def toggle_work_mode(conn: sqlite3.Connection, sdate: str, user_id: int | None = None) -> str:
     cur = get_work_mode(conn, sdate, user_id)
-    nxt = "remote" if cur == "office" else "office"
-    set_work_mode(conn, sdate, nxt, user_id)
-    return nxt
+    new_m = "remote" if cur == "office" else "office"
+    set_work_mode(conn, sdate, new_m, user_id)
+    return new_m
 
 def day_events(conn: sqlite3.Connection, sdate: str, user_id: int | None = None) -> list[tuple[str, datetime.datetime, str | None]]:
     if user_id is None:
-        rows = conn.execute("SELECT event_type, ts_utc, note FROM events WHERE shamsi_date=? AND user_id IS NULL ORDER BY ts_utc", (sdate,)).fetchall()
+        rows = conn.execute(
+            "SELECT event_type, ts_utc, note FROM events WHERE shamsi_date=? AND user_id IS NULL ORDER BY ts_utc ASC",
+            (sdate,),
+        ).fetchall()
     else:
-        rows = conn.execute("SELECT event_type, ts_utc, note FROM events WHERE shamsi_date=? AND user_id=? ORDER BY ts_utc", (sdate, user_id)).fetchall()
-    
+        rows = conn.execute(
+            "SELECT event_type, ts_utc, note FROM events WHERE shamsi_date=? AND user_id=? ORDER BY ts_utc ASC",
+            (sdate, user_id),
+        ).fetchall()
     res = []
     for r in rows:
-        dt = datetime.datetime.fromisoformat(r["ts_utc"])
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=datetime.timezone.utc)
-        dt_tehran = dt.astimezone(settings.tehran_tz)
+        dt_utc = datetime.datetime.fromisoformat(r["ts_utc"])
+        dt_tehran = dt_utc.astimezone(settings.tehran_tz)
         res.append((r["event_type"], dt_tehran, r["note"]))
     return res
 
@@ -154,10 +156,14 @@ def compute_day(conn: sqlite3.Connection, sdate: str, user_id: int | None = None
 
     return {
         "date": sdate,
+        "jy": jy,
+        "jm": jm,
+        "jd": jd,
         "weekday": wdf,
         "is_holiday": is_hol,
         "holiday_name": hol_name,
-        "has_events": len(events) > 0,
+        "work_mode": wm,
+        "work_mode_label": "دورکاری" if wm == "remote" else "حضوری",
         "in": in_dt,
         "out": out_dt,
         "leave_intervals": leave_intervals,
@@ -169,18 +175,17 @@ def compute_day(conn: sqlite3.Connection, sdate: str, user_id: int | None = None
         "deficit": deficit,
         "overtime": overtime,
         "ot_declared": ot_declared,
-        "work_mode": wm,
-        "work_mode_label": WORK_MODE_LABEL.get(wm, wm),
+        "has_events": len(events) > 0,
     }
 
 def compute_day_status(is_holiday: bool, in_dt: datetime.datetime | None, out_dt: datetime.datetime | None, leave_open: bool, holiday_name: str | None = None) -> tuple[str, str, str | None]:
     if is_holiday:
-        reason = f"🏖 امروز تعطیله ({holiday_name}) — ثبت ورود/خروج بسته‌ست" if holiday_name else "🏖 امروز تعطیله — ثبت ورود/خروج بسته‌ست"
+        reason = f"تعطیل ({holiday_name})" if holiday_name else "روز تعطیل رسمی / جمعه"
         return "holiday", DAY_STATUS_LABELS["holiday"], reason
     if out_dt is not None:
-        return "done", DAY_STATUS_LABELS["done"], "امروز خروج زدی — روز کاری تمومه، تا فردا"
+        return "done", DAY_STATUS_LABELS["done"], "امروز قبلاً خروج ثبت شده"
     if leave_open:
-        return "on_leave", DAY_STATUS_LABELS["on_leave"], "در مرخصی"
+        return "on_leave", DAY_STATUS_LABELS["on_leave"], "در حال حاضر در مرخصی ساعتی هستید"
     if in_dt is not None:
         return "working", DAY_STATUS_LABELS["working"], None
     return "idle", DAY_STATUS_LABELS["idle"], None
@@ -276,7 +281,7 @@ def record_event(conn: sqlite3.Connection, event_type: str, at: str | None = Non
 def record_overtime(conn: sqlite3.Connection, hours: str, date_str: str | None = None, user_id: int | None = None) -> str:
     sdate = date_str or today_str()
     try:
-        ot_val = float(hours.translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")))
+        ot_val = float(str(hours).translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")))
     except Exception:
         raise ValueError("ساعت اضافه‌کاری نامعتبر است")
     
@@ -288,5 +293,94 @@ def record_overtime(conn: sqlite3.Connection, hours: str, date_str: str | None =
         conn.execute("UPDATE events SET note=? WHERE shamsi_date=? AND event_type='out' AND user_id IS NULL", (f"ot:{ot_val}", sdate))
     else:
         conn.execute("UPDATE events SET note=? WHERE shamsi_date=? AND event_type='out' AND user_id=?", (f"ot:{ot_val}", sdate, user_id))
+
+    # Automatically create a task reminder to fill the overtime form if > 0
+    if ot_val > 0:
+        total_mins = int(round(ot_val * 60))
+        h = total_mins // 60
+        m = total_mins % 60
+        dur_str = f"{h} ساعت و ${m} دقیقه" if h > 0 and m > 0 else f"{h} ساعت" if h > 0 else f"{m} دقیقه"
+        task_title = f"📝 پر کردن برگه اضافه‌کاری ({dur_str} - {sdate})"
+        
+        # Check if task already exists
+        existing_task = conn.execute(
+            "SELECT id FROM tasks WHERE shamsi_date=? AND title=? AND ((? IS NULL AND user_id IS NULL) OR user_id=?)",
+            (sdate, task_title, user_id, user_id),
+        ).fetchone()
+        if not existing_task:
+            now_str = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            conn.execute(
+                "INSERT INTO tasks(shamsi_date, title, done, user_id, created_at) VALUES(?, ?, 0, ?, ?)",
+                (sdate, task_title, user_id, now_str),
+            )
+
     conn.commit()
     return f"✅ اضافه‌کاری {ot_val:.1f} ساعت برای تاریخ {sdate} ثبت شد"
+
+def edit_or_create_day_record(
+    conn: sqlite3.Connection,
+    sdate: str,
+    in_time: str | None = None,
+    out_time: str | None = None,
+    leave_hours: float = 0.0,
+    overtime_hours: float = 0.0,
+    work_mode: str = "office",
+    notes: str | None = None,
+    user_id: int | None = None,
+) -> dict:
+    """Explicitly rewrite or insert attendance events and work mode for a specific date."""
+    jy, jm, jd = parse_date(sdate)
+    gy, gm, gd = jalali.jalali_to_gregorian(jy, jm, jd)
+    wdf = jalali.weekday_fa(gy, gm, gd)
+
+    # Delete existing attendance events for this day
+    if user_id is None:
+        conn.execute("DELETE FROM events WHERE shamsi_date=? AND user_id IS NULL", (sdate,))
+    else:
+        conn.execute("DELETE FROM events WHERE shamsi_date=? AND user_id=?", (sdate, user_id))
+
+    # Insert In Event
+    if in_time and in_time.strip():
+        parts = in_time.strip().split(":")
+        hh, mm = int(parts[0]), int(parts[1])
+        dt_tehran = datetime.datetime(gy, gm, gd, hh, mm, tzinfo=settings.tehran_tz)
+        conn.execute(
+            "INSERT INTO events(event_type, ts_utc, shamsi_date, weekday, note, user_id) VALUES(?,?,?,?,?,?)",
+            ("in", dt_tehran.astimezone(datetime.timezone.utc).isoformat(), sdate, wdf, notes or None, user_id),
+        )
+
+    # Insert Leave Interval if leave_hours > 0
+    if leave_hours > 0 and in_time and in_time.strip():
+        parts = in_time.strip().split(":")
+        hh, mm = int(parts[0]), int(parts[1])
+        ls_tehran = datetime.datetime(gy, gm, gd, hh, mm, tzinfo=settings.tehran_tz) + datetime.timedelta(hours=2)
+        le_tehran = ls_tehran + datetime.timedelta(hours=leave_hours)
+        conn.execute(
+            "INSERT INTO events(event_type, ts_utc, shamsi_date, weekday, note, user_id) VALUES(?,?,?,?,?,?)",
+            ("leave_start", ls_tehran.astimezone(datetime.timezone.utc).isoformat(), sdate, wdf, None, user_id),
+        )
+        conn.execute(
+            "INSERT INTO events(event_type, ts_utc, shamsi_date, weekday, note, user_id) VALUES(?,?,?,?,?,?)",
+            ("leave_end", le_tehran.astimezone(datetime.timezone.utc).isoformat(), sdate, wdf, None, user_id),
+        )
+
+    # Insert Out Event
+    if out_time and out_time.strip():
+        parts = out_time.strip().split(":")
+        hh, mm = int(parts[0]), int(parts[1])
+        dt_tehran = datetime.datetime(gy, gm, gd, hh, mm, tzinfo=settings.tehran_tz)
+        out_note = f"ot:{overtime_hours}" if overtime_hours > 0 else None
+        conn.execute(
+            "INSERT INTO events(event_type, ts_utc, shamsi_date, weekday, note, user_id) VALUES(?,?,?,?,?,?)",
+            ("out", dt_tehran.astimezone(datetime.timezone.utc).isoformat(), sdate, wdf, out_note, user_id),
+        )
+
+    # Set Work Mode
+    wm_clean = "remote" if work_mode in ("remote", "دورکار", "دورکاری") else "office"
+    conn.execute(
+        "INSERT OR REPLACE INTO day_work_mode(shamsi_date, user_id, mode) VALUES(?,?,?)",
+        (sdate, user_id, wm_clean),
+    )
+
+    conn.commit()
+    return day_payload(conn, sdate, user_id=user_id)
