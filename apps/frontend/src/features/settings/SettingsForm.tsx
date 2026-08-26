@@ -3,9 +3,16 @@ import { AlertTriangle, Download, ChevronDown } from "lucide-react";
 import { API } from "../../shared/lib/api";
 import { useToast } from "../../shared/ui/Toast";
 import { CardSkeleton } from "../../shared/ui/Skeleton";
+import { useSettingsQuery, useMonthsQuery } from "../../shared/api/queries";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../../shared/api/queries";
 
 export function SettingsForm() {
   const { push } = useToast();
+  const queryClient = useQueryClient();
+  const settingsQuery = useSettingsQuery();
+  const monthsQuery = useMonthsQuery();
+
   const [values, setValues] = useState<Record<string, string>>({
     start_time_end: "09:15",
     standard_hours: "8",
@@ -13,21 +20,22 @@ export function SettingsForm() {
     leave_quota_hours: "208",
   });
   const [saving, setSaving] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [months, setMonths] = useState<any[]>([]);
   const [selMonth, setSelMonth] = useState("");
   const [dlLoading, setDlLoading] = useState(false);
 
   useEffect(() => {
-    Promise.all([API.getSettings().catch(() => ({})), API.months().catch(() => ({ months: [] }))])
-      .then(([s, m]) => {
-        setValues((v) => ({ ...v, ...s }));
-        const list = m.months || [];
-        setMonths(list);
-        if (list.length) setSelMonth(list[0].key);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+    if (settingsQuery.data) {
+      setValues((v) => ({ ...v, ...settingsQuery.data }));
+    }
+  }, [settingsQuery.data]);
+
+  const months = monthsQuery.data?.months || [];
+
+  useEffect(() => {
+    if (!selMonth && months.length > 0) {
+      setSelMonth(months[0].key);
+    }
+  }, [selMonth, months]);
 
   const onSave = async (k: string) => {
     const v = String(values[k] || "").trim();
@@ -38,6 +46,9 @@ export function SettingsForm() {
     setSaving(k);
     try {
       await API.putSetting(k, v);
+      queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+      queryClient.invalidateQueries({ queryKey: queryKeys.today });
+      queryClient.invalidateQueries({ queryKey: ["month"] });
       push(`✅ ذخیره شد — ${k} = ${v}`);
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
@@ -68,7 +79,8 @@ export function SettingsForm() {
     }
   };
 
-  if (loading) return <CardSkeleton rows={4} />;
+  if (settingsQuery.isLoading && !settingsQuery.data) return <CardSkeleton rows={4} />;
+
   return (
     <div className="settings">
       <div className="card">
@@ -87,7 +99,7 @@ export function SettingsForm() {
               <span style={{ fontWeight: 800, fontSize: 12 }}>{f.label}</span>
               <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <input
-                  value={values[f.k]}
+                  value={values[f.k] || ""}
                   onChange={(e) => setValues((s) => ({ ...s, [f.k]: e.target.value }))}
                   placeholder={f.ph}
                   className="mono"
@@ -140,7 +152,7 @@ export function SettingsForm() {
                       cursor: "pointer",
                     }}
                   >
-                    {months.map((m) => (
+                    {months.map((m: any) => (
                       <option key={m.key} value={m.key}>
                         {m.label}
                       </option>
@@ -171,7 +183,7 @@ export function SettingsForm() {
                 ) : (
                   <Download size={16} />
                 )}
-                دریافت اکسل {months.find((m) => m.key === selMonth)?.label || ""}
+                دریافت اکسل {months.find((m: any) => m.key === selMonth)?.label || ""}
               </button>
             </div>
           )}

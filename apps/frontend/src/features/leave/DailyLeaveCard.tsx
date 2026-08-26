@@ -1,10 +1,10 @@
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Plane, Trash2, CalendarDays } from "lucide-react";
-import { API } from "../../shared/lib/api";
 import { useToast } from "../../shared/ui/Toast";
 import { Drawer } from "../../shared/ui/Drawer";
 import { ShamsiCalendar } from "../../shared/ui/ShamsiCalendar";
+import { useLeavesQuery, useDailyLeaveMutation, useDeleteLeaveMutation } from "../../shared/api/queries";
 
 const TYPES = [
   { v: "annual", label: "استحقاقی" },
@@ -152,19 +152,12 @@ export function DailyLeaveDrawer({
   const [endDate, setEndDate] = useState("");
   const [typ, setTyp] = useState("annual");
   const [reason, setReason] = useState("");
-  const [loading, setLoading] = useState(false);
   const [picker, setPicker] = useState<"from" | "to" | null>(null);
-  const [items, setItems] = useState<any[]>([]);
 
-  const load = async () => {
-    try {
-      const r = await API.listDailyLeaves({});
-      setItems(r.items || []);
-    } catch {}
-  };
-  useEffect(() => {
-    if (open) load();
-  }, [open]);
+  const leavesQuery = useLeavesQuery();
+  const items = leavesQuery.data?.items || [];
+  const createMutation = useDailyLeaveMutation();
+  const deleteMutation = useDeleteLeaveMutation();
 
   // when drawer opens, default date to today
   useEffect(() => {
@@ -176,9 +169,8 @@ export function DailyLeaveDrawer({
       push("❌ تاریخ شروع را انتخاب کن", "error");
       return;
     }
-    setLoading(true);
     try {
-      const r = await API.createDailyLeave({
+      const r = await createMutation.mutateAsync({
         date: date.trim(),
         end_date: endDate.trim() || undefined,
         type: typ,
@@ -191,20 +183,16 @@ export function DailyLeaveDrawer({
       );
       setEndDate("");
       setReason("");
-      load();
       onChanged?.();
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
-    } finally {
-      setLoading(false);
     }
   };
 
   const cancel = async (id: number | string) => {
     try {
-      await API.deleteDailyLeave(id);
+      await deleteMutation.mutateAsync(id);
       push("🗑 مرخصی لغو شد");
-      load();
       onChanged?.();
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
@@ -333,10 +321,10 @@ export function DailyLeaveDrawer({
         <button
           className="btn btn-primary"
           onClick={submit}
-          disabled={loading}
-          style={{ opacity: loading ? 0.6 : 1, fontWeight: 800 }}
+          disabled={createMutation.isPending}
+          style={{ opacity: createMutation.isPending ? 0.6 : 1, fontWeight: 800 }}
         >
-          {loading ? "در حال ثبت…" : "ثبت مرخصی روزانه"}
+          {createMutation.isPending ? "در حال ثبت…" : "ثبت مرخصی روزانه"}
         </button>
         <small className="mono" style={{ color: "var(--muted)", fontSize: 11 }}>
           لغو فقط قبل از شروع · جمعه/تعطیل از محاسبه حذف می‌شود
@@ -356,7 +344,7 @@ export function DailyLeaveDrawer({
             </p>
           ) : (
             <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
-              {items.map((it) => (
+              {items.map((it: any) => (
                 <div key={it.id} className="row" style={{ padding: "8px 10px" }}>
                   <small className="mono" style={{ fontSize: 11 }}>
                     {it.start_date}
@@ -367,6 +355,7 @@ export function DailyLeaveDrawer({
                     className="btn btn-ghost mono"
                     style={{ fontSize: 11, padding: "4px 8px" }}
                     onClick={() => cancel(it.id)}
+                    disabled={deleteMutation.isPending}
                   >
                     <Trash2 size={12} /> لغو
                   </button>
@@ -380,38 +369,28 @@ export function DailyLeaveDrawer({
   );
 }
 
-// Keep old list export for MonthReport compatibility (will be unused soon)
 export function DailyLeaveList({ month }: { month?: string }) {
-  const [items, setItems] = useState<any[]>([]);
-  const [err, setErr] = useState<string | null>(null);
   const { push } = useToast();
-  const load = async () => {
-    try {
-      const r = await API.listDailyLeaves(month ? { month } : {});
-      setItems(r.items || []);
-      setErr(null);
-    } catch (e: any) {
-      setErr(String(e.message || e));
-    }
-  };
-  useEffect(() => {
-    load();
-  }, [month]);
+  const leavesQuery = useLeavesQuery(month ? { month } : {});
+  const deleteMutation = useDeleteLeaveMutation();
+  const items = leavesQuery.data?.items || [];
+  const err = leavesQuery.error ? String((leavesQuery.error as any).message || leavesQuery.error) : null;
+
   const del = async (id: number | string) => {
     try {
-      await API.deleteDailyLeave(id);
+      await deleteMutation.mutateAsync(id);
       push("🗑 مرخصی لغو شد");
-      load();
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
     }
   };
+
   if (err) return <p style={{ color: "var(--muted)", fontSize: 12 }}>مرخصی روزانه: {err}</p>;
   if (!items.length)
     return <p style={{ color: "var(--muted)", fontSize: 12 }}>مرخصی روزانه ثبت‌شده‌ای برای این بازه نیست.</p>;
   return (
     <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
-      {items.map((it) => (
+      {items.map((it: any) => (
         <div key={it.id} className="row" style={{ padding: "8px 10px" }}>
           <small className="mono">
             {it.start_date}
@@ -422,6 +401,7 @@ export function DailyLeaveList({ month }: { month?: string }) {
             className="btn btn-ghost mono"
             style={{ fontSize: 11, padding: "4px 8px" }}
             onClick={() => del(it.id)}
+            disabled={deleteMutation.isPending}
           >
             <Trash2 size={12} /> لغو
           </button>
