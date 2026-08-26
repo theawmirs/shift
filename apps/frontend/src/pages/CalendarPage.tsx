@@ -226,8 +226,19 @@ export function CalendarPage() {
         {/* Compact Header navigation */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
           <button
-            className="btn btn-ghost"
-            style={{ padding: "4px 8px", borderRadius: 8, fontSize: 11, minHeight: "auto", height: "auto" }}
+            style={{
+              width: 32,
+              height: 32,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 8,
+              border: "1px solid var(--border)",
+              background: "var(--card-bg, #fff)",
+              color: "inherit",
+              cursor: "pointer",
+              padding: 0,
+            }}
             onClick={() => nav(-1)}
             aria-label="ماه قبل"
           >
@@ -239,8 +250,19 @@ export function CalendarPage() {
             </h2>
           </div>
           <button
-            className="btn btn-ghost"
-            style={{ padding: "4px 8px", borderRadius: 8, fontSize: 11, minHeight: "auto", height: "auto" }}
+            style={{
+              width: 32,
+              height: 32,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 8,
+              border: "1px solid var(--border)",
+              background: "var(--card-bg, #fff)",
+              color: "inherit",
+              cursor: "pointer",
+              padding: 0,
+            }}
             onClick={() => nav(1)}
             aria-label="ماه بعد"
           >
