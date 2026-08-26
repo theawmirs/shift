@@ -229,15 +229,18 @@ export function CalendarPage() {
             style={{
               width: 32,
               height: 32,
+              minWidth: 32,
+              padding: 0,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
               borderRadius: 8,
-              border: "1px solid var(--border)",
-              background: "var(--card-bg, #fff)",
-              color: "inherit",
+              border: "1.5px solid #000",
+              boxShadow: "2px 2px 0 #000",
+              background: "#fff",
+              color: "#0F172A",
               cursor: "pointer",
-              padding: 0,
+              flexShrink: 0,
             }}
             onClick={() => nav(-1)}
             aria-label="ماه قبل"
@@ -253,15 +256,18 @@ export function CalendarPage() {
             style={{
               width: 32,
               height: 32,
+              minWidth: 32,
+              padding: 0,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
               borderRadius: 8,
-              border: "1px solid var(--border)",
-              background: "var(--card-bg, #fff)",
-              color: "inherit",
+              border: "1.5px solid #000",
+              boxShadow: "2px 2px 0 #000",
+              background: "#fff",
+              color: "#0F172A",
               cursor: "pointer",
-              padding: 0,
+              flexShrink: 0,
             }}
             onClick={() => nav(1)}
             aria-label="ماه بعد"
