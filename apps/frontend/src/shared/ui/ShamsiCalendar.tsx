@@ -112,9 +112,10 @@ export interface ShamsiCalendarProps {
   minDate?: string;
   maxDate?: string;
   marks?: Record<string, string>;
+  onMonthChange?: (year: number, month: number, monthKey: string) => void;
 }
 
-export function ShamsiCalendar({ value, onPick, minDate, maxDate, marks }: ShamsiCalendarProps) {
+export function ShamsiCalendar({ value, onPick, minDate, maxDate, marks, onMonthChange }: ShamsiCalendarProps) {
   // value: "YYYY-MM-DD" or ""
   const [_jy, _jm] = value ? (value.split("-").map(Number) as [number, number, number]) : _todayJalali();
   const [jy, setJy] = useState(_jy);
@@ -172,6 +173,7 @@ export function ShamsiCalendar({ value, onPick, minDate, maxDate, marks }: Shams
     }
     setJy(y);
     setJm(m);
+    onMonthChange?.(y, m, `${y}-${_pad(m)}`);
   };
 
   return (
@@ -187,22 +189,22 @@ export function ShamsiCalendar({ value, onPick, minDate, maxDate, marks }: Shams
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
         <button
           className="btn btn-ghost"
-          style={{ padding: "6px 8px" }}
+          style={{ padding: "4px 8px", borderRadius: 8, fontSize: 11, minHeight: "auto", height: "auto" }}
           onClick={() => nav(-1)}
           aria-label="قبلی"
         >
-          <ChevronRight size={16} />
+          <ChevronRight size={14} />
         </button>
         <b className="mono" style={{ fontSize: 13 }}>
           {MONTHS[jm - 1]} {jy}
         </b>
         <button
           className="btn btn-ghost"
-          style={{ padding: "6px 8px" }}
+          style={{ padding: "4px 8px", borderRadius: 8, fontSize: 11, minHeight: "auto", height: "auto" }}
           onClick={() => nav(1)}
           aria-label="بعدی"
         >
-          <ChevronLeft size={16} />
+          <ChevronLeft size={14} />
         </button>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4, marginBottom: 4 }}>
@@ -253,7 +255,7 @@ export function ShamsiCalendar({ value, onPick, minDate, maxDate, marks }: Shams
                     width: 4,
                     height: 4,
                     borderRadius: 999,
-                    background: mark === "leave" ? "#2563eb" : "#f59e0b",
+                    background: mark === "leave" ? "#2563eb" : mark === "work" ? "#10b981" : "#f59e0b",
                   }}
                 />
               )}

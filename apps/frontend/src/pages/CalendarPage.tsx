@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useHolidaysQuery } from "../shared/api/queries";
-import { Drawer } from "../shared/ui/Drawer";
+import { useHolidaysQuery, useMonthReportQuery } from "../shared/api/queries";
+import { DayDetailDrawer } from "../features/month/DayDetailDrawer";
 
 // ── Pure JS Jalali helpers (matching ShamsiCalendar / jalali.py) ──
 const _GD = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -113,8 +113,10 @@ export function CalendarPage() {
   const [_ty, _tm, _td] = useMemo(() => _todayJalali(), []);
   const [jy, setJy] = useState(_ty);
   const [jm, setJm] = useState(_tm);
-  const [selectedHoliday, setSelectedHoliday] = useState<{ date: string; name: string; isFriday?: boolean } | null>(null);
+  const [selectedDayPayload, setSelectedDayPayload] = useState<any | null>(null);
 
+  const monthKey = `${jy}-${_pad(jm)}`;
+  const { data: monthReport } = useMonthReportQuery(monthKey);
   const { data: holidaysData } = useHolidaysQuery();
 
   // Map holidays by date "YYYY-MM-DD"
@@ -122,7 +124,6 @@ export function CalendarPage() {
     const map = new Map<string, string>();
     if (holidaysData?.holidays) {
       for (const h of holidaysData.holidays) {
-        // Normalize date format "1405-6-8" vs "1405-06-08"
         const parts = h.date.split("-");
         if (parts.length === 3) {
           const norm = `${parseInt(parts[0], 10)}-${parseInt(parts[1], 10)}-${parseInt(parts[2], 10)}`;
@@ -133,6 +134,24 @@ export function CalendarPage() {
     }
     return map;
   }, [holidaysData]);
+
+  // Map telemetry rows by date "YYYY-MM-DD"
+  const telemetryMap = useMemo(() => {
+    const map = new Map<string, any>();
+    if (monthReport?.rows) {
+      for (const row of monthReport.rows) {
+        if (row?.date) {
+          map.set(row.date, row);
+          const parts = row.date.split("-");
+          if (parts.length === 3) {
+            const norm = `${parseInt(parts[0], 10)}-${parseInt(parts[1], 10)}-${parseInt(parts[2], 10)}`;
+            map.set(norm, row);
+          }
+        }
+      }
+    }
+    return map;
+  }, [monthReport]);
 
   const grid = useMemo(() => {
     const len = _jalaliMonthLen(jy, jm);
@@ -166,6 +185,36 @@ export function CalendarPage() {
     return jy === _ty && jm === _tm && d === _td;
   };
 
+  const handleDayClick = (d: number, dayRow: any, isHoliday: boolean, holidayName?: string) => {
+    const dateStr = jalaliStr(jy, jm, d);
+    if (dayRow) {
+      // Worked or tracked day payload
+      setSelectedDayPayload({
+        ...dayRow,
+        is_holiday: isHoliday || dayRow.is_holiday,
+        holiday_name: holidayName || dayRow.holiday_name || (isHoliday ? "تعطیلی آخر هفته (جمعه)" : null),
+        label: `${dateStr} (${dayRow.weekday || ""})`,
+      });
+    } else if (isHoliday) {
+      // Holiday without recorded telemetry
+      setSelectedDayPayload({
+        date: dateStr,
+        label: `${dateStr}`,
+        is_holiday: true,
+        holiday_name: holidayName || "تعطیلی آخر هفته (جمعه)",
+        has_events: false,
+      });
+    } else {
+      // Normal empty day
+      setSelectedDayPayload({
+        date: dateStr,
+        label: `${dateStr}`,
+        is_holiday: false,
+        has_events: false,
+      });
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -174,28 +223,28 @@ export function CalendarPage() {
       style={{ display: "grid", gap: 12 }}
     >
       <div className="card">
-        {/* Header navigation */}
+        {/* Compact Header navigation */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
           <button
             className="btn btn-ghost"
-            style={{ padding: "6px 12px" }}
+            style={{ padding: "4px 8px", borderRadius: 8, fontSize: 11, minHeight: "auto", height: "auto" }}
             onClick={() => nav(-1)}
             aria-label="ماه قبل"
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={14} />
           </button>
           <div style={{ textAlign: "center" }}>
-            <h2 className="display" style={{ margin: 0 }}>
+            <h2 className="display" style={{ margin: 0, fontSize: 16 }}>
               {MONTHS[jm - 1]} {jy}
             </h2>
           </div>
           <button
             className="btn btn-ghost"
-            style={{ padding: "6px 12px" }}
+            style={{ padding: "4px 8px", borderRadius: 8, fontSize: 11, minHeight: "auto", height: "auto" }}
             onClick={() => nav(1)}
             aria-label="ماه بعد"
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={14} />
           </button>
         </div>
 
@@ -229,31 +278,49 @@ export function CalendarPage() {
             const officialHolidayName = holidayMap.get(dateStr) || holidayMap.get(dateNorm);
             const isHoliday = isFriday || Boolean(officialHolidayName);
             const today = isToday(d);
+            const dayRow = telemetryMap.get(dateStr) || telemetryMap.get(dateNorm);
+            const isWorked = Boolean(dayRow?.has_events || (dayRow?.net != null && Number(dayRow.net) > 0) || dayRow?.in);
+
+            let borderColor = "rgba(0,0,0,.15)";
+            let bg = "#fff";
+            let textColor = "#0F172A";
+
+            if (isWorked && isHoliday) {
+              borderColor = "#10b981";
+              bg = "rgba(16,185,129,0.12)";
+              textColor = "#047857";
+            } else if (isWorked) {
+              borderColor = "#10b981";
+              bg = "rgba(16,185,129,0.08)";
+              textColor = "#047857";
+            } else if (isHoliday) {
+              borderColor = "#ef4444";
+              bg = "rgba(239,68,68,0.08)";
+              textColor = "#dc2626";
+            }
 
             return (
               <button
                 key={dateStr}
-                onClick={() => {
-                  if (isHoliday) {
-                    setSelectedHoliday({
-                      date: dateStr,
-                      name: officialHolidayName || "تعطیلی آخر هفته (جمعه)",
-                      isFriday,
-                    });
-                  }
-                }}
+                onClick={() => handleDayClick(d, dayRow, isHoliday, officialHolidayName)}
                 className="mono"
                 style={{
                   aspectRatio: "1",
                   borderRadius: 12,
-                  border: isHoliday ? "2px solid #ef4444" : "1px solid rgba(0,0,0,.15)",
-                  background: isHoliday ? "rgba(239,68,68,0.08)" : "#fff",
-                  color: isHoliday ? "#dc2626" : "#0F172A",
-                  fontWeight: today ? 900 : isHoliday ? 800 : 600,
+                  border: `2px solid ${borderColor}`,
+                  background: bg,
+                  color: textColor,
+                  fontWeight: today ? 900 : (isWorked || isHoliday) ? 800 : 600,
                   fontSize: 13,
-                  cursor: isHoliday ? "pointer" : "default",
+                  cursor: "pointer",
                   position: "relative",
-                  boxShadow: today ? "0 0 0 2px #0F172A inset" : isHoliday ? "2px 2px 0 rgba(239,68,68,0.3)" : undefined,
+                  boxShadow: today
+                    ? "0 0 0 2px #0F172A inset"
+                    : isWorked
+                    ? "2px 2px 0 rgba(16,185,129,0.35)"
+                    : isHoliday
+                    ? "2px 2px 0 rgba(239,68,68,0.3)"
+                    : undefined,
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
@@ -261,56 +328,52 @@ export function CalendarPage() {
                 }}
               >
                 <span>{d}</span>
-                {officialHolidayName && (
-                  <span
-                    style={{
-                      width: 5,
-                      height: 5,
-                      borderRadius: "50%",
-                      background: "#ef4444",
-                      marginTop: 2,
-                    }}
-                  />
-                )}
+                <div style={{ display: "flex", gap: 2, marginTop: 2, alignItems: "center" }}>
+                  {isWorked && (
+                    <span
+                      style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: "50%",
+                        background: "#10b981",
+                      }}
+                    />
+                  )}
+                  {officialHolidayName && (
+                    <span
+                      style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: "50%",
+                        background: "#ef4444",
+                      }}
+                    />
+                  )}
+                </div>
               </button>
             );
           })}
         </div>
 
-        <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "var(--muted)" }}>
-          <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, border: "1px solid #ef4444", background: "rgba(239,68,68,0.15)" }} />
-          <span>روزهای قرمز: تعطیلات رسمی و جمعه‌ها (با کلیک مناسبت نمایش داده می‌شود)</span>
+        {/* Legend */}
+        <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 6, fontSize: 11, color: "var(--muted)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, border: "2px solid #10b981", background: "rgba(16,185,129,0.15)" }} />
+            <span>روزهای سبز: روزهای کاری دارای ثبت (کلیک برای جزئیات کارکرد)</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, border: "2px solid #ef4444", background: "rgba(239,68,68,0.15)" }} />
+            <span>روزهای قرمز: تعطیلات رسمی و جمعه‌ها</span>
+          </div>
         </div>
       </div>
 
-      {/* Holiday Detail Drawer */}
-      <Drawer
-        open={Boolean(selectedHoliday)}
-        onClose={() => setSelectedHoliday(null)}
-        title="مناسبت تعطیلی"
-      >
-        {selectedHoliday && (
-          <div style={{ display: "grid", gap: 12 }}>
-            <div className="row">
-              <b>تاریخ شمسی</b>
-              <span className="mono" style={{ fontWeight: 800 }}>
-                {selectedHoliday.date}
-              </span>
-            </div>
-            <div className="row" style={{ borderColor: "#ef4444", background: "rgba(239,68,68,0.08)" }}>
-              <b>مناسبت</b>
-              <span className="mono" style={{ fontWeight: 800, color: "#dc2626" }}>
-                {selectedHoliday.name}
-              </span>
-            </div>
-            {selectedHoliday.isFriday && (
-              <small className="mono" style={{ color: "var(--muted)", fontSize: 11 }}>
-                جمعه — تعطیل هفتگی طبق قانون کار
-              </small>
-            )}
-          </div>
-        )}
-      </Drawer>
+      {/* Workday & Holiday Telemetry Drawer */}
+      <DayDetailDrawer
+        open={Boolean(selectedDayPayload)}
+        onClose={() => setSelectedDayPayload(null)}
+        day={selectedDayPayload}
+      />
     </motion.div>
   );
 }

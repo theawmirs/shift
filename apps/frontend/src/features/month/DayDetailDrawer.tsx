@@ -23,28 +23,49 @@ export function DayDetailDrawer({ open, onClose, day }: DayDetailDrawerProps) {
   const hasGross = day.gross != null && Number(day.gross) > 0;
   const hasNet = day.net != null && Number(day.net) > 0;
   const hasOvertime = day.overtime != null && Number(day.overtime) > 0;
+  const hasDeficit = day.deficit != null && Number(day.deficit) > 0;
   const hasLate = day.late != null && Number(day.late) > 0;
+  const hasWork = hasIn || hasOut || hasNet || hasGross || Boolean(day.has_events);
   const standardHours = 8; // standard workday regular hours
 
   return (
     <Drawer open={open} onClose={onClose} title={title}>
       <div style={{ display: "grid", gap: 10 }}>
+        {/* Holiday Banner if holiday */}
+        {day.is_holiday && (
+          <div className="row" style={{ borderColor: "#ef4444", background: "rgba(239,68,68,0.08)" }}>
+            <b>مناسبت تعطیلی</b>
+            <span className="mono" style={{ fontWeight: 800, color: "#dc2626" }}>
+              {day.holiday_name || "تعطیلی رسمی / جمعه"}
+            </span>
+          </div>
+        )}
+
         {/* Status and Work Mode Header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-          <span className="badge badge-muted mono" style={{ fontSize: 12 }}>
-            {day.day_status_label || (day.is_holiday ? "تعطیل" : "کاری")}
-          </span>
-          {day.work_mode === "remote" && (
-            <span className="badge" style={{ background: "#DDD6FE", color: "#4C1D95", borderColor: "#000" }}>
-              🏠 دورکار
+        {(hasWork || day.daily_leave) && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <span className="badge badge-muted mono" style={{ fontSize: 12 }}>
+              {day.day_status_label || (day.is_holiday ? "تعطیل (کاری)" : "کاری")}
             </span>
-          )}
-          {day.is_holiday && day.holiday_name && (
-            <span className="badge badge-warn">
-              {day.holiday_name}
-            </span>
-          )}
-        </div>
+            {day.work_mode === "remote" && (
+              <span className="badge" style={{ background: "#DDD6FE", color: "#4C1D95", borderColor: "#000" }}>
+                🏠 دورکار
+              </span>
+            )}
+            {day.is_holiday && hasWork && (
+              <span className="badge badge-warn">
+                ⚡ کار در تعطیلی
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* No work recorded message */}
+        {!hasWork && !day.daily_leave && (
+          <div style={{ color: "var(--muted)", fontSize: 13, textAlign: "center", padding: "10px 0" }}>
+            {day.is_holiday ? "در این روز تعطیل کارکردی ثبت نشده است." : "ثبت کاری برای این روز وجود ندارد."}
+          </div>
+        )}
 
         {/* Check-in (ورود) */}
         {hasIn && (
@@ -103,7 +124,7 @@ export function DayDetailDrawer({ open, onClose, day }: DayDetailDrawerProps) {
         )}
 
         {/* Regular Hours (ساعت موظفی) */}
-        {!day.is_holiday && (
+        {!day.is_holiday && hasWork && (
           <div className="row">
             <b>ساعت موظفی</b>
             <span className="mono">{standardHours} ساعت</span>
@@ -112,10 +133,20 @@ export function DayDetailDrawer({ open, onClose, day }: DayDetailDrawerProps) {
 
         {/* Overtime Hours (اضافه‌کاری) */}
         {hasOvertime && (
-          <div className="row" style={{ borderColor: "var(--green)" }}>
+          <div className="row" style={{ borderColor: "var(--green)", background: "rgba(16,185,129,0.06)" }}>
             <b>اضافه‌کاری</b>
             <span className="mono" style={{ fontWeight: 800, color: "var(--green)" }}>
               {fmtH(day.overtime)}
+            </span>
+          </div>
+        )}
+
+        {/* Deficit Hours (کسری کار) */}
+        {hasDeficit && (
+          <div className="row" style={{ borderColor: "var(--red)", background: "rgba(239,68,68,0.06)" }}>
+            <b>کسری کار</b>
+            <span className="mono" style={{ fontWeight: 800, color: "var(--red)" }}>
+              {fmtH(day.deficit)}
             </span>
           </div>
         )}
@@ -136,6 +167,7 @@ export function DayDetailDrawer({ open, onClose, day }: DayDetailDrawerProps) {
             <b>مرخصی روزانه</b>
             <span className="mono" style={{ fontSize: 12 }}>
               {day.daily_leave.label || day.daily_leave.type} ({day.daily_leave.hours || 8} ساعت)
+              {day.daily_leave.reason ? ` · ${day.daily_leave.reason}` : ""}
             </span>
           </div>
         )}
