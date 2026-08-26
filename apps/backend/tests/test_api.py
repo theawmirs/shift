@@ -215,3 +215,67 @@ def test_daily_leaves_and_reports(test_env):
     excel_res = client.get("/api/excel?month=1405-06", headers=headers)
     assert excel_res.status_code == 200
     assert excel_res.headers["content-type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+def test_user_settings_isolation(test_env):
+    client = test_env["client"]
+
+    # Setup user A and user B
+    conn = sqlite3.connect(test_env["db_path"], check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("INSERT INTO users(telegram_id, username, created_at) VALUES(1001, 'user_a', '2026-08-26T00:00:00')")
+    conn.execute("INSERT INTO users(telegram_id, username, created_at) VALUES(1002, 'user_b', '2026-08-26T00:00:00')")
+    conn.commit()
+    uid_a = conn.execute("SELECT id FROM users WHERE telegram_id=1001").fetchone()["id"]
+    uid_b = conn.execute("SELECT id FROM users WHERE telegram_id=1002").fetchone()["id"]
+    token_a, _ = auth_service.issue_token_pair(conn, uid_a, 1001)
+    token_b, _ = auth_service.issue_token_pair(conn, uid_b, 1002)
+    conn.close()
+
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+    headers_b = {"Authorization": f"Bearer {token_b}"}
+
+    # Initial settings for both should be defaults
+    res_a_init = client.get("/api/settings", headers=headers_a)
+    assert res_a_init.status_code == 200
+    assert res_a_init.json()["standard_hours"] == "8"
+
+    res_b_init = client.get("/api/settings", headers=headers_b)
+    assert res_b_init.status_code == 200
+    assert res_b_init.json()["standard_hours"] == "8"
+
+    # User A updates settings via POST /api/settings
+    update_res_a = client.post("/api/settings", json={"key": "standard_hours", "value": "7"}, headers=headers_a)
+    assert update_res_a.status_code == 200
+    assert update_res_a.json()["ok"] is True
+
+    # User A gets updated settings
+    res_a_after = client.get("/api/settings", headers=headers_a)
+    assert res_a_after.status_code == 200
+    assert res_a_after.json()["standard_hours"] == "7"
+
+    # User B still has default settings (isolated)
+    res_b_after = client.get("/api/settings", headers=headers_b)
+    assert res_b_after.status_code == 200
+    assert res_b_after.json()["standard_hours"] == "8"
+
+def test_holidays_endpoint(test_env):
+    client = test_env["client"]
+
+    # Test /api/holidays
+    resp_all = client.get("/api/holidays")
+    assert resp_all.status_code == 200
+    holidays = resp_all.json()["holidays"]
+    assert len(holidays) > 0
+    assert any(h["date"] == "1405-01-01" for h in holidays)
+
+    # Test /api/holidays/{year}
+    resp_year = client.get("/api/holidays/1405")
+    assert resp_year.status_code == 200
+    holidays_1405 = resp_year.json()["holidays"]
+    assert len(holidays_1405) > 0
+    assert all(h["date"].startswith("1405-") for h in holidays_1405)
+
+    resp_empty = client.get("/api/holidays/1499")
+    assert resp_empty.status_code == 200
+    assert len(resp_empty.json()["holidays"]) == 0
+

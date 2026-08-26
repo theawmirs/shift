@@ -3,15 +3,13 @@ import { AlertTriangle, Download, ChevronDown } from "lucide-react";
 import { API } from "../../shared/lib/api";
 import { useToast } from "../../shared/ui/Toast";
 import { CardSkeleton } from "../../shared/ui/Skeleton";
-import { useSettingsQuery, useMonthsQuery } from "../../shared/api/queries";
-import { useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "../../shared/api/queries";
+import { useSettingsQuery, useMonthsQuery, useUpdateSettingsMutation } from "../../shared/api/queries";
 
 export function SettingsForm() {
   const { push } = useToast();
-  const queryClient = useQueryClient();
   const settingsQuery = useSettingsQuery();
   const monthsQuery = useMonthsQuery();
+  const updateSettingsMutation = useUpdateSettingsMutation();
 
   const [values, setValues] = useState<Record<string, string>>({
     start_time_end: "09:15",
@@ -45,10 +43,7 @@ export function SettingsForm() {
     }
     setSaving(k);
     try {
-      await API.putSetting(k, v);
-      queryClient.invalidateQueries({ queryKey: queryKeys.settings });
-      queryClient.invalidateQueries({ queryKey: queryKeys.today });
-      queryClient.invalidateQueries({ queryKey: ["month"] });
+      await updateSettingsMutation.mutateAsync({ key: k, value: v });
       push(`✅ ذخیره شد — ${k} = ${v}`);
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
