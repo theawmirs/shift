@@ -4,8 +4,10 @@ import { CardSkeleton } from "../../shared/ui/Skeleton";
 import { useMonthReport } from "./useMonthReport";
 import { DayDetailDrawer } from "./DayDetailDrawer";
 
+import { fmtHoursFa } from "../../shared/lib/format";
+
 function fmtFa(v: any) {
-  return v == null ? "—" : Number(v) === 0 ? "۰ ساعت" : `${Number(v).toFixed(2)} ساعت`;
+  return fmtHoursFa(v);
 }
 
 export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "success" | "error") => void }) {
@@ -151,8 +153,8 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
         <div className="row">
           <b>روزهای کاری</b>
           <span className="mono">
-            {m.totals?.work_days} از {(m.totals?.work_days || 0) + (m.totals?.holiday_days || 0)} · تعطیل{" "}
-            {m.totals?.holiday_days} ({m.totals?.holiday_worked} کاری)
+            {m.totals?.work_days || 0} روز (از مجموع {(m.totals?.work_days || 0) + (m.totals?.holiday_days || 0)} روز) · تعطیل {m.totals?.holiday_days || 0} روز
+            {m.totals?.holiday_worked > 0 ? ` (+${m.totals.holiday_worked} روز کار در تعطیلی)` : ""}
           </span>
         </div>
         {m.totals?.remote_days > 0 && (
@@ -239,7 +241,7 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
                 <small className="mono">
                   {r.date} · {r.weekday}
                   {r.is_holiday ? ` · ${r.holiday_name}` : ""} — {r.in || "—"}→{r.out || "—"} ·{" "}
-                  {r.net > 0 ? `${r.net} ساعت` : "—"}{" "}
+                  {r.net > 0 ? fmtHoursFa(r.net) : "—"}{" "}
                   {r.work_mode === "remote" ? " 🏠 دورکار" : ""}
                 </small>
                 <span className="badge badge-muted mono" style={{ fontSize: 10 }}>
