@@ -1,6 +1,7 @@
 import { useToast } from "../shared/ui/Toast";
 import { Hero } from "../features/today/Hero";
 import { ActionGrid } from "../features/today/ActionGrid";
+import { DayDoneCard } from "../features/today/DayDoneCard";
 import { DailyLeaveCard } from "../features/leave/DailyLeaveCard";
 import { WeekSummary } from "../features/week/WeekSummary";
 import { useNavigate } from "react-router-dom";
@@ -164,18 +165,24 @@ export function TodayPage() {
   }
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
-      <Hero liveMinutes={liveMinutes} shamsi={shamsi} weekday={status.weekday} inTime={status.day?.in || "—"} />
-      {banner}
-      <div style={{ height: 12 }} />
-      <ActionGrid
-        onAction={onAction}
-        onRemoteToggle={onRemoteToggle}
-        workMode={status.day?.work_mode}
-        day_status={day_status}
-        day_status_reason={day_status_reason}
-        disabledReason={bannerReason}
-        leave_open={!!status.day?.leave_open}
-      />
+      {day_status === "done" ? (
+        <DayDoneCard day={status.day} weekday={status.weekday} shamsi={shamsi} />
+      ) : (
+        <>
+          <Hero liveMinutes={liveMinutes} shamsi={shamsi} weekday={status.weekday} inTime={status.day?.in || "—"} />
+          {banner}
+          <div style={{ height: 12 }} />
+          <ActionGrid
+            onAction={onAction}
+            onRemoteToggle={onRemoteToggle}
+            workMode={status.day?.work_mode}
+            day_status={day_status}
+            day_status_reason={day_status_reason}
+            disabledReason={bannerReason}
+            leave_open={!!status.day?.leave_open}
+          />
+        </>
+      )}
       <div style={{ height: 12 }} />
       <DailyLeaveCard onChanged={() => refetch()} />
       <div style={{ height: 12 }} />
@@ -183,7 +190,7 @@ export function TodayPage() {
       <div style={{ height: 12 }} />
       <motion.div className="card" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => navigate("/week")}>
+          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => navigate("/reports")}>
             <BarChart3 size={16} /> گزارش‌ها
           </button>
           <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => navigate("/tasks")}>
