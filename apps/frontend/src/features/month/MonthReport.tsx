@@ -73,7 +73,7 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
                 cursor: "pointer",
               }}
             >
-              {months.map((mo) => (
+              {months.map((mo: any) => (
                 <option key={mo.key} value={mo.key}>
                   {mo.label}
                 </option>
@@ -189,7 +189,7 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
           <small className="mono" style={{ fontWeight: 800, fontSize: 12 }}>
             مرخصی روزانه این ماه
           </small>
-          {leaves.map((it) => (
+          {leaves.map((it: any) => (
             <div key={it.id} className="row" style={{ padding: "8px 10px", fontSize: 12 }}>
               <span className="mono">
                 {it.start_date}

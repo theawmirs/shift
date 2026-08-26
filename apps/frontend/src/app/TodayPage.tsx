@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { useToast } from "../shared/ui/Toast";
 import { Hero } from "../features/today/Hero";
 import { ActionGrid } from "../features/today/ActionGrid";
@@ -9,6 +8,7 @@ import { motion } from "framer-motion";
 import { BarChart3, ListChecks } from "lucide-react";
 import { API } from "../shared/lib/api";
 import { HeroSkeleton, CardSkeleton } from "../shared/ui/Skeleton";
+import { useTodayQuery, useRecordMutation } from "../shared/api/queries";
 
 function computeFallbackDayStatus(day: any) {
   if (!day) return { status: null, label: null, reason: null };
@@ -35,55 +35,44 @@ function computeFallbackDayStatus(day: any) {
 export function TodayPage() {
   const { push } = useToast();
   const navigate = useNavigate();
-  const [status, setStatus] = useState<any>(null);
-  const [err, setErr] = useState<string | null>(null);
-  const refresh = async () => {
-    try {
-      const s = await API.status();
-      setStatus(s);
-      setErr(null);
-    } catch (e: any) {
-      setErr(String(e.message || e));
-    }
-  };
-  useEffect(() => {
-    refresh();
-    const id = setInterval(refresh, 30000);
-    return () => clearInterval(id);
-  }, []);
+  const { data: status, error, refetch } = useTodayQuery();
+  const recordMutation = useRecordMutation();
+
   const onAction = async (k: string, at?: string) => {
     const map: Record<string, string> = { in: "in", out: "out", leave: "leave_start", back: "leave_end" };
     const et = map[k] || k;
     try {
-      const r = await API.record(et, at);
+      const r = await recordMutation.mutateAsync({ event_type: et, at });
       push(
         r.message ||
           (k === "in" ? `✅ ورود ثبت شد${at ? ` (${at})` : ""}` : k === "out" ? `✅ خروج ثبت شد${at ? ` (${at})` : ""}` : k === "leave" ? "🟡 مرخصی شروع شد" : "🔵 برگشتم")
       );
-      await refresh();
       if (k === "out") navigate("/week");
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
     }
   };
+
   const onRemoteToggle = async () => {
     try {
       const j = await API.toggleWorkMode();
       push(j.mode === "remote" ? "🏠 دورکار شد" : "🏢 حضوری شد");
-      await refresh();
+      await refetch();
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
     }
   };
-  if (err)
+
+  if (error)
     return (
       <div className="card">
-        <p style={{ color: "var(--red)", fontWeight: 800 }}>❌ {err}</p>
-        <button className="btn btn-ghost" onClick={refresh}>
+        <p style={{ color: "var(--red)", fontWeight: 800 }}>❌ {String((error as any)?.message || error)}</p>
+        <button className="btn btn-ghost" onClick={() => refetch()}>
           تلاش دوباره
         </button>
       </div>
     );
+
   if (!status)
     return (
       <div style={{ display: "grid", gap: 12 }}>
@@ -92,6 +81,7 @@ export function TodayPage() {
         <CardSkeleton rows={3} />
       </div>
     );
+
   const liveMinutes =
     status.live_net != null ? Math.round(status.live_net * 60) : Math.round((status.day?.net || 0) * 60);
   const shamsi = `${status.day?.day} ${
@@ -187,7 +177,7 @@ export function TodayPage() {
         leave_open={!!status.day?.leave_open}
       />
       <div style={{ height: 12 }} />
-      <DailyLeaveCard onChanged={refresh} />
+      <DailyLeaveCard onChanged={() => refetch()} />
       <div style={{ height: 12 }} />
       <WeekSummary />
       <div style={{ height: 12 }} />

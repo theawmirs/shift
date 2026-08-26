@@ -1,80 +1,37 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { API } from "../../shared/lib/api";
+import {
+  useMonthsQuery,
+  useMonthReportQuery,
+  useLeavesQuery,
+  useDeleteLeaveMutation,
+} from "../../shared/api/queries";
 
 export function useMonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "success" | "error") => void } = {}) {
-  const [months, setMonths] = useState<any[]>([]);
   const [selMonth, setSelMonth] = useState("");
-  const [m, setM] = useState<any>(null);
-  const [err, setErr] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [leaves, setLeaves] = useState<any[]>([]);
 
-  // Load months list once
+  const monthsQuery = useMonthsQuery();
+  const months = monthsQuery.data?.months || [];
+
+  // Auto-select first month once months load if none selected
   useEffect(() => {
-    let active = true;
-    setLoading(true);
-    API.months()
-      .then((d) => {
-        if (!active) return;
-        const list = d.months || [];
-        setMonths(list);
-        if (list.length > 0) {
-          setSelMonth(list[0].key);
-        } else {
-          setLoading(false);
-        }
-      })
-      .catch((e) => {
-        if (!active) return;
-        setMonths([]);
-        setErr(String(e.message || e));
-        setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+    if (!selMonth && months.length > 0) {
+      setSelMonth(months[0].key);
+    }
+  }, [selMonth, months]);
 
-  // Fetch report when selected month changes
-  useEffect(() => {
-    if (!selMonth) return;
-    let active = true;
-    setErr(null);
-    setM(null);
-    setLoading(true);
-
-    Promise.all([
-      API.reportMonth(selMonth).then((data) => {
-        if (active) setM(data);
-      }),
-      API.listDailyLeaves({ month: selMonth })
-        .then((r) => {
-          if (active) setLeaves(r.items || []);
-        })
-        .catch(() => {
-          if (active) setLeaves([]);
-        }),
-    ])
-      .catch((e) => {
-        if (active) setErr(String(e.message || e));
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [selMonth]);
+  const reportQuery = useMonthReportQuery(selMonth);
+  const leavesQuery = useLeavesQuery(selMonth ? { month: selMonth } : {});
+  const deleteLeaveMutation = useDeleteLeaveMutation();
 
   const cancelLeave = useCallback(async (id: number | string) => {
     try {
-      await API.deleteDailyLeave(id);
-      setLeaves((prev) => prev.filter((x) => x.id !== id));
+      await deleteLeaveMutation.mutateAsync(id);
     } catch (e: any) {
-      setErr(String(e.message || e));
+      // Error handled by caller / displayed via toast
+      throw e;
     }
-  }, []);
+  }, [deleteLeaveMutation]);
 
   const downloadExcel = useCallback(async () => {
     if (!selMonth) return;
@@ -92,14 +49,21 @@ export function useMonthReport({ onExcel }: { onExcel?: (msg: string, variant?: 
     }
   }, [selMonth, onExcel]);
 
+  const loading = monthsQuery.isLoading || (!!selMonth && reportQuery.isLoading);
+  const err = monthsQuery.error
+    ? String((monthsQuery.error as any).message || monthsQuery.error)
+    : reportQuery.error
+    ? String((reportQuery.error as any).message || reportQuery.error)
+    : null;
+
   return {
     months,
     selMonth,
     setSelMonth,
-    report: m,
+    report: reportQuery.data || null,
     err,
     loading,
-    leaves,
+    leaves: leavesQuery.data?.items || [],
     cancelLeave,
     downloadExcel,
   };
