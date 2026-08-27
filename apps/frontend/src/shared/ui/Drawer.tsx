@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useDragControls, PanInfo } from "framer-motion";
 
 export function Drawer({
   open,
@@ -31,53 +31,76 @@ export function Drawer({
     if (e.target === e.currentTarget) onClose?.();
   };
 
+  const handleDragEnd = (_e: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    if (info.offset.y > 80 || info.velocity.y > 300) {
+      onClose?.();
+    }
+  };
+
   const portalContent = (
     <AnimatePresence>
       {open && (
-        <div style={{ position: "relative", zIndex: 9999 }}>
-          {/* Backdrop Overlay */}
-          <motion.div
-            key="drawer-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onOverlay}
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 9998,
-              background: "rgba(8,12,22,.65)",
-              backdropFilter: "blur(4px)",
-            }}
-          />
+        <motion.div
+          key="drawer-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          onClick={onOverlay}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9998,
+            background: "rgba(8,12,22,.65)",
+            backdropFilter: "blur(4px)",
+          }}
+        />
+      )}
 
-          {/* Bottom Sheet Modal */}
-          <motion.div
-            key="drawer-sheet"
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 28, stiffness: 360 }}
+      {open && (
+        <motion.div
+          key="drawer-sheet"
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: "spring", damping: 28, stiffness: 360 }}
+          drag="y"
+          dragControls={dragControls}
+          dragListener={false}
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={{ top: 0.05, bottom: 0.8 }}
+          onDragEnd={handleDragEnd}
+          style={{
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            maxWidth: 430,
+            width: "100%",
+            margin: "0 auto",
+            maxHeight: height,
+            display: "flex",
+            flexDirection: "column",
+            background: "var(--card, #fff)",
+            color: "var(--text, #0F172A)",
+            borderTop: "3px solid #000",
+            borderLeft: "2px solid #000",
+            borderRight: "2px solid #000",
+            borderRadius: "20px 20px 0 0",
+            boxShadow: "0 -12px 40px rgba(0,0,0,.35)",
+            overflow: "hidden",
+          }}
+        >
+          {/* Draggable Header / Grab Bar */}
+          <div
+            onPointerDown={(e) => dragControls.start(e)}
             style={{
-              position: "fixed",
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 9999,
-              maxWidth: 430,
-              width: "100%",
-              margin: "0 auto",
-              maxHeight: height,
-              display: "flex",
-              flexDirection: "column",
-              background: "var(--card, #fff)",
-              color: "var(--text, #0F172A)",
-              borderTop: "3px solid #000",
-              borderLeft: "2px solid #000",
-              borderRight: "2px solid #000",
-              borderRadius: "20px 20px 0 0",
-              boxShadow: "0 -12px 40px rgba(0,0,0,.35)",
-              overflow: "hidden",
+              touchAction: "none",
+              cursor: "grab",
+              userSelect: "none",
+              paddingTop: 8,
+              background: "inherit",
             }}
           >
             {/* Grab Bar */}
@@ -87,8 +110,8 @@ export function Drawer({
                 height: 4,
                 borderRadius: 999,
                 background: "var(--text, #000)",
-                opacity: 0.2,
-                margin: "10px auto 6px",
+                opacity: 0.25,
+                margin: "2px auto 6px",
               }}
             />
 
@@ -98,7 +121,7 @@ export function Drawer({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                padding: "8px 16px 10px",
+                padding: "4px 16px 10px",
                 borderBottom: "2px solid var(--border, rgba(0,0,0,.08))",
               }}
             >
@@ -123,19 +146,19 @@ export function Drawer({
                 ✕ بستن
               </button>
             </div>
+          </div>
 
-            {/* Content Body */}
-            <div
-              style={{
-                overflowY: "auto",
-                padding: "14px 16px calc(24px + env(safe-area-inset-bottom))",
-                WebkitOverflowScrolling: "touch",
-              }}
-            >
-              {children}
-            </div>
-          </motion.div>
-        </div>
+          {/* Content Body */}
+          <div
+            style={{
+              overflowY: "auto",
+              padding: "14px 16px calc(24px + env(safe-area-inset-bottom))",
+              WebkitOverflowScrolling: "touch",
+            }}
+          >
+            {children}
+          </div>
+        </motion.div>
       )}
     </AnimatePresence>
   );
