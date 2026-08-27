@@ -4,7 +4,7 @@ import { CardSkeleton } from "../../shared/ui/Skeleton";
 import { useMonthReport } from "./useMonthReport";
 import { DayDetailDrawer } from "./DayDetailDrawer";
 
-import { fmtHoursFa } from "../../shared/lib/format";
+import { fmtHoursFa, formatShamsiDateText } from "../../shared/lib/format";
 
 function fmtFa(v: any) {
   return fmtHoursFa(v);
@@ -230,7 +230,12 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
               <div
                 key={r.date}
                 className="row"
-                onClick={() => setSelectedDay(r)}
+                onClick={() =>
+                  setSelectedDay({
+                    ...r,
+                    label: `${r.weekday || ""}، ${formatShamsiDateText(r.date)}`,
+                  })
+                }
                 style={{
                   padding: "8px 10px",
                   cursor: "pointer",

@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useHolidaysQuery, useMonthReportQuery } from "../shared/api/queries";
 import { DayDetailDrawer } from "../features/month/DayDetailDrawer";
+import { formatShamsiDateText } from "../shared/lib/format";
 
 // ── Pure JS Jalali helpers (matching ShamsiCalendar / jalali.py) ──
 const _GD = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -187,19 +188,20 @@ export function CalendarPage() {
 
   const handleDayClick = (d: number, dayRow: any, isHoliday: boolean, holidayName?: string) => {
     const dateStr = jalaliStr(jy, jm, d);
+    const dateFormatted = formatShamsiDateText(dateStr);
     if (dayRow) {
       // Worked or tracked day payload
       setSelectedDayPayload({
         ...dayRow,
         is_holiday: isHoliday || dayRow.is_holiday,
         holiday_name: holidayName || dayRow.holiday_name || (isHoliday ? "تعطیلی آخر هفته (جمعه)" : null),
-        label: `${dateStr} (${dayRow.weekday || ""})`,
+        label: `${dayRow.weekday || ""}، ${dateFormatted}`,
       });
     } else if (isHoliday) {
       // Holiday without recorded telemetry
       setSelectedDayPayload({
         date: dateStr,
-        label: `${dateStr}`,
+        label: `${dateFormatted}`,
         is_holiday: true,
         holiday_name: holidayName || "تعطیلی آخر هفته (جمعه)",
         has_events: false,
@@ -208,7 +210,7 @@ export function CalendarPage() {
       // Normal empty day
       setSelectedDayPayload({
         date: dateStr,
-        label: `${dateStr}`,
+        label: `${dateFormatted}`,
         is_holiday: false,
         has_events: false,
       });

@@ -123,10 +123,16 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
                 <b style={{ fontSize: 13 }}>ویرایش مشخصات روز</b>
                 <button
+                  type="button"
                   className="btn btn-ghost mono"
                   style={{
-                    padding: "4px 10px",
+                    width: "auto",
+                    padding: "4px 12px",
                     fontSize: 11,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
                   }}
                   onClick={() => setIsEditing(false)}
                 >
