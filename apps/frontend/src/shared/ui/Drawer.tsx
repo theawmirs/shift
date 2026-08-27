@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function Drawer({
@@ -6,7 +7,7 @@ export function Drawer({
   onClose,
   title,
   children,
-  height = "78vh",
+  height = "82vh",
 }: {
   open: boolean;
   onClose?: () => void;
@@ -28,12 +29,13 @@ export function Drawer({
     if (e.target === e.currentTarget) onClose?.();
   };
 
-  return (
+  const portalContent = (
     <AnimatePresence>
       {open && (
-        <>
+        <div style={{ position: "relative", zIndex: 9999 }}>
+          {/* Backdrop Overlay */}
           <motion.div
-            key="overlay"
+            key="drawer-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -41,13 +43,15 @@ export function Drawer({
             style={{
               position: "fixed",
               inset: 0,
-              zIndex: 80,
-              background: "rgba(8,12,22,.48)",
-              backdropFilter: "blur(2px)",
+              zIndex: 9998,
+              background: "rgba(8,12,22,.65)",
+              backdropFilter: "blur(4px)",
             }}
           />
+
+          {/* Bottom Sheet Modal */}
           <motion.div
-            key="sheet"
+            key="drawer-sheet"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
@@ -57,49 +61,53 @@ export function Drawer({
               left: 0,
               right: 0,
               bottom: 0,
-              zIndex: 81,
+              zIndex: 9999,
               maxWidth: 430,
               width: "100%",
               margin: "0 auto",
               maxHeight: height,
               display: "flex",
               flexDirection: "column",
-              background: "var(--bg, #f7f6f0)",
-              borderTop: "2px solid #000",
+              background: "var(--card, #fff)",
+              color: "var(--text, #0F172A)",
+              borderTop: "3px solid #000",
               borderLeft: "2px solid #000",
               borderRight: "2px solid #000",
-              borderRadius: "18px 18px 0 0",
-              boxShadow: "0 -12px 40px rgba(0,0,0,.18)",
+              borderRadius: "20px 20px 0 0",
+              boxShadow: "0 -12px 40px rgba(0,0,0,.35)",
               overflow: "hidden",
             }}
           >
+            {/* Grab Bar */}
             <div
               style={{
                 width: 40,
                 height: 4,
                 borderRadius: 999,
-                background: "#000",
-                opacity: 0.12,
+                background: "var(--text, #000)",
+                opacity: 0.2,
                 margin: "10px auto 6px",
               }}
             />
+
+            {/* Header */}
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                padding: "8px 14px 10px",
-                borderBottom: "1px solid rgba(0,0,0,.08)",
+                padding: "8px 16px 10px",
+                borderBottom: "2px solid var(--border, rgba(0,0,0,.08))",
               }}
             >
-              <b className="mono" style={{ fontSize: 14, fontWeight: 800 }}>
+              <b className="mono" style={{ fontSize: 15, fontWeight: 800 }}>
                 {title}
               </b>
               <button
                 className="btn btn-ghost"
                 style={{
                   width: "auto",
-                  padding: "6px 10px",
+                  padding: "4px 10px",
                   fontSize: 12,
                   borderRadius: 999,
                   display: "inline-flex",
@@ -111,18 +119,23 @@ export function Drawer({
                 ✕ بستن
               </button>
             </div>
+
+            {/* Content Body */}
             <div
               style={{
-                overflow: "auto",
-                padding: "14px 14px calc(14px + env(safe-area-inset-bottom))",
+                overflowY: "auto",
+                padding: "14px 16px calc(24px + env(safe-area-inset-bottom))",
                 WebkitOverflowScrolling: "touch",
               }}
             >
               {children}
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );
+
+  if (typeof document === "undefined") return null;
+  return createPortal(portalContent, document.body);
 }
