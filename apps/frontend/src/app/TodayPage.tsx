@@ -6,7 +6,6 @@ import { DailyLeaveCard } from "../features/leave/DailyLeaveCard";
 import { WeekSummary } from "../features/week/WeekSummary";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { BarChart3, ListChecks } from "lucide-react";
 import { API } from "../shared/lib/api";
 import { HeroSkeleton, CardSkeleton } from "../shared/ui/Skeleton";
 import { useTodayQuery, useRecordMutation } from "../shared/api/queries";
@@ -195,17 +194,6 @@ export function TodayPage() {
       <DailyLeaveCard onChanged={() => refetch()} />
       <div style={{ height: 12 }} />
       <WeekSummary />
-      <div style={{ height: 12 }} />
-      <motion.div className="card" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => navigate("/reports")}>
-            <BarChart3 size={16} /> گزارش‌ها
-          </button>
-          <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => navigate("/tasks")}>
-            <ListChecks size={16} /> تسک‌ها
-          </button>
-        </div>
-      </motion.div>
     </motion.div>
   );
 }

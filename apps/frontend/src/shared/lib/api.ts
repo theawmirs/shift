@@ -289,8 +289,8 @@ export const API = {
   tasks(date?: string): Promise<any> {
     return this.jget(date ? `/api/tasks?date=${encodeURIComponent(date)}` : "/api/tasks");
   },
-  addTask(title: string, date?: string): Promise<any> {
-    return this.jpost("/api/tasks", { title, date });
+  addTask(body: { title: string; description?: string | null; priority?: string; due_date?: string | null; date?: string }): Promise<any> {
+    return this.jpost("/api/tasks", body);
   },
   patchTask(id: number | string, body: any): Promise<any> {
     return this.jpatch(`/api/tasks/${id}`, body);

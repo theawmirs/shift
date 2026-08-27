@@ -42,7 +42,7 @@ export function Hero({
       <div className="hero">
         <div className="hero-top">
           <span className="kicker mono">
-            TODAY • {weekday} — {shamsi}
+            امروز • {weekday} — {shamsi}
           </span>
           <span className="pill" style={{ background: "#FDE68A", color: "#0F172A" }}>
             <Clock3 size={14} /> {inTime} ورود

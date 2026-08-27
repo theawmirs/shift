@@ -1,58 +1,35 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Copy, Clock3, RefreshCw, XCircle, ExternalLink } from "lucide-react";
+import QRCode from "qrcode";
 import { API } from "../shared/lib/api";
 import { useToast } from "../shared/ui/Toast";
 
 function QrCanvas({ data, size = 180 }: { data: string; size?: number }) {
   const ref = useRef<HTMLCanvasElement | null>(null);
+
   useEffect(() => {
     const c = ref.current;
     if (!c || !data) return;
-    const ctx = c.getContext("2d");
-    if (!ctx) return;
-    const N = 21; // modules
-    const cell = Math.floor(size / N);
-    const off = Math.floor((size - N * cell) / 2);
-    // hash data to pseudo-random pattern
-    let h = 0;
-    for (let i = 0; i < data.length; i++) h = ((h << 5) - h + data.charCodeAt(i)) | 0;
-    const rnd = (i: number) => {
-      const x = Math.sin(h * 9301 + i * 49297) * 233280;
-      return x - Math.floor(x);
-    };
-    ctx.clearRect(0, 0, size, size);
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(0, 0, size, size);
-    // border
-    ctx.strokeStyle = "#000";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(1, 1, size - 2, size - 2);
-    // finder patterns (3 corners)
-    const drawFinder = (ox: number, oy: number) => {
-      ctx.fillStyle = "#000";
-      ctx.fillRect(ox, oy, 7 * cell, 7 * cell);
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(ox + cell, oy + cell, 5 * cell, 5 * cell);
-      ctx.fillStyle = "#000";
-      ctx.fillRect(ox + 2 * cell, oy + 2 * cell, 3 * cell, 3 * cell);
-    };
-    drawFinder(off, off);
-    drawFinder(off + (N - 7) * cell, off);
-    drawFinder(off, off + (N - 7) * cell);
-    // data modules
-    for (let y = 0; y < N; y++) {
-      for (let x = 0; x < N; x++) {
-        const inFinder =
-          (x < 8 && y < 8) || (x >= N - 8 && y < 8) || (x < 8 && y >= N - 8) || x === 8 || y === 8;
-        if (inFinder) continue;
-        if (rnd(y * N + x) > 0.52) {
-          ctx.fillStyle = "#0F172A";
-          ctx.fillRect(off + x * cell, off + y * cell, cell - 0.5, cell - 0.5);
-        }
+
+    QRCode.toCanvas(
+      c,
+      data,
+      {
+        width: size,
+        margin: 2,
+        color: {
+          dark: "#0F172A",
+          light: "#FFFFFF",
+        },
+        errorCorrectionLevel: "M",
+      },
+      (error) => {
+        if (error) console.error("QR Code render error:", error);
       }
-    }
+    );
   }, [data, size]);
+
   return (
     <canvas
       ref={ref}

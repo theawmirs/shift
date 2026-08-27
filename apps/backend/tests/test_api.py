@@ -285,10 +285,10 @@ def test_csv_import_and_export(test_env):
     # Sample template test
     sample_res = client.get("/api/data/sample/csv")
     assert sample_res.status_code == 200
-    assert "date,in,out,leave_hours,work_mode,notes" in sample_res.text
+    assert "date,in,out,leave_hours,overtime_hours,work_mode,notes" in sample_res.text
 
     # Import CSV data
-    csv_payload = "date,in,out,leave_hours,work_mode,notes\n1405-06-10,08:30,17:00,0,office,تست شیفت\n1405-06-11,09:00,18:00,1,remote,جلسه\n"
+    csv_payload = "date,in,out,leave_hours,overtime_hours,work_mode,notes\n1405-06-10,08:30,17:00,0,0.5,office,تست شیفت\n1405-06-11,09:00,18:00,1,0,remote,جلسه\n"
     import_res = client.post(
         "/api/data/import/csv",
         data={"mode": "upsert"},

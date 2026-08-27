@@ -84,7 +84,7 @@ export function DataTransferCard({ onImportSuccess }: { onImportSuccess?: () => 
         <h2 className="display" style={{ fontSize: 15 }}>
           پشتیبان‌گیری و انتقال داده (CSV)
         </h2>
-        <span className="kicker mono">IMPORT • EXPORT</span>
+        <span className="kicker mono">درون‌ریزی • برون‌بری</span>
       </div>
 
       <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 0 14px", lineHeight: 1.6 }}>

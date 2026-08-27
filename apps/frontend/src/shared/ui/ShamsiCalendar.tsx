@@ -211,7 +211,7 @@ export function ShamsiCalendar({ value, onPick, minDate, maxDate, marks, onMonth
         >
           <ChevronRight size={14} />
         </button>
-        <b className="mono" style={{ fontSize: 13, textAlign: "center", flex: 1 }}>
+        <b className="mono" style={{ fontSize: 14, textAlign: "center", flex: 1, color: "#0F172A", fontWeight: 800 }}>
           {MONTHS[jm - 1]} {jy}
         </b>
         <button

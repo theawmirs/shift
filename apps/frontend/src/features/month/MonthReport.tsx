@@ -4,7 +4,7 @@ import { CardSkeleton } from "../../shared/ui/Skeleton";
 import { useMonthReport } from "./useMonthReport";
 import { DayDetailDrawer } from "./DayDetailDrawer";
 
-import { fmtHoursFa } from "../../shared/lib/format";
+import { fmtHoursFa, formatShamsiDateText } from "../../shared/lib/format";
 
 function fmtFa(v: any) {
   return fmtHoursFa(v);
@@ -215,7 +215,7 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
 
       <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
         <button className="btn btn-ghost" style={{ flex: 1 }} onClick={downloadExcel}>
-          ⬇ دانلود اکسل (با ستون محل کار)
+          ⬇ دانلود اکسل
         </button>
       </div>
 
@@ -230,7 +230,12 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
               <div
                 key={r.date}
                 className="row"
-                onClick={() => setSelectedDay(r)}
+                onClick={() =>
+                  setSelectedDay({
+                    ...r,
+                    label: `${r.weekday || ""}، ${formatShamsiDateText(r.date)}`,
+                  })
+                }
                 style={{
                   padding: "8px 10px",
                   cursor: "pointer",
