@@ -114,6 +114,9 @@ def init_db(conn: sqlite3.Connection):
       user_id INTEGER REFERENCES users(id),
       shamsi_date TEXT NOT NULL,
       title TEXT NOT NULL,
+      description TEXT,
+      priority TEXT NOT NULL DEFAULT 'medium' CHECK(priority IN ('low','medium','high')),
+      due_date TEXT,
       done INTEGER NOT NULL DEFAULT 0,
       day_num INTEGER,
       created_at TEXT
@@ -167,6 +170,15 @@ def init_db(conn: sqlite3.Connection):
     # Seed default holidays
     for d, n in HOLIDAYS_1405:
         conn.execute("INSERT OR IGNORE INTO holidays(date, name) VALUES(?, ?)", (d, n))
+
+    # Migration for new task columns if existing db
+    task_cols = [r[1] for r in conn.execute("PRAGMA table_info(tasks)").fetchall()]
+    if "description" not in task_cols:
+        conn.execute("ALTER TABLE tasks ADD COLUMN description TEXT")
+    if "priority" not in task_cols:
+        conn.execute("ALTER TABLE tasks ADD COLUMN priority TEXT NOT NULL DEFAULT 'medium'")
+    if "due_date" not in task_cols:
+        conn.execute("ALTER TABLE tasks ADD COLUMN due_date TEXT")
 
     conn.commit()
 

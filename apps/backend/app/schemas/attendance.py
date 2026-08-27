@@ -62,6 +62,20 @@ class RecordResponse(BaseModel):
     ok: bool
     message: str
 
+class DayEditRequest(BaseModel):
+    date: str
+    in_time: str | None = None
+    out_time: str | None = None
+    leave_hours: float = 0.0
+    overtime_hours: float = 0.0
+    work_mode: str = "office"
+    notes: str | None = None
+
+class DayEditResponse(BaseModel):
+    ok: bool
+    message: str
+    day: dict[str, Any]
+
 class OvertimeRequest(BaseModel):
     hours: str
     date: str | None = None
@@ -83,8 +97,12 @@ class WorkModeResponse(BaseModel):
 class TaskItem(BaseModel):
     id: int
     title: str
+    description: str | None = None
+    priority: str = "medium"
+    due_date: str | None = None
     done: bool
     day_num: int | None = None
+    shamsi_date: str | None = None
 
 class TaskListResponse(BaseModel):
     date: str
@@ -92,11 +110,17 @@ class TaskListResponse(BaseModel):
 
 class TaskAddRequest(BaseModel):
     title: str
+    description: str | None = None
+    priority: str = "medium"
+    due_date: str | None = None
     date: str | None = None
 
 class TaskPatchRequest(BaseModel):
     done: bool | None = None
     title: str | None = None
+    description: str | None = None
+    priority: str | None = None
+    due_date: str | None = None
 
 class TaskActionResponse(BaseModel):
     ok: bool

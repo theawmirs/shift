@@ -12,9 +12,11 @@ export function SettingsForm() {
   const updateSettingsMutation = useUpdateSettingsMutation();
 
   const [values, setValues] = useState<Record<string, string>>({
-    start_time_end: "09:15",
-    standard_hours: "8",
     start_time: "07:00",
+    start_time_end: "09:15",
+    end_time: "15:00",
+    end_time_end: "17:15",
+    standard_hours: "8",
     leave_quota_hours: "208",
   });
   const [saving, setSaving] = useState<string | null>(null);
@@ -81,14 +83,16 @@ export function SettingsForm() {
       <div className="card">
         <div className="section-head">
           <h2 className="display">تنظیمات</h2>
-          <span className="kicker mono">LIVE • RETROACTIVE</span>
+          <span className="kicker mono">پیکربندی پایه</span>
         </div>
         <div style={{ display: "grid", gap: 10 }}>
           {[
-            { k: "start_time_end", label: "ساعت تأخیر (بعدش تأخیر)", ph: "09:15" },
-            { k: "standard_hours", label: "ساعت کاری روزانه", ph: "8" },
-            { k: "start_time", label: "شروع پنجره ورود", ph: "07:00" },
-            { k: "leave_quota_hours", label: "سهمیه مرخصی (ساعت)", ph: "208" },
+            { k: "start_time", label: "آغاز پنجره ورود", ph: "07:00" },
+            { k: "start_time_end", label: "اتمام پنجره ورود", ph: "09:15" },
+            { k: "end_time", label: "آغاز پنجره خروج", ph: "15:00" },
+            { k: "end_time_end", label: "اتمام پنجره خروج", ph: "17:15" },
+            { k: "standard_hours", label: "ساعت کاری روزانه (موظفی)", ph: "8" },
+            { k: "leave_quota_hours", label: "سهمیه مرخصی سالانه (ساعت)", ph: "208" },
           ].map((f) => (
             <label key={f.k} className="field">
               <span style={{ fontWeight: 800, fontSize: 12 }}>{f.label}</span>
@@ -118,7 +122,7 @@ export function SettingsForm() {
             <h2 className="display" style={{ fontSize: 14 }}>
               آرشیو اکسل
             </h2>
-            <span className="kicker mono">HISTORY</span>
+            <span className="kicker mono">سوابق ماهانه</span>
           </div>
 
           {months.length === 0 ? (

@@ -5,7 +5,8 @@ from app.api.deps import get_db, get_current_user_optional
 from app.schemas.attendance import (
     StatusResponse, RecordRequest, RecordResponse,
     OvertimeResponse, WorkModeRequest, WorkModeResponse,
-    TaskListResponse, TaskAddRequest, TaskPatchRequest, TaskActionResponse, TaskItem
+    TaskListResponse, TaskAddRequest, TaskPatchRequest, TaskActionResponse, TaskItem,
+    DayEditRequest, DayEditResponse,
 )
 from app.services import record_service
 from app.core.config import settings
@@ -77,6 +78,24 @@ def api_record(body: RecordRequest, uid: int | None = Depends(get_current_user_o
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
+@router.post("/day/edit", response_model=DayEditResponse, summary="Edit or insert full workday records for a specific date")
+def api_edit_day(body: DayEditRequest, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
+    try:
+        updated_day = record_service.edit_or_create_day_record(
+            conn=conn,
+            sdate=body.date,
+            in_time=body.in_time,
+            out_time=body.out_time,
+            leave_hours=body.leave_hours,
+            overtime_hours=body.overtime_hours,
+            work_mode=body.work_mode,
+            notes=body.notes,
+            user_id=uid,
+        )
+        return DayEditResponse(ok=True, message=f"ساعت کاری تاریخ {body.date} با موفقیت ویرایش/ثبت شد", day=updated_day)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.post("/ot", response_model=OvertimeResponse, summary="Declare overtime hours after clock out")
 def api_ot(hours: str, date: str | None = None, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
     try:
@@ -106,72 +125,115 @@ def toggle_work_mode(body: WorkModeRequest | None = None, uid: int | None = Depe
     return WorkModeResponse(ok=True, date=sdate, mode=nxt, label=record_service.WORK_MODE_LABEL.get(nxt, nxt))
 
 # --- Tasks ---
+def _map_task_rows(rows) -> list[TaskItem]:
+    return [
+        TaskItem(
+            id=r["id"],
+            title=r["title"],
+            description=r["description"] if "description" in r.keys() else None,
+            priority=r["priority"] if "priority" in r.keys() and r["priority"] else "medium",
+            due_date=r["due_date"] if "due_date" in r.keys() else None,
+            done=bool(r["done"]),
+            day_num=r["day_num"],
+            shamsi_date=r["shamsi_date"],
+        )
+        for r in rows
+    ]
+
 @router.get("/tasks", response_model=TaskListResponse, summary="List tasks for date")
 def list_tasks(date: str | None = None, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
     sdate = date or record_service.today_str()
     if uid is None:
-        rows = conn.execute("SELECT id, title, done, day_num FROM tasks WHERE shamsi_date=? AND user_id IS NULL ORDER BY id", (sdate,)).fetchall()
+        rows = conn.execute("SELECT * FROM tasks WHERE shamsi_date=? AND user_id IS NULL ORDER BY id", (sdate,)).fetchall()
     else:
-        rows = conn.execute("SELECT id, title, done, day_num FROM tasks WHERE shamsi_date=? AND user_id=? ORDER BY id", (sdate, uid)).fetchall()
-    return TaskListResponse(date=sdate, tasks=[TaskItem(id=r["id"], title=r["title"], done=bool(r["done"]), day_num=r["day_num"]) for r in rows])
+        rows = conn.execute("SELECT * FROM tasks WHERE shamsi_date=? AND user_id=? ORDER BY id", (sdate, uid)).fetchall()
+    return TaskListResponse(date=sdate, tasks=_map_task_rows(rows))
 
 @router.post("/tasks", response_model=TaskActionResponse, summary="Add task for date")
 def add_task(body: TaskAddRequest, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
     sdate = body.date or record_service.today_str()
     title = body.title.strip()
     if not title:
-        raise HTTPException(status_code=400, detail="title خالیه")
+        raise HTTPException(status_code=400, detail="عنوان تسک خالی است")
+
+    prio = (body.priority or "medium").lower()
+    if prio not in ("low", "medium", "high"):
+        prio = "medium"
 
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
     if uid is None:
         cnt = conn.execute("SELECT COUNT(*) FROM tasks WHERE shamsi_date=? AND user_id IS NULL", (sdate,)).fetchone()[0]
-        conn.execute("INSERT INTO tasks(shamsi_date, title, done, day_num, created_at, user_id) VALUES(?,?,0,?,?,NULL)", (sdate, title, cnt + 1, now_iso))
-        rows = conn.execute("SELECT id, title, done, day_num FROM tasks WHERE shamsi_date=? AND user_id IS NULL ORDER BY id", (sdate,)).fetchall()
+        conn.execute(
+            "INSERT INTO tasks(shamsi_date, title, description, priority, due_date, done, day_num, created_at, user_id) VALUES(?,?,?,?,?,0,?,?,NULL)",
+            (sdate, title, body.description, prio, body.due_date, cnt + 1, now_iso),
+        )
+        rows = conn.execute("SELECT * FROM tasks WHERE shamsi_date=? AND user_id IS NULL ORDER BY id", (sdate,)).fetchall()
     else:
         cnt = conn.execute("SELECT COUNT(*) FROM tasks WHERE shamsi_date=? AND user_id=?", (sdate, uid)).fetchone()[0]
-        conn.execute("INSERT INTO tasks(shamsi_date, title, done, day_num, created_at, user_id) VALUES(?,?,0,?,?,?)", (sdate, title, cnt + 1, now_iso, uid))
-        rows = conn.execute("SELECT id, title, done, day_num FROM tasks WHERE shamsi_date=? AND user_id=? ORDER BY id", (sdate, uid)).fetchall()
+        conn.execute(
+            "INSERT INTO tasks(shamsi_date, title, description, priority, due_date, done, day_num, created_at, user_id) VALUES(?,?,?,?,?,0,?,?,?)",
+            (sdate, title, body.description, prio, body.due_date, cnt + 1, now_iso, uid),
+        )
+        rows = conn.execute("SELECT * FROM tasks WHERE shamsi_date=? AND user_id=? ORDER BY id", (sdate, uid)).fetchall()
     conn.commit()
 
     return TaskActionResponse(
         ok=True,
-        message="✅ تسک اضافه شد",
-        tasks=[TaskItem(id=r["id"], title=r["title"], done=bool(r["done"]), day_num=r["day_num"]) for r in rows],
+        message="✅ تسک با موفقیت اضافه شد",
+        tasks=_map_task_rows(rows),
     )
 
-@router.patch("/tasks/{tid}", response_model=TaskActionResponse, summary="Update task title or done status")
+@router.patch("/tasks/{tid}", response_model=TaskActionResponse, summary="Update task details")
 def patch_task(tid: int, body: TaskPatchRequest, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
     if uid is None:
-        row = conn.execute("SELECT id, shamsi_date, done FROM tasks WHERE id=? AND user_id IS NULL", (tid,)).fetchone()
+        row = conn.execute("SELECT * FROM tasks WHERE id=? AND user_id IS NULL", (tid,)).fetchone()
     else:
-        row = conn.execute("SELECT id, shamsi_date, done FROM tasks WHERE id=? AND user_id=?", (tid, uid)).fetchone()
+        row = conn.execute("SELECT * FROM tasks WHERE id=? AND user_id=?", (tid, uid)).fetchone()
     
     if not row:
         raise HTTPException(status_code=404, detail="تسک پیدا نشد")
     
     sdate = row["shamsi_date"]
+    updates = []
+    params = []
+
     if body.done is not None:
-        conn.execute("UPDATE tasks SET done=? WHERE id=?", (1 if body.done else 0, tid))
-        msg = "✅ انجام شد" if body.done else "↩️ باز شد"
-    elif body.title is not None:
+        updates.append("done=?")
+        params.append(1 if body.done else 0)
+    if body.title is not None:
         t = body.title.strip()
         if not t:
-            raise HTTPException(status_code=400, detail="عنوان خالیه")
-        conn.execute("UPDATE tasks SET title=? WHERE id=?", (t, tid))
-        msg = "✅ عنوان به‌روز شد"
-    else:
-        raise HTTPException(status_code=400, detail="هیچ فیلدی برای به‌روزرسانی داده نشده")
+            raise HTTPException(status_code=400, detail="عنوان خالی است")
+        updates.append("title=?")
+        params.append(t)
+    if body.description is not None:
+        updates.append("description=?")
+        params.append(body.description.strip() or None)
+    if body.priority is not None:
+        prio = body.priority.lower()
+        if prio in ("low", "medium", "high"):
+            updates.append("priority=?")
+            params.append(prio)
+    if body.due_date is not None:
+        updates.append("due_date=?")
+        params.append(body.due_date.strip() or None)
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="هیچ فیلدی برای به‌روزرسانی ارسال نشده")
+
+    params.append(tid)
+    conn.execute(f"UPDATE tasks SET {', '.join(updates)} WHERE id=?", params)
     conn.commit()
 
     if uid is None:
-        rows = conn.execute("SELECT id, title, done, day_num FROM tasks WHERE shamsi_date=? AND user_id IS NULL ORDER BY id", (sdate,)).fetchall()
+        rows = conn.execute("SELECT * FROM tasks WHERE shamsi_date=? AND user_id IS NULL ORDER BY id", (sdate,)).fetchall()
     else:
-        rows = conn.execute("SELECT id, title, done, day_num FROM tasks WHERE shamsi_date=? AND user_id=? ORDER BY id", (sdate, uid)).fetchall()
+        rows = conn.execute("SELECT * FROM tasks WHERE shamsi_date=? AND user_id=? ORDER BY id", (sdate, uid)).fetchall()
 
     return TaskActionResponse(
         ok=True,
-        message=msg,
-        tasks=[TaskItem(id=r["id"], title=r["title"], done=bool(r["done"]), day_num=r["day_num"]) for r in rows],
+        message="✅ تسک به‌روزرسانی شد",
+        tasks=_map_task_rows(rows),
     )
 
 @router.delete("/tasks/{tid}", response_model=TaskActionResponse, summary="Delete task")
@@ -186,12 +248,18 @@ def delete_task(tid: int, uid: int | None = Depends(get_current_user_optional), 
     
     sdate = row["shamsi_date"]
     conn.execute("DELETE FROM tasks WHERE id=?", (tid,))
-    
-    # Re-number tasks
+    conn.commit()
+
     if uid is None:
-        remain = conn.execute("SELECT id FROM tasks WHERE shamsi_date=? AND user_id IS NULL ORDER BY id", (sdate,)).fetchall()
+        remain = conn.execute("SELECT * FROM tasks WHERE shamsi_date=? AND user_id IS NULL ORDER BY id", (sdate,)).fetchall()
     else:
-        remain = conn.execute("SELECT id FROM tasks WHERE shamsi_date=? AND user_id=? ORDER BY id", (sdate, uid)).fetchall()
+        remain = conn.execute("SELECT * FROM tasks WHERE shamsi_date=? AND user_id=? ORDER BY id", (sdate, uid)).fetchall()
+
+    return TaskActionResponse(
+        ok=True,
+        message="🗑 تسک با موفقیت حذف شد",
+        tasks=_map_task_rows(remain),
+    )
     
     for i, r in enumerate(remain, 1):
         conn.execute("UPDATE tasks SET day_num=? WHERE id=?", (i, r["id"]))

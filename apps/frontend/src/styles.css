@@ -102,7 +102,7 @@ button{font:inherit; font-family:inherit}
 .brand{display:flex; align-items:center; gap:10px}
 .mark{
   width:38px; height:38px; border-radius:12px; display:grid; place-items:center;
-  background: linear-gradient(135deg, var(--amber), var(--amber-2));
+  background: transparent;
   border: 2px solid #000; box-shadow: 4px 4px 0 #000; font-weight:800; color:#0F172A; font-size:16px;
 }
 .brand h1{margin:0; font-size:15px; line-height:1; font-weight:800; letter-spacing:.14em}
@@ -240,7 +240,7 @@ button{font:inherit; font-family:inherit}
   background: linear-gradient(180deg, rgba(15,23,42,.92), rgba(11,18,32,.98));
   backdrop-filter: blur(12px);
   border-top: 3px solid #000;
-  display:grid; grid-template-columns: repeat(5,1fr); gap:6px;
+  display:grid; grid-template-columns: repeat(4,1fr); gap:8px;
 }
 [data-theme="light"] .bottom-nav{
   background: linear-gradient(180deg, rgba(255,247,237,.94), rgba(255,237,213,.98));

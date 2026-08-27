@@ -289,8 +289,8 @@ export const API = {
   tasks(date?: string): Promise<any> {
     return this.jget(date ? `/api/tasks?date=${encodeURIComponent(date)}` : "/api/tasks");
   },
-  addTask(title: string, date?: string): Promise<any> {
-    return this.jpost("/api/tasks", { title, date });
+  addTask(body: { title: string; description?: string | null; priority?: string; due_date?: string | null; date?: string }): Promise<any> {
+    return this.jpost("/api/tasks", body);
   },
   patchTask(id: number | string, body: any): Promise<any> {
     return this.jpatch(`/api/tasks/${id}`, body);
@@ -302,6 +302,17 @@ export const API = {
   // records
   record(event_type: string, at?: string, date?: string): Promise<any> {
     return this.jpost("/api/record", { event_type, at, date });
+  },
+  editDay(body: {
+    date: string;
+    in_time?: string | null;
+    out_time?: string | null;
+    leave_hours?: number;
+    overtime_hours?: number;
+    work_mode?: string;
+    notes?: string | null;
+  }): Promise<any> {
+    return this.jpost("/api/day/edit", body);
   },
   ot(hours: number | string, date?: string): Promise<any> {
     return this.jpost(
@@ -321,5 +332,37 @@ export const API = {
   // holidays
   getHolidays(year?: number): Promise<any> {
     return this.jget(year ? `/api/holidays/${year}` : "/api/holidays");
+  },
+
+  // ── CSV Import / Export ──
+  csvExportBlob(month?: string): Promise<Blob> {
+    return this.jblob(month ? `/api/data/export/csv?month=${encodeURIComponent(month)}` : "/api/data/export/csv");
+  },
+  csvSampleBlob(): Promise<Blob> {
+    return this.jblob("/api/data/sample/csv");
+  },
+  async csvImport(file: File, mode: "upsert" | "skip" = "upsert"): Promise<any> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("mode", mode);
+
+    const headers: Record<string, string> = {};
+    const token = this.getToken();
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const r = await this._fetchWithRefresh("/api/data/import/csv", {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+    if (!r.ok) {
+      let msg = r.statusText;
+      try {
+        const j = await r.json();
+        msg = j.detail || j.message || msg;
+      } catch {}
+      throw new Error(msg);
+    }
+    return r.json();
   },
 };

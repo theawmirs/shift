@@ -92,7 +92,7 @@ export function ProfileCard() {
         <h2 className="display" style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <UserIcon size={18} /> پروفایل
         </h2>
-        <span className="kicker mono">TELEGRAM</span>
+        <span className="kicker mono">حساب کاربری</span>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>

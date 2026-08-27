@@ -1,11 +1,11 @@
 import { useToast } from "../shared/ui/Toast";
 import { Hero } from "../features/today/Hero";
 import { ActionGrid } from "../features/today/ActionGrid";
+import { DayDoneCard } from "../features/today/DayDoneCard";
 import { DailyLeaveCard } from "../features/leave/DailyLeaveCard";
 import { WeekSummary } from "../features/week/WeekSummary";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { BarChart3, ListChecks } from "lucide-react";
 import { API } from "../shared/lib/api";
 import { HeroSkeleton, CardSkeleton } from "../shared/ui/Skeleton";
 import { useTodayQuery, useRecordMutation } from "../shared/api/queries";
@@ -38,16 +38,22 @@ export function TodayPage() {
   const { data: status, error, refetch } = useTodayQuery();
   const recordMutation = useRecordMutation();
 
-  const onAction = async (k: string, at?: string) => {
+  const onAction = async (k: string, at?: string, otHours?: number) => {
     const map: Record<string, string> = { in: "in", out: "out", leave: "leave_start", back: "leave_end" };
     const et = map[k] || k;
     try {
       const r = await recordMutation.mutateAsync({ event_type: et, at });
+      if (k === "out" && otHours && otHours > 0) {
+        try {
+          await API.ot(otHours);
+        } catch {}
+      }
       push(
         r.message ||
           (k === "in" ? `✅ ورود ثبت شد${at ? ` (${at})` : ""}` : k === "out" ? `✅ خروج ثبت شد${at ? ` (${at})` : ""}` : k === "leave" ? "🟡 مرخصی شروع شد" : "🔵 برگشتم")
       );
-      if (k === "out") navigate("/week");
+      await refetch();
+      if (k === "out") navigate("/reports");
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
     }
@@ -164,33 +170,30 @@ export function TodayPage() {
   }
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
-      <Hero liveMinutes={liveMinutes} shamsi={shamsi} weekday={status.weekday} inTime={status.day?.in || "—"} />
-      {banner}
-      <div style={{ height: 12 }} />
-      <ActionGrid
-        onAction={onAction}
-        onRemoteToggle={onRemoteToggle}
-        workMode={status.day?.work_mode}
-        day_status={day_status}
-        day_status_reason={day_status_reason}
-        disabledReason={bannerReason}
-        leave_open={!!status.day?.leave_open}
-      />
+      {day_status === "done" ? (
+        <DayDoneCard day={status.day} weekday={status.weekday} shamsi={shamsi} />
+      ) : (
+        <>
+          <Hero liveMinutes={liveMinutes} shamsi={shamsi} weekday={status.weekday} inTime={status.day?.in || "—"} />
+          {banner}
+          <div style={{ height: 12 }} />
+          <ActionGrid
+            onAction={onAction}
+            onRemoteToggle={onRemoteToggle}
+            workMode={status.day?.work_mode}
+            day_status={day_status}
+            day_status_reason={day_status_reason}
+            disabledReason={bannerReason}
+            leave_open={!!status.day?.leave_open}
+            liveMinutes={liveMinutes}
+            standardHours={Number(status.settings?.standard_hours || 8)}
+          />
+        </>
+      )}
       <div style={{ height: 12 }} />
       <DailyLeaveCard onChanged={() => refetch()} />
       <div style={{ height: 12 }} />
       <WeekSummary />
-      <div style={{ height: 12 }} />
-      <motion.div className="card" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => navigate("/week")}>
-            <BarChart3 size={16} /> گزارش‌ها
-          </button>
-          <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => navigate("/tasks")}>
-            <ListChecks size={16} /> تسک‌ها
-          </button>
-        </div>
-      </motion.div>
     </motion.div>
   );
 }

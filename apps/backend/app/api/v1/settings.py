@@ -1,8 +1,9 @@
 import sqlite3
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Response
 from app.api.deps import get_db, get_current_user_optional, get_current_user
 from app.schemas.settings import SettingsUpdateRequest, SettingsUpdateResponse
 from app.db.schema import DEFAULT_SETTINGS, get_user_settings, set_user_setting
+from app.services import csv_service
 
 router = APIRouter(tags=["Settings"])
 
@@ -55,3 +56,43 @@ def post_settings(
 ):
     return _validate_and_save_setting(body, uid, conn)
 
+# ── CSV Import / Export Endpoints ──
+
+@router.get("/data/export/csv", summary="Export attendance history as CSV")
+def export_csv(
+    month: str | None = None,
+    uid: int | None = Depends(get_current_user_optional),
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    csv_str = csv_service.export_attendance_csv(conn, user_id=uid, month_key=month)
+    filename = f"shift-attendance-{month or 'all'}.csv"
+    return Response(
+        content=csv_str,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+@router.get("/data/sample/csv", summary="Download sample CSV template")
+def download_sample_csv():
+    csv_str = csv_service.generate_sample_csv()
+    return Response(
+        content=csv_str,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="shift-sample-template.csv"'},
+    )
+
+@router.post("/data/import/csv", summary="Import attendance data from CSV file")
+async def import_csv(
+    file: UploadFile = File(...),
+    mode: str = Form("upsert"),
+    uid: int | None = Depends(get_current_user_optional),
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    try:
+        content_bytes = await file.read()
+        content_str = content_bytes.decode("utf-8-sig", errors="replace")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"خطا در خواندن فایل: {str(e)}")
+
+    res = csv_service.import_attendance_csv(conn, content_str, user_id=uid, mode=mode)
+    return res

@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { API } from "../../shared/lib/api";
 import { CardSkeleton } from "../../shared/ui/Skeleton";
 import { DayDetailDrawer } from "../month/DayDetailDrawer";
+import { formatShamsiDateText } from "../../shared/lib/format";
 
 export function WeekSummary() {
   const [data, setData] = useState<any>(null);
@@ -49,7 +50,12 @@ export function WeekSummary() {
           <motion.div
             key={r.date}
             className="row"
-            onClick={() => setSelectedDay(r)}
+            onClick={() =>
+              setSelectedDay({
+                ...r,
+                label: `${r.weekday || ""}، ${formatShamsiDateText(r.date)}`,
+              })
+            }
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.04 * i }}

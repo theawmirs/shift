@@ -1,4 +1,5 @@
-import { Clock3, BarChart3, Calendar, ListChecks, Settings2, Sun, Moon } from "lucide-react";
+import { Clock3, BarChart3, Calendar, ListChecks, Settings, Sun, Moon } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export interface TopbarProps {
   theme: "light" | "dark" | string;
@@ -9,15 +10,39 @@ export function Topbar({
   theme,
   onToggleTheme,
 }: TopbarProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isSettings = location.pathname === "/settings";
+
   return (
     <div className="topbar">
-      <div className="brand">
-        <div className="mark">◈</div>
+      <div className="brand" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
+        <img
+          src="/logo.png"
+          alt="SHIFT"
+          className="mark"
+          style={{ objectFit: "cover", padding: 0 }}
+        />
         <div>
           <h1 className="display">SHIFT</h1>
         </div>
       </div>
-      <div className="top-actions" style={{ gap: 8 }}>
+      <div className="top-actions" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <button
+          className="theme-btn"
+          onClick={() => navigate(isSettings ? "/" : "/settings")}
+          aria-label="settings"
+          style={{
+            background: isSettings ? "var(--amber)" : "#fff",
+            color: "#0F172A",
+            padding: "8px",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Settings size={18} />
+        </button>
         <button className="theme-btn" onClick={onToggleTheme} aria-label="toggle theme">
           {theme === "dark" ? (
             <>
@@ -40,7 +65,6 @@ export function BottomNav({ active, onChange }: { active: string; onChange: (to:
     { k: "reports", to: "/reports", label: "گزارش‌ها", Icon: BarChart3 },
     { k: "calendar", to: "/calendar", label: "تقویم", Icon: Calendar },
     { k: "tasks", to: "/tasks", label: "تسک‌ها", Icon: ListChecks },
-    { k: "settings", to: "/settings", label: "تنظیمات", Icon: Settings2 },
   ];
   return (
     <nav className="bottom-nav" aria-label="bottom navigation">
