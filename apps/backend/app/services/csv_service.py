@@ -6,7 +6,7 @@ from app.core.config import settings
 from app.core import jalali
 from app.services import record_service
 
-CSV_HEADERS = ["date", "in", "out", "leave_hours", "work_mode", "notes"]
+CSV_HEADERS = ["date", "in", "out", "leave_hours", "overtime_hours", "work_mode", "notes"]
 
 def export_attendance_csv(conn: sqlite3.Connection, user_id: int | None = None, month_key: str | None = None) -> str:
     """Generate CSV string containing attendance records for user/month."""
@@ -43,9 +43,10 @@ def export_attendance_csv(conn: sqlite3.Connection, user_id: int | None = None, 
 
         writer.writerow([
             sdate,
-            d["in"] or "",
-            d["out"] or "",
+            record_service.fmt_company_time(d["in"]) if d["in"] else "",
+            record_service.fmt_company_time(d["out"]) if d["out"] else "",
             round(d["leave"], 2) if d["leave"] > 0 else 0,
+            round(d["overtime"], 2) if d["overtime"] > 0 else 0,
             d["work_mode"] or "office",
             notes_str,
         ])
@@ -58,9 +59,9 @@ def generate_sample_csv() -> str:
     output.write("\ufeff")
     writer = csv.writer(output)
     writer.writerow(CSV_HEADERS)
-    writer.writerow(["1405-06-01", "08:30", "17:00", "0", "office", "پروژه شیفت"])
-    writer.writerow(["1405-06-02", "09:00", "18:15", "1.5", "remote", "جلسه آنلاین"])
-    writer.writerow(["1405-06-03", "08:15", "16:45", "0", "office", ""])
+    writer.writerow(["1405-06-01", "08:30", "17:00", "0", "0.5", "office", "پروژه شیفت"])
+    writer.writerow(["1405-06-02", "09:00", "18:15", "1.5", "0", "remote", "جلسه آنلاین"])
+    writer.writerow(["1405-06-03", "08:15", "16:45", "0", "0", "office", ""])
     return output.getvalue()
 
 def import_attendance_csv(conn: sqlite3.Connection, csv_content: str, user_id: int | None = None, mode: str = "upsert") -> dict:
@@ -83,6 +84,7 @@ def import_attendance_csv(conn: sqlite3.Connection, csv_content: str, user_id: i
         in_time = (row.get("in") or row.get("ورود") or "").strip()
         out_time = (row.get("out") or row.get("خروج") or "").strip()
         leave_h_raw = (row.get("leave_hours") or row.get("مرخصی") or "0").strip()
+        ot_h_raw = (row.get("overtime_hours") or row.get("اضافه_کاری") or row.get("اضافه کاری") or "0").strip()
         work_mode = (row.get("work_mode") or row.get("حالت") or "office").strip().lower()
         notes = (row.get("notes") or row.get("یادداشت") or "").strip()
 
@@ -93,7 +95,7 @@ def import_attendance_csv(conn: sqlite3.Connection, csv_content: str, user_id: i
             jy, jm, jd = record_service.parse_date(sdate)
             gy, gm, gd = jalali.jalali_to_gregorian(jy, jm, jd)
             wdf = jalali.weekday_fa(gy, gm, gd)
-        except Exception as e:
+        except Exception:
             errors.append(f"سطر {idx}: تاریخ نامعتبر '{sdate}'")
             continue
 
@@ -150,9 +152,11 @@ def import_attendance_csv(conn: sqlite3.Connection, csv_content: str, user_id: i
                 hh, mm = int(p[0]), int(p[1])
                 dt_tehran = datetime.datetime(gy, gm, gd, hh, mm, tzinfo=settings.tehran_tz)
                 dt_utc = dt_tehran.astimezone(datetime.timezone.utc)
+                ot_float = float(ot_h_raw) if ot_h_raw else 0.0
+                out_note = f"ot:{ot_float}" if ot_float > 0 else None
                 conn.execute(
                     "INSERT INTO events(event_type, ts_utc, shamsi_date, weekday, note, user_id) VALUES(?,?,?,?,?,?)",
-                    ("out", dt_utc.isoformat(), sdate, wdf, None, user_id),
+                    ("out", dt_utc.isoformat(), sdate, wdf, out_note, user_id),
                 )
             except Exception:
                 errors.append(f"سطر {idx}: ساعت خروج نامعتبر '{out_time}'")

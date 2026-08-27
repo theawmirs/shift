@@ -113,29 +113,23 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
   return (
     <Drawer open={open} onClose={onClose} title={title}>
       <div style={{ display: "grid", gap: 10 }}>
-        {/* Toggle Edit Button in Drawer Top */}
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 2 }}>
-          <button
-            className="btn btn-ghost mono"
-            style={{
-              padding: "6px 12px",
-              fontSize: 12,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              background: isEditing ? "var(--amber)" : "#fff",
-              color: "#0F172A",
-            }}
-            onClick={() => setIsEditing(!isEditing)}
-          >
-            <Edit3 size={13} />
-            <span>{isEditing ? "انصراف از ویرایش" : hasWork ? "ویرایش ساعت کاری" : "ثبت کارکرد برای این روز"}</span>
-          </button>
-        </div>
-
         {/* ── EDIT FORM VIEW ── */}
         {isEditing ? (
           <div style={{ display: "grid", gap: 12, padding: "4px 0" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+              <b style={{ fontSize: 13 }}>ویرایش مشخصات روز</b>
+              <button
+                className="btn btn-ghost mono"
+                style={{
+                  padding: "4px 10px",
+                  fontSize: 11,
+                }}
+                onClick={() => setIsEditing(false)}
+              >
+                انصراف
+              </button>
+            </div>
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
                 <span style={{ fontSize: 11, fontWeight: 800 }}>ساعت ورود (HH:MM):</span>
@@ -242,19 +236,9 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
         ) : (
           /* ── READ-ONLY SUMMARY VIEW ── */
           <>
-            {/* Holiday Banner if holiday */}
-            {day.is_holiday && (
-              <div className="row" style={{ borderColor: "#ef4444", background: "rgba(239,68,68,0.08)" }}>
-                <b>مناسبت تعطیلی</b>
-                <span className="mono" style={{ fontWeight: 800, color: "#dc2626" }}>
-                  {day.holiday_name || "تعطیلی رسمی / جمعه"}
-                </span>
-              </div>
-            )}
-
-            {/* Status and Work Mode Header */}
-            {(hasWork || day.daily_leave) && (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            {/* Status and Action Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span className="badge badge-muted mono" style={{ fontSize: 12 }}>
                   {day.day_status_label || (day.is_holiday ? "تعطیل (کاری)" : "کاری")}
                 </span>
@@ -268,6 +252,35 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                     ⚡ کار در تعطیلی
                   </span>
                 )}
+              </div>
+
+              {/* Polished Edit Button with Auto Width */}
+              <button
+                className="btn btn-ghost mono"
+                style={{
+                  width: "auto",
+                  padding: "5px 10px",
+                  fontSize: 11,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  borderRadius: 10,
+                  boxShadow: "2px 2px 0 #000",
+                }}
+                onClick={() => setIsEditing(true)}
+              >
+                <Edit3 size={12} />
+                <span>{hasWork ? "ویرایش" : "ثبت کارکرد"}</span>
+              </button>
+            </div>
+
+            {/* Holiday Banner if holiday */}
+            {day.is_holiday && (
+              <div className="row" style={{ borderColor: "#ef4444", background: "rgba(239,68,68,0.08)" }}>
+                <b>مناسبت تعطیلی</b>
+                <span className="mono" style={{ fontWeight: 800, color: "#dc2626" }}>
+                  {day.holiday_name || "تعطیلی رسمی / جمعه"}
+                </span>
               </div>
             )}
 
