@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ListChecks, BadgeCheck, Trash2, Search, Plus, Edit3, Calendar, AlertTriangle } from "lucide-react";
+import { ListChecks, BadgeCheck, Trash2, Search, Plus, Edit3, Calendar, AlertTriangle, CalendarDays, X } from "lucide-react";
 import { API } from "../../shared/lib/api";
 import { useToast } from "../../shared/ui/Toast";
 import { CardSkeleton } from "../../shared/ui/Skeleton";
 import { Drawer } from "../../shared/ui/Drawer";
+import { ShamsiCalendar } from "../../shared/ui/ShamsiCalendar";
 import { formatShamsiDateText } from "../../shared/lib/format";
 
 export interface TaskType {
@@ -37,6 +38,7 @@ export function TasksList() {
   const [formDesc, setFormDesc] = useState("");
   const [formPriority, setFormPriority] = useState<"low" | "medium" | "high">("medium");
   const [formDueDate, setFormDueDate] = useState("");
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
@@ -76,6 +78,7 @@ export function TasksList() {
     setFormDesc("");
     setFormPriority("medium");
     setFormDueDate("");
+    setShowDatePicker(false);
     setActiveTaskModal("add");
   };
 
@@ -85,6 +88,7 @@ export function TasksList() {
     setFormDesc(t.description || "");
     setFormPriority((t.priority as any) || "medium");
     setFormDueDate(t.due_date || "");
+    setShowDatePicker(false);
     setActiveTaskModal("edit");
   };
 
@@ -445,16 +449,60 @@ export function TasksList() {
             </div>
           </div>
 
-          <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-            <span style={{ fontSize: 12, fontWeight: 800 }}>مهلت انجام (تاریخ شمسی مثلاً ۱۴۰۵-۰۶-۱۵):</span>
-            <input
-              value={formDueDate}
-              onChange={(e) => setFormDueDate(e.target.value)}
-              placeholder="1405-06-15"
-              className="mono"
-              style={{ width: "100%", padding: "10px 12px", fontSize: 13 }}
-            />
-          </label>
+          <div className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 800 }}>مهلت انجام (تاریخ سررسید):</span>
+            
+            <div style={{ display: "flex", gap: 8, width: "100%", alignItems: "center" }}>
+              <button
+                type="button"
+                className="btn btn-ghost mono"
+                style={{
+                  flex: 1,
+                  padding: "10px 12px",
+                  fontSize: 13,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  background: "#fff",
+                  color: "#0F172A",
+                }}
+                onClick={() => setShowDatePicker(!showDatePicker)}
+              >
+                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <CalendarDays size={16} />
+                  <b>{formDueDate ? formatShamsiDateText(formDueDate) : "انتخاب تاریخ از تقویم"}</b>
+                </span>
+                <span className="badge badge-muted mono" style={{ fontSize: 11 }}>
+                  {formDueDate ? formDueDate : "بدون مهلت"}
+                </span>
+              </button>
+
+              {formDueDate && (
+                <button
+                  type="button"
+                  className="icon-btn"
+                  style={{ width: 36, height: 36, flexShrink: 0 }}
+                  onClick={() => setFormDueDate("")}
+                  title="پاک کردن مهلت"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
+            {/* Inline ShamsiCalendar Picker */}
+            {showDatePicker && (
+              <div style={{ width: "100%", marginTop: 4 }}>
+                <ShamsiCalendar
+                  value={formDueDate}
+                  onPick={(d) => {
+                    setFormDueDate(d);
+                    setShowDatePicker(false);
+                  }}
+                />
+              </div>
+            )}
+          </div>
 
           <button
             className="btn btn-primary"
