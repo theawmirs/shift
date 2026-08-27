@@ -215,7 +215,7 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
 
       <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
         <button className="btn btn-ghost" style={{ flex: 1 }} onClick={downloadExcel}>
-          ⬇ دانلود اکسل (با ستون محل کار)
+          ⬇ دانلود اکسل
         </button>
       </div>
 

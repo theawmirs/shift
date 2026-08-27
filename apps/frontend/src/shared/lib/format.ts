@@ -1,38 +1,45 @@
-export function fmtHoursFa(v: number | string | null | undefined): string {
-  if (v == null || v === "") return "—";
-  const n = Number(v);
-  if (!Number.isFinite(n)) return String(v);
-  if (n === 0) return "۰ ساعت";
+export function formatShamsiDateText(dateStr: string | null | undefined): string {
+  if (!dateStr) return "";
+  const MONTH_NAMES = [
+    "",
+    "فروردین",
+    "اردیبهشت",
+    "خرداد",
+    "تیر",
+    "مرداد",
+    "شهریور",
+    "مهر",
+    "آبان",
+    "آذر",
+    "دی",
+    "بهمن",
+    "اسفند",
+  ];
 
-  const totalMin = Math.round(n * 60);
-  const hours = Math.floor(totalMin / 60);
-  const mins = totalMin % 60;
-
-  if (hours === 0 && mins > 0) {
-    return `${mins} دقیقه`;
-  }
-  if (hours > 0 && mins === 0) {
-    return `${hours} ساعت`;
-  }
-  if (hours > 0 && mins > 0) {
-    return `${hours} ساعت و ${mins} دقیقه`;
-  }
-  return "۰ ساعت";
+  try {
+    const parts = dateStr.split("-").map(Number);
+    if (parts.length === 3 && parts[0] > 1300) {
+      const jy = parts[0];
+      const jm = parts[1];
+      const jd = parts[2];
+      const mName = MONTH_NAMES[jm] || `${jm}`;
+      return `${jd} ${mName} ${jy}`;
+    }
+  } catch {}
+  return dateStr;
 }
 
-export function fmtHoursOrDash(v: number | string | null | undefined, emptyLabel: string = "—"): string {
-  if (v == null || v === "") return emptyLabel;
-  const n = Number(v);
-  if (!Number.isFinite(n) || n === 0) return emptyLabel;
-  return fmtHoursFa(n);
-}
+export function fmtHoursFa(val: number | string | null | undefined): string {
+  if (val == null) return "۰ دقیقه";
+  const num = typeof val === "string" ? parseFloat(val) : val;
+  if (isNaN(num) || num === 0) return "۰ دقیقه";
 
-export function fmtHMSFa(h: number | string | null | undefined): string {
-  if (h == null) return "—";
-  const n = Number(h);
-  if (!Number.isFinite(n) || n === 0) return "—";
-  const totalMin = Math.round(n * 60);
-  const hi = Math.floor(totalMin / 60);
-  const mi = totalMin % 60;
-  return `${hi}:${String(mi).padStart(2, "0")}`;
+  const totalMinutes = Math.round(Math.abs(num) * 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0 && minutes === 0) return "۰ دقیقه";
+  if (hours === 0) return `${minutes} دقیقه`;
+  if (minutes === 0) return `${hours} ساعت`;
+  return `${hours} ساعت و ${minutes} دقیقه`;
 }

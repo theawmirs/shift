@@ -83,7 +83,7 @@ export function SettingsForm() {
       <div className="card">
         <div className="section-head">
           <h2 className="display">تنظیمات</h2>
-          <span className="kicker mono">LIVE • RETROACTIVE</span>
+          <span className="kicker mono">پیکربندی پایه</span>
         </div>
         <div style={{ display: "grid", gap: 10 }}>
           {[
@@ -122,7 +122,7 @@ export function SettingsForm() {
             <h2 className="display" style={{ fontSize: 14 }}>
               آرشیو اکسل
             </h2>
-            <span className="kicker mono">HISTORY</span>
+            <span className="kicker mono">سوابق ماهانه</span>
           </div>
 
           {months.length === 0 ? (
