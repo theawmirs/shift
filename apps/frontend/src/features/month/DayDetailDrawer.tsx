@@ -410,7 +410,7 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
         </div>
       </Drawer>
 
-      {/* ── CUSTOM BRUTALIST CONFIRMATION DRAWER ── */}
+      {/* ── CUSTOM BRUTALIST CONFIRM DELETE DRAWER ── */}
       <Drawer
         open={showConfirmDelete}
         onClose={() => setShowConfirmDelete(false)}
