@@ -158,11 +158,22 @@ button{font:inherit; font-family:inherit}
 .time-chip{
   display:flex; align-items:center; gap:8px;
   background:#0B1220; color:#F1F5F9; border:2px solid #000; border-radius:14px; padding:8px 10px;
-  box-shadow: 4px 4px 0 #000; font-weight:800; font-size:12px;
+  box-shadow: 4px 4px 0 #000; font-weight:800; font-size:12px; white-space:nowrap;
 }
 [data-theme="light"] .time-chip{ background:#0F172A; color:#FFF7ED }
 .time-chip--light{background:#fff !important; color:#0F172A !important}
 .time-chip--violet{background:var(--violet) !important; color:#fff !important; border-color:#000 !important}
+/* keep 3 chips in a single row on mobile (320–430px) — no wrapping */
+@media (max-width: 430px){
+  .time-row{ flex-wrap:nowrap; gap:6px }
+  .time-chip{ flex:1 1 0; justify-content:center; padding:7px 6px; font-size:11px; gap:5px; min-width:0 }
+  .time-chip svg{ width:14px; height:14px; flex-shrink:0 }
+}
+@media (max-width: 360px){
+  .time-row{ gap:5px }
+  .time-chip{ padding:6px 5px; font-size:10.5px; gap:4px }
+  .time-chip svg{ width:13px; height:13px }
+}
 .progress{height:10px; border-radius:999px; background: rgba(255,255,255,.08); border:2px solid #000; overflow:hidden; box-shadow: 3px 3px 0 #000}
 [data-theme="light"] .progress{ background: rgba(15,23,42,.08)}
 .progress > i{display:block; height:100%; background: linear-gradient(90deg, var(--amber), var(--violet)); width:40%}
