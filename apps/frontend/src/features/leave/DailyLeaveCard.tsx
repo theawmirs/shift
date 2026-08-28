@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from "react";
-import { motion } from "framer-motion";
 import { Plane, Trash2, CalendarDays } from "lucide-react";
 import { useToast } from "../../shared/ui/Toast";
 import { Drawer } from "../../shared/ui/Drawer";
@@ -263,7 +262,7 @@ export function DailyLeaveDrawer({
         </div>
 
         {picker && (
-          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+          <div>
             <ShamsiCalendar
               value={picker === "from" ? date : endDate}
               minDate={picker === "to" && date ? date : todayStr}
@@ -288,7 +287,7 @@ export function DailyLeaveDrawer({
                 تک‌روزه (حذف تا)
               </button>
             )}
-          </motion.div>
+          </div>
         )}
 
         {/* ── Type + reason ── */}

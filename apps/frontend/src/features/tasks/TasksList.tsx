@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { ListChecks, BadgeCheck, Trash2, Search, Plus, Edit3, Calendar, AlertTriangle, CalendarDays, X } from "lucide-react";
 import { API } from "../../shared/lib/api";
 import { useToast } from "../../shared/ui/Toast";
@@ -286,20 +286,13 @@ export function TasksList() {
         <div className="list" style={{ display: "grid", gap: 8 }}>
           <AnimatePresence>
             {filtered.map((t) => (
-              <motion.div
+              <div
                 key={t.id}
-                layout="position"
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ type: "tween", duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
                 className="row"
                 style={{
                   alignItems: "flex-start",
                   padding: "10px 12px",
                   background: t.done ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.06)",
-                  willChange: "transform, opacity",
-                  transform: "translateZ(0)",
                 }}
               >
                 {/* Checkbox */}
@@ -379,7 +372,7 @@ export function TasksList() {
                     <Trash2 size={13} />
                   </button>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </AnimatePresence>
         </div>

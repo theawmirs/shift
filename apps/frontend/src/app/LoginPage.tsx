@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { Send, Copy, Clock3, RefreshCw, XCircle, ExternalLink } from "lucide-react";
 import QRCode from "qrcode";
 import { API } from "../shared/lib/api";
@@ -171,10 +171,7 @@ export function LoginPage({ onLogin }: { onLogin: (tokens: any, user: any) => vo
 
   return (
     <div className="login-page">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
+      <div
         className="login-card"
         style={{ maxWidth: 400 }}
       >
@@ -186,11 +183,8 @@ export function LoginPage({ onLogin }: { onLogin: (tokens: any, user: any) => vo
 
         <AnimatePresence mode="wait">
           {phase === "idle" || phase === "loading" || phase === "error" ? (
-            <motion.div
+            <div
               key="idle"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
               style={{ display: "grid", gap: 14 }}
             >
               {err && (
@@ -236,13 +230,10 @@ export function LoginPage({ onLogin }: { onLogin: (tokens: any, user: any) => vo
               >
                 با زدن دکمه، لینک یک‌بارمصرف تلگرام ساخته می‌شود (اعتبار ۳ دقیقه)
               </p>
-            </motion.div>
+            </div>
           ) : phase === "expired" ? (
-            <motion.div
+            <div
               key="expired"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
               style={{ display: "grid", gap: 14 }}
             >
               <div
@@ -264,13 +255,10 @@ export function LoginPage({ onLogin }: { onLogin: (tokens: any, user: any) => vo
                 <RefreshCw size={18} />
                 <span>لینک جدید</span>
               </button>
-            </motion.div>
+            </div>
           ) : (
-            <motion.div
+            <div
               key="polling"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
               style={{ display: "grid", gap: 14, textAlign: "center" }}
             >
               {/* Timer */}
@@ -396,10 +384,10 @@ export function LoginPage({ onLogin }: { onLogin: (tokens: any, user: any) => vo
               <button onClick={reset} className="btn btn-ghost" style={{ fontSize: 12 }}>
                 <RefreshCw size={14} /> لینک جدید
               </button>
-            </motion.div>
+            </div>
           )}
         </AnimatePresence>
-      </motion.div>
+      </div>
     </div>
   );
 }

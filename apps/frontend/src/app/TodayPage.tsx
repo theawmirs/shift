@@ -5,7 +5,6 @@ import { DayDoneCard } from "../features/today/DayDoneCard";
 import { DailyLeaveCard } from "../features/leave/DailyLeaveCard";
 import { WeekSummary } from "../features/week/WeekSummary";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import { API } from "../shared/lib/api";
 import { HeroSkeleton, CardSkeleton } from "../shared/ui/Skeleton";
 import { useTodayQuery, useRecordMutation } from "../shared/api/queries";
@@ -169,7 +168,7 @@ export function TodayPage() {
     );
   }
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+    <div>
       {day_status === "done" ? (
         <DayDoneCard day={status.day} weekday={status.weekday} shamsi={shamsi} />
       ) : (
@@ -194,6 +193,6 @@ export function TodayPage() {
       <DailyLeaveCard onChanged={() => refetch()} />
       <div style={{ height: 12 }} />
       <WeekSummary />
-    </motion.div>
+    </div>
   );
 }

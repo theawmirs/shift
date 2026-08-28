@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import { User as UserIcon, LogOut, Save, CheckCircle2 } from "lucide-react";
 import { API } from "../../shared/lib/api";
 import { useAuth } from "../../shared/lib/auth";
@@ -82,12 +81,8 @@ export function ProfileCard() {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="card"
-      style={{ display: "grid", gap: 14 }}
-    >
+    <div className="card" style={{ display: "grid", gap: 14 }}>
+    
       <div className="section-head" style={{ margin: 0 }}>
         <h2 className="display" style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <UserIcon size={18} /> پروفایل
@@ -250,6 +245,6 @@ export function ProfileCard() {
         )}
         خروج از حساب
       </button>
-    </motion.div>
+    </div>
   );
 }

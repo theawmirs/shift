@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import { API } from "../../shared/lib/api";
 import { CardSkeleton } from "../../shared/ui/Skeleton";
 import { DayDetailDrawer } from "../month/DayDetailDrawer";
@@ -46,8 +45,8 @@ export function WeekSummary() {
         </span>
       </div>
       <div className="list">
-        {data.days.map((r: any, i: number) => (
-          <motion.div
+        {data.days.map((r: any) => (
+          <div
             key={r.date}
             className="row"
             onClick={() =>
@@ -56,13 +55,8 @@ export function WeekSummary() {
                 label: `${r.weekday || ""}، ${formatShamsiDateText(r.date)}`,
               })
             }
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: "tween", duration: 0.18, delay: Math.min(0.15, 0.02 * i), ease: [0.32, 0.72, 0, 1] }}
             style={{
               cursor: "pointer",
-              willChange: "transform, opacity",
-              transform: "translateZ(0)",
               ...(r.work_mode === "remote"
                 ? { borderStyle: "dashed", borderColor: "var(--violet)", background: "rgba(124,58,237,.08)" }
                 : {})
@@ -90,7 +84,7 @@ export function WeekSummary() {
               </small>
             </div>
             <span className="badge badge-muted mono">{r.net > 0 ? fmtHMS(r.net) : "—"}</span>
-          </motion.div>
+          </div>
         ))}
       </div>
       <div style={{ height: 10 }} />

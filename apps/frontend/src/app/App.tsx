@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
-import { AnimatePresence } from "framer-motion";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "../shared/api/queryClient";
 import { ToastProvider } from "../shared/ui/Toast";
@@ -113,7 +112,6 @@ function Shell() {
       <div className="app safe">
         <Topbar theme={theme} onToggleTheme={() => setTheme((t) => t === "dark" ? "light" : "dark")} />
         <div className="content">
-          <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname}>
               <Route path="/" element={<TodayPage />} />
               <Route path="/reports" element={<WeekPage />} />
@@ -123,7 +121,6 @@ function Shell() {
               <Route path="/leaves" element={<LeavesPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Routes>
-          </AnimatePresence>
         </div>
         <BottomNav active={tab} onChange={(to: string) => navigate(to)} />
       </div>
