@@ -202,7 +202,7 @@ export function DailyLeaveDrawer({
   const toLabel = endDate || "— (تک‌روزه)";
 
   return (
-    <Drawer open={open} onClose={onClose} title="مرخصی روزانه">
+    <Drawer open={open} onClose={onClose} title="مرخصی روزانه" height="82vh"> {/* uses reusable Drawer — same anim as all sheets */}
       <div style={{ display: "grid", gap: 12 }}>
         <p style={{ color: "var(--muted)", fontSize: 12, margin: 0 }}>
           تمام‌روز · بازه مجاز <b className="mono">{todayStr}</b> تا <b className="mono">{maxStr}</b> · هر روز کاری

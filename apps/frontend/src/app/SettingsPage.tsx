@@ -11,7 +11,7 @@ export function SettingsPage() {
   };
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
+    <div className="page-fade" style={{ display: "grid", gap: 12 }}>
     
       <ProfileCard />
       <SettingsForm />

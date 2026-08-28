@@ -11,6 +11,7 @@ export interface ActionGridProps {
   day_status_reason?: string | null;
   disabledReason?: string | null;
   leave_open?: boolean;
+  holidayOptIn?: boolean;
   liveMinutes?: number;
   standardHours?: number;
 }
@@ -23,6 +24,7 @@ export function ActionGrid({
   day_status_reason,
   disabledReason,
   leave_open,
+  holidayOptIn = false,
   liveMinutes = 0,
   standardHours = 8,
 }: ActionGridProps) {
@@ -37,7 +39,8 @@ export function ActionGrid({
   });
 
   function isDisabled(k: string) {
-    if (day_status === "holiday" || day_status === "done") return true;
+    if (day_status === "done") return true;
+    if (day_status === "holiday" && !holidayOptIn) return true;
     if (day_status === "idle") return k !== "in";
     if (day_status === "working") {
       if (k === "in") return true;
@@ -50,13 +53,15 @@ export function ActionGrid({
 
   function titleFor(k: string) {
     const reason = effectiveReason || "";
-    if (day_status === "holiday" || day_status === "done") {
-      return (
-        reason ||
-        (day_status === "holiday"
-          ? "امروز تعطیله — ثبت بسته‌ست تا فردا"
-          : "امروز قبلاً خروج ثبت شده — تا فردا")
-      );
+    if (day_status === "done") {
+      return reason || "امروز قبلاً خروج ثبت شده — تا فردا";
+    }
+    if (day_status === "holiday" && !holidayOptIn) {
+      return reason || "امروز تعطیله — با «بله، امروز کار می‌کنم» فعالش کن";
+    }
+    if (day_status === "holiday" && holidayOptIn) {
+      if (k === "out" || k === "leave" || k === "back") return "اول ورود بزن";
+      return "";
     }
     if (day_status === "idle") {
       if (k === "out") return "هنوز ورود نزده‌ای";
@@ -143,7 +148,7 @@ export function ActionGrid({
       </div>
 
       {/* Manual Time Override Trigger */}
-      {(day_status === "idle" || day_status === "working") && (
+      {(day_status === "idle" || day_status === "working" || (day_status === "holiday" && holidayOptIn)) && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
           <button
             className="btn btn-ghost mono"

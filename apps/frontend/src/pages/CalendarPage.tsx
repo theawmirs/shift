@@ -217,7 +217,7 @@ export function CalendarPage() {
   };
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
+    <div className="page-fade" style={{ display: "grid", gap: 12 }}>
     
       <div className="card">
         {/* Compact Header navigation */}

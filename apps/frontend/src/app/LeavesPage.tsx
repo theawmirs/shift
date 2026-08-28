@@ -4,7 +4,7 @@ import { DailyLeaveCard, DailyLeaveList } from "../features/leave/DailyLeaveCard
 export function LeavesPage() {
   const { push } = useToast();
   return (
-    <div style={{ display: "grid", gap: 12 }}>
+    <div className="page-fade" style={{ display: "grid", gap: 12 }}>
     
       <div className="card">
         <div className="section-head">

@@ -6,7 +6,7 @@ export function WeekPage() {
   const { push } = useToast();
   const onExcel = (msg: string, variant: ToastVariant = "success") => push(msg, variant);
   return (
-    <div>
+    <div className="page-fade">
       <WeekSummary />
       <div style={{ height: 12 }} />
       <MonthReport onExcel={onExcel} />

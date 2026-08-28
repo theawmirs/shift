@@ -2,6 +2,11 @@ import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence, useDragControls, PanInfo } from "framer-motion";
 
+/**
+ * Reusable BottomSheet — single source for all bottom sheets.
+ * All sheets (DailyLeave, DayDetail, Tasks, ActionGrid, etc.) must use this.
+ * Animation: tween 0.28s ease [0.32,0.72,0,1], drag-to-close via grab-bar.
+ */
 export function Drawer({
   open,
   onClose,

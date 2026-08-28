@@ -70,8 +70,8 @@ export function useHolidaysQuery(year?: number) {
 export function useRecordMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ event_type, at, date }: { event_type: string; at?: string; date?: string }) =>
-      API.record(event_type, at, date),
+    mutationFn: ({ event_type, at, date, allow_holiday }: { event_type: string; at?: string; date?: string; allow_holiday?: boolean }) =>
+      API.record(event_type, at, date, allow_holiday),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.today });
       queryClient.invalidateQueries({ queryKey: ["month"] });

@@ -300,8 +300,8 @@ export const API = {
   },
 
   // records
-  record(event_type: string, at?: string, date?: string): Promise<any> {
-    return this.jpost("/api/record", { event_type, at, date });
+  record(event_type: string, at?: string, date?: string, allow_holiday?: boolean): Promise<any> {
+    return this.jpost("/api/record", { event_type, at, date, allow_holiday: !!allow_holiday });
   },
   editDay(body: {
     date: string;

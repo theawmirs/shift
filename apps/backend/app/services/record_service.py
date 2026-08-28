@@ -231,13 +231,15 @@ def day_payload(conn: sqlite3.Connection, sdate: str, user_id: int | None = None
         "daily_leave": dl,
     }
 
-def record_event(conn: sqlite3.Connection, event_type: str, at: str | None = None, date_str: str | None = None, note: str | None = None, user_id: int | None = None) -> str:
+def record_event(conn: sqlite3.Connection, event_type: str, at: str | None = None, date_str: str | None = None, note: str | None = None, user_id: int | None = None, allow_holiday: bool = False) -> str:
     sdate = date_str or today_str()
     d = compute_day(conn, sdate, user_id=user_id)
     is_hol, hol_name = holiday_name(conn, sdate)
     ds, _, _ = compute_day_status(is_hol, d["in"], d["out"], d["leave_open"], hol_name)
 
-    if ds == "holiday":
+    if ds == "holiday" and not allow_holiday:
+        raise ValueError("امروز تعطیله — ثبت بسته‌ست تا فردا")
+    if ds == "holiday" and allow_holiday and event_type not in ("in", "out", "leave_start", "leave_end"):
         raise ValueError("امروز تعطیله — ثبت بسته‌ست تا فردا")
     if ds == "done":
         raise ValueError("امروز قبلاً خروج ثبت شده — تا فردا")

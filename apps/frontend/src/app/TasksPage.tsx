@@ -2,7 +2,7 @@ import { TasksList } from "../features/tasks/TasksList";
 
 export function TasksPage() {
   return (
-    <div>
+    <div className="page-fade">
       <TasksList />
     </div>
   );
