@@ -66,7 +66,8 @@
   --shadow: 0 8px 24px rgba(15,23,42,.12);
 }
 *{box-sizing:border-box}
-html,body{margin:0; padding:0; background:var(--bg); color:var(--text); font-family:"YekanBakh", system-ui, sans-serif; -webkit-font-smoothing:antialiased; transition: background .22s ease, color .22s ease}
+html{ overflow-x:clip; max-width:100% }
+html,body{margin:0; padding:0; background:var(--bg); color:var(--text); font-family:"YekanBakh", system-ui, sans-serif; -webkit-font-smoothing:antialiased; transition: background .22s ease, color .22s ease; overflow-x:clip}
 a{color:inherit}
 button{font:inherit; font-family:inherit}
 .mono{font-family:"YekanBakh", system-ui, sans-serif}
@@ -75,8 +76,9 @@ button{font:inherit; font-family:inherit}
   radial-gradient(900px 500px at 50% -10%, rgba(99,102,241,.18), transparent 60%),
   radial-gradient(700px 400px at 90% 10%, rgba(245,158,11,.12), transparent 50%),
   linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
-  padding: 0 14px 0;
-  max-width: 430px; margin: 0 auto;
+  padding: 0;
+  max-width: none; margin: 0;
+  overflow-x:clip;
   /* bottom-nav height ≈ 62 + safe-area; + extra breathing room */
   --nav-h: 62px;
 }
@@ -91,13 +93,14 @@ button{font:inherit; font-family:inherit}
   background: linear-gradient(180deg, rgba(15,23,42,.96), rgba(15,23,42,.72));
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255,255,255,.06);
-  /* full-bleed: spans entire viewport width, no side gaps */
-  width: 100vw;
-  max-width: 100vw;
-  margin: 0 calc(50% - 50vw) 14px;
-  padding: 10px max(14px, calc((100vw - 430px)/2 + 14px)) 12px max(14px, calc((100vw - 430px)/2 + 14px));
+  /* full-bleed without 100vw overflow: app is full-width, center inner via 100% calc */
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 14px;
+  padding: 10px max(14px, calc((100% - 430px)/2 + 14px)) 12px max(14px, calc((100% - 430px)/2 + 14px));
   display:flex; align-items:center; justify-content:space-between; gap:10px;
   box-sizing: border-box;
+  overflow-x:clip;
 }
 [data-theme="light"] .topbar{
   background: linear-gradient(180deg, rgba(255,247,237,.96), rgba(255,247,237,.82));
@@ -296,7 +299,11 @@ button{font:inherit; font-family:inherit}
 }
 .safe{padding-bottom: env(safe-area-inset-bottom)}
 .content{
-  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 28px);
+  max-width: 430px; margin: 0 auto;
+  padding: 0 14px calc(var(--nav-h) + env(safe-area-inset-bottom) + 28px);
+  overflow-x:clip;
+  box-sizing: border-box;
+  width: 100%;
 }
 /* extra spacer element alternative — ensures last card clears nav even on short pages */
 .content::after{
