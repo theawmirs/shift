@@ -56,11 +56,13 @@ export function WeekSummary() {
                 label: `${r.weekday || ""}، ${formatShamsiDateText(r.date)}`,
               })
             }
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.04 * i }}
+            transition={{ type: "tween", duration: 0.18, delay: Math.min(0.15, 0.02 * i), ease: [0.32, 0.72, 0, 1] }}
             style={{
               cursor: "pointer",
+              willChange: "transform, opacity",
+              transform: "translateZ(0)",
               ...(r.work_mode === "remote"
                 ? { borderStyle: "dashed", borderColor: "var(--violet)", background: "rgba(124,58,237,.08)" }
                 : {})

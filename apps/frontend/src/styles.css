@@ -283,7 +283,14 @@ button{font:inherit; font-family:inherit}
 .toast-icon--ok{ background:#22C55E; color:#052e0b }
 .toast-icon--err{ background:#EF4444; color:#fff }
 
-@media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important} }
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 .safe{padding-bottom: env(safe-area-inset-bottom)}
 .content{
   padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 28px);

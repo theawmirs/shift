@@ -4,7 +4,7 @@ import { Clock3, Timer, BadgeCheck, BarChart3 } from "lucide-react";
 
 function AnimatedNumber({ value }: { value: number }) {
   const mv = useMotionValue(value);
-  const spring = useSpring(mv, { stiffness: 120, damping: 18 });
+  const spring = useSpring(mv, { stiffness: 90, damping: 20 });
   const rounded = useTransform(spring, (v) => v.toFixed(2));
   const [display, setDisplay] = useState(value.toFixed(2));
   useEffect(() => mv.set(value), [value, mv]);
@@ -35,9 +35,10 @@ export function Hero({
   return (
     <motion.div
       className="card brutal rotate-1"
-      initial={{ y: 12, opacity: 0, rotate: -0.6 }}
+      initial={{ y: 8, opacity: 0, rotate: -0.6 }}
       animate={{ y: 0, opacity: 1, rotate: -0.6 }}
-      transition={{ type: "spring", stiffness: 180, damping: 18 }}
+      transition={{ type: "tween", duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+      style={{ willChange: "transform, opacity", transform: "translateZ(0)" }}
     >
       <div className="hero">
         <div className="hero-top">

@@ -45,14 +45,14 @@ export function Drawer({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: 0.2, ease: "linear" }}
           onClick={onOverlay}
           style={{
             position: "fixed",
             inset: 0,
             zIndex: 9998,
             background: "rgba(8,12,22,.65)",
-            backdropFilter: "blur(4px)",
+            willChange: "opacity",
           }}
         />
       )}
@@ -63,12 +63,12 @@ export function Drawer({
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
-          transition={{ type: "spring", damping: 28, stiffness: 360 }}
+          transition={{ type: "tween", duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
           drag="y"
           dragControls={dragControls}
           dragListener={false}
           dragConstraints={{ top: 0, bottom: 0 }}
-          dragElastic={{ top: 0.05, bottom: 0.8 }}
+          dragElastic={{ top: 0.02, bottom: 0.2 }}
           onDragEnd={handleDragEnd}
           style={{
             position: "fixed",
@@ -90,6 +90,8 @@ export function Drawer({
             borderRadius: "20px 20px 0 0",
             boxShadow: "0 -12px 40px rgba(0,0,0,.35)",
             overflow: "hidden",
+            willChange: "transform",
+            transform: "translateZ(0)",
           }}
         >
           {/* Draggable Header / Grab Bar */}

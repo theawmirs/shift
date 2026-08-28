@@ -288,15 +288,18 @@ export function TasksList() {
             {filtered.map((t) => (
               <motion.div
                 key={t.id}
-                layout
-                initial={{ opacity: 0, y: 6 }}
+                layout="position"
+                initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ type: "tween", duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
                 className="row"
                 style={{
                   alignItems: "flex-start",
                   padding: "10px 12px",
                   background: t.done ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.06)",
+                  willChange: "transform, opacity",
+                  transform: "translateZ(0)",
                 }}
               >
                 {/* Checkbox */}

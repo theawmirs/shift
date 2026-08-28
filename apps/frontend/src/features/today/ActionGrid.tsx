@@ -120,7 +120,7 @@ export function ActionGrid({
         className="actions"
         initial="hidden"
         animate="show"
-        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}
+        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.03 } } }}
       >
         {items.map((it) => {
           const dis = isDisabled(it.k);
@@ -134,8 +134,13 @@ export function ActionGrid({
               aria-disabled={dis}
               style={dis ? { opacity: 0.45, pointerEvents: "none", cursor: "not-allowed" } : undefined}
               variants={{
-                hidden: { y: 10, opacity: 0, rotate: it.k === "in" || it.k === "leave" ? -1 : 1 },
-                show: { y: 0, opacity: 1, rotate: it.k === "in" || it.k === "leave" ? -1 : 1 },
+                hidden: { y: 6, opacity: 0, rotate: it.k === "in" || it.k === "leave" ? -1 : 1 },
+                show: {
+                  y: 0,
+                  opacity: 1,
+                  rotate: it.k === "in" || it.k === "leave" ? -1 : 1,
+                  transition: { type: "tween", duration: 0.22, ease: [0.32, 0.72, 0, 1] },
+                },
               }}
               whileHover={dis ? undefined : { y: -2 }}
               whileTap={dis ? undefined : { scale: 0.98 }}
