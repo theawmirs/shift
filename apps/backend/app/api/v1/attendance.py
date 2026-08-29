@@ -73,7 +73,7 @@ def api_record(body: RecordRequest, uid: int | None = Depends(get_current_user_o
         raise HTTPException(status_code=400, detail="event_type must be in|out|leave_start|leave_end")
 
     try:
-        msg = record_service.record_event(conn, et, at=body.at, date_str=body.date, user_id=uid)
+        msg = record_service.record_event(conn, et, at=body.at, date_str=body.date, user_id=uid, allow_holiday=bool(body.allow_holiday))
         return RecordResponse(ok=True, message=msg)
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))

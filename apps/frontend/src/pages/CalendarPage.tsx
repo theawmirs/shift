@@ -1,5 +1,4 @@
 import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useHolidaysQuery, useMonthReportQuery } from "../shared/api/queries";
 import { DayDetailDrawer } from "../features/month/DayDetailDrawer";
@@ -218,12 +217,8 @@ export function CalendarPage() {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      style={{ display: "grid", gap: 12 }}
-    >
+    <div className="page-fade" style={{ display: "grid", gap: 12 }}>
+    
       <div className="card">
         {/* Compact Header navigation */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
@@ -404,6 +399,6 @@ export function CalendarPage() {
         onClose={() => setSelectedDayPayload(null)}
         day={selectedDayPayload}
       />
-    </motion.div>
+    </div>
   );
 }

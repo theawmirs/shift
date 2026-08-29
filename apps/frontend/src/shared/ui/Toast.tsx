@@ -60,11 +60,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           {toasts.map((t) => (
             <motion.div
               key={t.id}
-              initial={{ y: 16, opacity: 0, scale: 0.98 }}
+              initial={{ y: 12, opacity: 0, scale: 0.98 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
-              exit={{ y: 8, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 260, damping: 20 }}
+              exit={{ y: 6, opacity: 0 }}
+              transition={{ type: "tween", duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
               className={`toast ${t.variant === "error" ? "toast--error" : "toast--success"}`}
+              style={{ willChange: "transform, opacity", transform: "translateZ(0)" }}
             >
               <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <span className={`toast-icon ${t.variant === "error" ? "toast-icon--err" : "toast-icon--ok"}`}>

@@ -1,10 +1,10 @@
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { useEffect, useState } from "react";
+import { useMotionValue, useSpring, useTransform } from "framer-motion";
 import { Clock3, Timer, BadgeCheck, BarChart3 } from "lucide-react";
 
 function AnimatedNumber({ value }: { value: number }) {
   const mv = useMotionValue(value);
-  const spring = useSpring(mv, { stiffness: 120, damping: 18 });
+  const spring = useSpring(mv, { stiffness: 90, damping: 20 });
   const rounded = useTransform(spring, (v) => v.toFixed(2));
   const [display, setDisplay] = useState(value.toFixed(2));
   useEffect(() => mv.set(value), [value, mv]);
@@ -33,12 +33,8 @@ export function Hero({
   const liveHours = liveMinutes / 60;
   const pct = Math.min(100, Math.round((liveHours / 8) * 100));
   return (
-    <motion.div
-      className="card brutal rotate-1"
-      initial={{ y: 12, opacity: 0, rotate: -0.6 }}
-      animate={{ y: 0, opacity: 1, rotate: -0.6 }}
-      transition={{ type: "spring", stiffness: 180, damping: 18 }}
-    >
+    <div className="card brutal rotate-1" style={{ willChange: "auto" }}>
+    
       <div className="hero">
         <div className="hero-top">
           <span className="kicker mono">
@@ -72,13 +68,9 @@ export function Hero({
           </div>
         </div>
         <div className="progress" aria-hidden>
-          <motion.i
-            initial={{ width: 0 }}
-            animate={{ width: `${pct}%` }}
-            transition={{ duration: 0.7, ease: "easeOut" }}
-          />
+          <i style={{ width: `${pct}%`, transition: "width 0.5s ease-out" }} />
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

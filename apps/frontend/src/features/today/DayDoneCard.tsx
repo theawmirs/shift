@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import { CheckCircle2, LogIn, LogOut, Coffee, BarChart3, ListChecks, FileEdit } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { fmtHoursFa } from "../../shared/lib/format";
@@ -21,11 +20,8 @@ export function DayDoneCard({ day, weekday, shamsi }: DayDoneCardProps) {
   const isRemote = day?.work_mode === "remote";
 
   return (
-    <motion.div
+    <div
       className="card brutal"
-      initial={{ opacity: 0, scale: 0.96, y: 10 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
       style={{
         background: "linear-gradient(180deg, var(--card) 0%, var(--card2) 100%)",
         borderColor: "var(--border-strong)",
@@ -218,6 +214,6 @@ export function DayDoneCard({ day, weekday, shamsi }: DayDoneCardProps) {
           <ListChecks size={14} /> تسک‌های من
         </button>
       </div>
-    </motion.div>
+    </div>
   );
 }

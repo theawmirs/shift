@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { LogIn, LogOut, Coffee, Undo2, Home, Building2, Clock, Sparkles } from "lucide-react";
 import { Drawer } from "../../shared/ui/Drawer";
 import { fmtHoursFa } from "../../shared/lib/format";
@@ -12,6 +11,7 @@ export interface ActionGridProps {
   day_status_reason?: string | null;
   disabledReason?: string | null;
   leave_open?: boolean;
+  holidayOptIn?: boolean;
   liveMinutes?: number;
   standardHours?: number;
 }
@@ -24,6 +24,7 @@ export function ActionGrid({
   day_status_reason,
   disabledReason,
   leave_open,
+  holidayOptIn = false,
   liveMinutes = 0,
   standardHours = 8,
 }: ActionGridProps) {
@@ -38,7 +39,8 @@ export function ActionGrid({
   });
 
   function isDisabled(k: string) {
-    if (day_status === "holiday" || day_status === "done") return true;
+    if (day_status === "done") return true;
+    if (day_status === "holiday" && !holidayOptIn) return true;
     if (day_status === "idle") return k !== "in";
     if (day_status === "working") {
       if (k === "in") return true;
@@ -51,13 +53,15 @@ export function ActionGrid({
 
   function titleFor(k: string) {
     const reason = effectiveReason || "";
-    if (day_status === "holiday" || day_status === "done") {
-      return (
-        reason ||
-        (day_status === "holiday"
-          ? "امروز تعطیله — ثبت بسته‌ست تا فردا"
-          : "امروز قبلاً خروج ثبت شده — تا فردا")
-      );
+    if (day_status === "done") {
+      return reason || "امروز قبلاً خروج ثبت شده — تا فردا";
+    }
+    if (day_status === "holiday" && !holidayOptIn) {
+      return reason || "امروز تعطیله — با «بله، امروز کار می‌کنم» فعالش کن";
+    }
+    if (day_status === "holiday" && holidayOptIn) {
+      if (k === "out" || k === "leave" || k === "back") return "اول ورود بزن";
+      return "";
     }
     if (day_status === "idle") {
       if (k === "out") return "هنوز ورود نزده‌ای";
@@ -116,29 +120,18 @@ export function ActionGrid({
 
   return (
     <div>
-      <motion.div
-        className="actions"
-        initial="hidden"
-        animate="show"
-        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}
-      >
+      <div className="actions">
         {items.map((it) => {
           const dis = isDisabled(it.k);
           const t = titleFor(it.k);
           return (
-            <motion.button
+            <button
               key={it.k}
               className={`action ${it.cls}`}
               disabled={dis}
               title={t || undefined}
               aria-disabled={dis}
               style={dis ? { opacity: 0.45, pointerEvents: "none", cursor: "not-allowed" } : undefined}
-              variants={{
-                hidden: { y: 10, opacity: 0, rotate: it.k === "in" || it.k === "leave" ? -1 : 1 },
-                show: { y: 0, opacity: 1, rotate: it.k === "in" || it.k === "leave" ? -1 : 1 },
-              }}
-              whileHover={dis ? undefined : { y: -2 }}
-              whileTap={dis ? undefined : { scale: 0.98 }}
               onClick={() => {
                 if (dis) return;
                 handleActionClick(it.k);
@@ -149,13 +142,13 @@ export function ActionGrid({
               </span>
               <h3>{it.title}</h3>
               <p>{it.desc}</p>
-            </motion.button>
+            </button>
           );
         })}
-      </motion.div>
+      </div>
 
       {/* Manual Time Override Trigger */}
-      {(day_status === "idle" || day_status === "working") && (
+      {(day_status === "idle" || day_status === "working" || (day_status === "holiday" && holidayOptIn)) && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
           <button
             className="btn btn-ghost mono"
@@ -297,7 +290,7 @@ export function ActionGrid({
         </div>
       </Drawer>
 
-      <motion.button
+      <button
         className={`action ${isRemote ? "action--remote" : "action--office"}`}
         style={{
           width: "100%",
@@ -307,8 +300,6 @@ export function ActionGrid({
           justifyContent: "space-between",
           padding: "12px 14px",
         }}
-        whileHover={{ y: -1 }}
-        whileTap={{ scale: 0.99 }}
         onClick={onRemoteToggle}
         aria-label="toggle remote"
       >
@@ -324,7 +315,7 @@ export function ActionGrid({
         <span className={`badge ${isRemote ? "badge-ok" : "badge-muted"}`} style={{ fontSize: 11 }}>
           {isRemote ? "دورکار" : "حضوری"}
         </span>
-      </motion.button>
+      </button>
     </div>
   );
 }

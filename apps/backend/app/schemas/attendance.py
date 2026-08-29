@@ -57,6 +57,7 @@ class RecordRequest(BaseModel):
     event_type: str
     at: str | None = None
     date: str | None = None
+    allow_holiday: bool = False
 
 class RecordResponse(BaseModel):
     ok: bool
