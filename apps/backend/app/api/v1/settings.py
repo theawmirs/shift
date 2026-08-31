@@ -36,8 +36,8 @@ def _validate_and_save_setting(body: SettingsUpdateRequest, uid: int | None, con
         if body.value not in ("office", "remote"):
             raise HTTPException(status_code=400, detail="نوع قرارداد کاری نامعتبر است")
         
-        # When changing default_work_mode, ensure all PAST days (up to today) with attendance events 
-        # have their historical mode frozen so changing the default ONLY affects future/unrecorded days.
+        # When changing default_work_mode, ensure all PAST days (before today) with attendance events 
+        # have their historical mode frozen using INSERT OR REPLACE into day_work_mode.
         cur_today = record_service.today_str()
         past_events = conn.execute(
             "SELECT DISTINCT shamsi_date FROM events WHERE shamsi_date < ? AND ((? IS NULL AND user_id IS NULL) OR user_id = ?)",
@@ -51,7 +51,7 @@ def _validate_and_save_setting(body: SettingsUpdateRequest, uid: int | None, con
             ).fetchone()
             if not exists:
                 conn.execute(
-                    "INSERT INTO day_work_mode(shamsi_date, user_id, mode) VALUES(?, ?, 'office')",
+                    "INSERT OR REPLACE INTO day_work_mode(shamsi_date, user_id, mode) VALUES(?, ?, 'office')",
                     (s, uid),
                 )
         conn.commit()
