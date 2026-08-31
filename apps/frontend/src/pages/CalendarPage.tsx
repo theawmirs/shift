@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useHolidaysQuery, useMonthReportQuery } from "../shared/api/queries";
 import { DayDetailDrawer } from "../features/month/DayDetailDrawer";
-import { formatShamsiDateText } from "../shared/lib/format";
+import { formatShamsiDateText, fmtHoursFa } from "../shared/lib/format";
 
 // ── Pure JS Jalali helpers (matching ShamsiCalendar / jalali.py) ──
 const _GD = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -189,7 +189,6 @@ export function CalendarPage() {
     const dateStr = jalaliStr(jy, jm, d);
     const dateFormatted = formatShamsiDateText(dateStr);
     if (dayRow) {
-      // Worked or tracked day payload
       setSelectedDayPayload({
         ...dayRow,
         is_holiday: isHoliday || dayRow.is_holiday,
@@ -197,7 +196,6 @@ export function CalendarPage() {
         label: `${dayRow.weekday || ""}، ${dateFormatted}`,
       });
     } else if (isHoliday) {
-      // Holiday without recorded telemetry
       setSelectedDayPayload({
         date: dateStr,
         label: `${dateFormatted}`,
@@ -206,7 +204,6 @@ export function CalendarPage() {
         has_events: false,
       });
     } else {
-      // Normal empty day
       setSelectedDayPayload({
         date: dateStr,
         label: `${dateFormatted}`,
@@ -216,64 +213,72 @@ export function CalendarPage() {
     }
   };
 
+  const monthWorkDays = monthReport?.totals?.work_days || 0;
+  const monthNetHours = monthReport?.totals?.net || 0;
+  const monthRemoteDays = monthReport?.totals?.remote_days || 0;
+
   return (
     <div className="page-fade" style={{ display: "grid", gap: 12 }}>
-    
-      <div className="card">
-        {/* Compact Header navigation */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+      {/* ── 1. Month Telemetry Card ── */}
+      <div className="card" style={{ display: "grid", gap: 12 }}>
+        {/* Navigation Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <button
-            style={{
-              width: 32,
-              height: 32,
-              minWidth: 32,
-              padding: 0,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 8,
-              border: "1.5px solid #000",
-              boxShadow: "2px 2px 0 #000",
-              background: "#fff",
-              color: "#0F172A",
-              cursor: "pointer",
-              flexShrink: 0,
-            }}
-            onClick={() => nav(-1)}
-            aria-label="ماه قبل"
-          >
-            <ChevronRight size={14} />
-          </button>
-          <div style={{ textAlign: "center" }}>
-            <h2 className="display" style={{ margin: 0, fontSize: 16 }}>
-              {MONTHS[jm - 1]} {jy}
-            </h2>
-          </div>
-          <button
-            style={{
-              width: 32,
-              height: 32,
-              minWidth: 32,
-              padding: 0,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 8,
-              border: "1.5px solid #000",
-              boxShadow: "2px 2px 0 #000",
-              background: "#fff",
-              color: "#0F172A",
-              cursor: "pointer",
-              flexShrink: 0,
-            }}
+            type="button"
+            className="icon-btn"
+            style={{ width: 34, height: 34 }}
             onClick={() => nav(1)}
             aria-label="ماه بعد"
           >
-            <ChevronLeft size={14} />
+            <ChevronRight size={16} />
+          </button>
+
+          <div style={{ textAlign: "center" }}>
+            <span className="kicker" style={{ fontSize: 10 }}>JALALI CALENDAR</span>
+            <h2 className="display" style={{ margin: "2px 0 0", fontSize: 20 }}>
+              {MONTHS[jm - 1]} {jy}
+            </h2>
+          </div>
+
+          <button
+            type="button"
+            className="icon-btn"
+            style={{ width: 34, height: 34 }}
+            onClick={() => nav(-1)}
+            aria-label="ماه قبل"
+          >
+            <ChevronLeft size={16} />
           </button>
         </div>
 
-        {/* Weekday headers: شنبه تا جمعه */}
+        {/* Quick Month Metrics */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+          <div className="row" style={{ padding: "8px 6px", flexDirection: "column", alignItems: "center", gap: 2 }}>
+            <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>کارکرد کل</span>
+            <b className="mono" style={{ fontSize: 13, color: "var(--amber-2)" }}>
+              {monthNetHours > 0 ? fmtHoursFa(monthNetHours) : "۰"}
+            </b>
+          </div>
+
+          <div className="row" style={{ padding: "8px 6px", flexDirection: "column", alignItems: "center", gap: 2 }}>
+            <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>روزهای کاری</span>
+            <b className="mono" style={{ fontSize: 13 }}>
+              {monthWorkDays} روز
+            </b>
+          </div>
+
+          <div className="row" style={{ padding: "8px 6px", flexDirection: "column", alignItems: "center", gap: 2 }}>
+            <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>دورکاری</span>
+            <b className="mono" style={{ fontSize: 13, color: "#818CF8" }}>
+              {monthRemoteDays} روز
+            </b>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 2. Calendar Grid Card ── */}
+      <div className="card" style={{ padding: "14px 12px" }}>
+        {/* Weekday Labels */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 8 }}>
           {WD.map((w, idx) => (
             <span
@@ -291,7 +296,7 @@ export function CalendarPage() {
           ))}
         </div>
 
-        {/* Calendar Day Grid */}
+        {/* Days Grid */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
           {grid.map((d, i) => {
             if (d == null) {
@@ -305,14 +310,19 @@ export function CalendarPage() {
             const today = isToday(d);
             const dayRow = telemetryMap.get(dateStr) || telemetryMap.get(dateNorm);
             const isWorked = Boolean(dayRow?.has_events || (dayRow?.net != null && Number(dayRow.net) > 0) || dayRow?.in);
+            const isRemote = dayRow?.work_mode === "remote";
 
             let borderColor = "rgba(0,0,0,.15)";
             let bg = "#fff";
             let textColor = "#0F172A";
 
-            if (isWorked && isHoliday) {
+            if (isWorked && isRemote) {
+              borderColor = "var(--violet)";
+              bg = "rgba(124,58,237,0.12)";
+              textColor = "#4C1D95";
+            } else if (isWorked && isHoliday) {
               borderColor = "#10b981";
-              bg = "rgba(16,185,129,0.12)";
+              bg = "rgba(16,185,129,0.14)";
               textColor = "#047857";
             } else if (isWorked) {
               borderColor = "#10b981";
@@ -335,32 +345,33 @@ export function CalendarPage() {
                   border: `2px solid ${borderColor}`,
                   background: bg,
                   color: textColor,
-                  fontWeight: today ? 900 : (isWorked || isHoliday) ? 800 : 600,
+                  fontWeight: today ? 900 : isWorked || isHoliday ? 800 : 600,
                   fontSize: 13,
                   cursor: "pointer",
                   position: "relative",
                   boxShadow: today
-                    ? "0 0 0 2px #0F172A inset"
+                    ? "0 0 0 2.5px #0F172A inset"
                     : isWorked
-                    ? "2px 2px 0 rgba(16,185,129,0.35)"
+                    ? "2px 2px 0 rgba(0,0,0,0.15)"
                     : isHoliday
-                    ? "2px 2px 0 rgba(239,68,68,0.3)"
+                    ? "2px 2px 0 rgba(239,68,68,0.2)"
                     : undefined,
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
+                  transition: "transform 0.1s ease",
                 }}
               >
                 <span>{d}</span>
-                <div style={{ display: "flex", gap: 2, marginTop: 2, alignItems: "center" }}>
+                <div style={{ display: "flex", gap: 3, marginTop: 2, alignItems: "center" }}>
                   {isWorked && (
                     <span
                       style={{
                         width: 5,
                         height: 5,
                         borderRadius: "50%",
-                        background: "#10b981",
+                        background: isRemote ? "var(--violet)" : "#10b981",
                       }}
                     />
                   )}
@@ -380,25 +391,76 @@ export function CalendarPage() {
           })}
         </div>
 
-        {/* Legend */}
-        <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 6, fontSize: 11, color: "var(--muted)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, border: "2px solid #10b981", background: "rgba(16,185,129,0.15)" }} />
-            <span>روزهای سبز: روزهای کاری دارای ثبت (کلیک برای جزئیات کارکرد)</span>
+        {/* ── Interactive Legend ── */}
+        <div
+          style={{
+            marginTop: 14,
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 6,
+            fontSize: 11,
+          }}
+        >
+          <div
+            className="row"
+            style={{
+              padding: "6px 8px",
+              background: "rgba(16,185,129,0.08)",
+              borderColor: "#10b981",
+              gap: 6,
+              justifyContent: "flex-start",
+            }}
+          >
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: "#10b981" }} />
+            <span style={{ fontSize: 11, color: "var(--text)" }}>حضور و کارکرد</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, border: "2px solid #ef4444", background: "rgba(239,68,68,0.15)" }} />
-            <span>روزهای قرمز: تعطیلات رسمی و جمعه‌ها</span>
+
+          <div
+            className="row"
+            style={{
+              padding: "6px 8px",
+              background: "rgba(124,58,237,0.08)",
+              borderColor: "var(--violet)",
+              gap: 6,
+              justifyContent: "flex-start",
+            }}
+          >
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: "var(--violet)" }} />
+            <span style={{ fontSize: 11, color: "var(--text)" }}>دورکاری</span>
+          </div>
+
+          <div
+            className="row"
+            style={{
+              padding: "6px 8px",
+              background: "rgba(239,68,68,0.08)",
+              borderColor: "#ef4444",
+              gap: 6,
+              justifyContent: "flex-start",
+            }}
+          >
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: "#ef4444" }} />
+            <span style={{ fontSize: 11, color: "var(--text)" }}>تعطیل رسمی / جمعه</span>
+          </div>
+
+          <div
+            className="row"
+            style={{
+              padding: "6px 8px",
+              background: "rgba(255,255,255,0.04)",
+              borderColor: "rgba(255,255,255,0.12)",
+              gap: 6,
+              justifyContent: "flex-start",
+            }}
+          >
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: "#0F172A", border: "1px solid #fff" }} />
+            <span style={{ fontSize: 11, color: "var(--text)" }}>امروز</span>
           </div>
         </div>
       </div>
 
       {/* Workday & Holiday Telemetry Drawer */}
-      <DayDetailDrawer
-        open={Boolean(selectedDayPayload)}
-        onClose={() => setSelectedDayPayload(null)}
-        day={selectedDayPayload}
-      />
+      <DayDetailDrawer open={Boolean(selectedDayPayload)} onClose={() => setSelectedDayPayload(null)} day={selectedDayPayload} />
     </div>
   );
 }
