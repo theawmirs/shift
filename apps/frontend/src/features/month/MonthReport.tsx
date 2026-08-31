@@ -183,7 +183,7 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
         )}
       </div>
 
-      {/* ── Bento KPI Metric Grid (2x2) with No-Wrap Single Line Text ── */}
+      {/* ── Bento KPI Metric Grid (2x2) with Dynamic Semantic Tokens ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         {/* KPI 1: Net Work */}
         <div
@@ -192,6 +192,7 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
             padding: "10px 12px",
             background: "rgba(245, 158, 11, 0.08)",
             borderColor: "var(--amber)",
+            borderWidth: 2,
             flexDirection: "column",
             alignItems: "flex-start",
             gap: 4,
@@ -214,8 +215,9 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
           className="row"
           style={{
             padding: "10px 12px",
-            background: overtimeHours > 0 ? "rgba(34, 197, 94, 0.08)" : "rgba(255,255,255,0.04)",
-            borderColor: overtimeHours > 0 ? "var(--green)" : "rgba(255,255,255,0.08)",
+            background: overtimeHours > 0 ? "rgba(34, 197, 94, 0.08)" : "var(--surface-2)",
+            borderColor: overtimeHours > 0 ? "var(--green)" : "var(--border-strong)",
+            borderWidth: 2,
             flexDirection: "column",
             alignItems: "flex-start",
             gap: 4,
@@ -240,6 +242,7 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
             padding: "10px 12px",
             background: deficitHours > 0 ? "rgba(239, 68, 68, 0.08)" : "rgba(34, 197, 94, 0.08)",
             borderColor: deficitHours > 0 ? "var(--red)" : "var(--green)",
+            borderWidth: 2,
             flexDirection: "column",
             alignItems: "flex-start",
             gap: 4,
@@ -262,8 +265,9 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
           className="row"
           style={{
             padding: "10px 12px",
-            background: "rgba(255,255,255,0.04)",
-            borderColor: "rgba(255,255,255,0.08)",
+            background: "var(--surface-2)",
+            borderColor: "var(--border-strong)",
+            borderWidth: 2,
             flexDirection: "column",
             alignItems: "flex-start",
             gap: 4,
@@ -285,8 +289,8 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
       {/* ── Annual Leave Balance Progress Track ── */}
       <div
         style={{
-          background: "rgba(255,255,255,0.04)",
-          border: "2px solid rgba(255,255,255,0.08)",
+          background: "var(--surface-2)",
+          border: "2px solid var(--border-strong)",
           borderRadius: 14,
           padding: "10px 12px",
           display: "grid",
@@ -370,8 +374,8 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
                   style={{
                     padding: "8px 10px",
                     cursor: "pointer",
-                    background: isRemote ? "rgba(124,58,237,.06)" : "rgba(255,255,255,.04)",
-                    borderColor: isRemote ? "var(--violet)" : undefined,
+                    background: isRemote ? "rgba(124,58,237,.06)" : "var(--surface-2)",
+                    borderColor: isRemote ? "var(--violet)" : "var(--border-strong)",
                     borderStyle: isRemote ? "dashed" : "solid",
                   }}
                 >
