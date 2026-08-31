@@ -5,7 +5,7 @@ import { queryClient } from "../shared/api/queryClient";
 import { ToastProvider } from "../shared/ui/Toast";
 import { AttendanceProvider } from "../shared/lib/attendance";
 import { AuthContext } from "../shared/lib/auth";
-import { Topbar, BottomNav } from "../shared/ui/Chrome";
+import { Topbar, BottomNav, DesktopSidebar } from "../shared/ui/Chrome";
 import { TodayPage } from "./TodayPage";
 import { WeekPage } from "./WeekPage";
 import { TasksPage } from "./TasksPage";
@@ -39,7 +39,6 @@ function Shell() {
     }
   }, [theme]);
 
-  // Validate token on mount via /api/auth/me (loads user) — with silent refresh on 401
   useEffect(() => {
     if (!token) { setChecking(false); return; }
     API.setToken(token);
@@ -109,35 +108,52 @@ function Shell() {
 
   return (
     <AuthContext.Provider value={{ user, setUser, logout: handleLogout, token }}>
-      <div className="app safe">
-        <Topbar theme={theme} onToggleTheme={() => setTheme((t) => t === "dark" ? "light" : "dark")} />
-        <div className="content">
+      <div className="app safe desktop-layout-container">
+        {/* Desktop Sidebar (visible on md/lg desktop screens) */}
+        <DesktopSidebar
+          active={tab}
+          onChange={(to) => navigate(to)}
+          theme={theme}
+          onToggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+        />
+
+        {/* Main Application Area */}
+        <div className="desktop-main-wrapper">
+          {/* Mobile Topbar */}
+          <Topbar theme={theme} onToggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))} />
+
+          <main className="content">
             <Routes location={location} key={location.pathname}>
               <Route path="/" element={<TodayPage />} />
               <Route path="/reports" element={<WeekPage />} />
               <Route path="/week" element={<WeekPage />} />
               <Route path="/calendar" element={<CalendarPage />} />
               <Route path="/tasks" element={<TasksPage />} />
-              <Route path="/leaves" element={<LeavesPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/leaves" element={<LeavesPage />} />
             </Routes>
+          </main>
         </div>
-        <BottomNav active={tab} onChange={(to: string) => navigate(to)} />
+
+        {/* Mobile Bottom Navigation (hidden on desktop) */}
+        <BottomNav active={tab} onChange={(to) => navigate(to)} />
       </div>
     </AuthContext.Provider>
   );
 }
 
-export default function App() {
+export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <ToastProvider>
-          <AttendanceProvider>
+      <ToastProvider>
+        <AttendanceProvider>
+          <BrowserRouter>
             <Shell />
-          </AttendanceProvider>
-        </ToastProvider>
-      </BrowserRouter>
+          </BrowserRouter>
+        </AttendanceProvider>
+      </ToastProvider>
     </QueryClientProvider>
   );
 }
+
+export default App;
