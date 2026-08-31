@@ -99,7 +99,7 @@ export function SettingsForm() {
         </span>
       </div>
 
-      {/* ── 1. Default Work Mode Selector (Office vs Remote) ── */}
+      {/* ── 1. Default Work Mode Selector (Office vs Remote) — No redundant badges ── */}
       <div
         className="row"
         style={{
@@ -111,18 +111,13 @@ export function SettingsForm() {
           gap: 10,
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: 13, color: "var(--text)" }}>
-              نوع پیش‌فرض قرارداد کاری
-            </div>
-            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-              روزهای کاری به طور خودکار با این نوع شروع می‌شوند (قابل تغییر روزانه در صفحه امروز).
-            </div>
+        <div>
+          <div style={{ fontWeight: 800, fontSize: 13, color: "var(--text)" }}>
+            نوع پیش‌فرض قرارداد کاری
           </div>
-          <span className="badge badge-muted mono" style={{ fontSize: 10 }}>
-            پیش‌فرض روزها
-          </span>
+          <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2, lineHeight: 1.5 }}>
+            روزهای آینده به طور خودکار با این نوع ثبت می‌شوند (بدون تغییر در سوابق گذشته).
+          </div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -338,7 +333,7 @@ export function SettingsForm() {
       >
         <AlertTriangle size={16} style={{ color: "var(--amber-2)", flexShrink: 0 }} />
         <span style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
-          توجه: تغییر این مقادیر روی محاسبات آماری و گزارش‌های قبلی نیز تأثیرگذار خواهد بود (Retroactive).
+          توجه: تغییر مقادیر ساعت موظفی و پنجره‌های تردد روی محاسبات آماری و گزارش‌های قبلی نیز اعمال می‌شود.
         </span>
       </div>
     </div>
