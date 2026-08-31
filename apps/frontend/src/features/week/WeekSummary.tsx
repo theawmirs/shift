@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { API } from "../../shared/lib/api";
 import { CardSkeleton } from "../../shared/ui/Skeleton";
 import { DayDetailDrawer } from "../month/DayDetailDrawer";
-import { formatShamsiDateText } from "../../shared/lib/format";
+import { formatShamsiDateText, fmtHoursCompactFa } from "../../shared/lib/format";
 import { CalendarRange, Clock, Sparkles, ChevronLeft, Building2, Home } from "lucide-react";
 
 export function WeekSummary() {
@@ -23,14 +23,6 @@ export function WeekSummary() {
       </div>
     );
   if (!data) return <CardSkeleton rows={3} />;
-
-  const fmtHMS = (h: any) => {
-    if (h == null || Number(h) === 0) return "۰:۰۰";
-    const n = Number(h);
-    const hi = Math.floor(n),
-      mi = Math.round((n - hi) * 60);
-    return `${hi}:${String(mi).padStart(2, "0")}`;
-  };
 
   const fmtHM = (h: any) => (h == null || Number(h) === 0 ? "—" : `${Number(h).toFixed(2)} ساعت`);
 
@@ -63,7 +55,7 @@ export function WeekSummary() {
         </span>
       </div>
 
-      {/* ── Bento KPI Metric Grid ── */}
+      {/* ── Bento KPI Metric Grid (with dynamic tokens) ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         {/* Net Hours KPI */}
         <div
@@ -72,6 +64,7 @@ export function WeekSummary() {
             padding: "10px 12px",
             background: "rgba(245, 158, 11, 0.08)",
             borderColor: "var(--amber)",
+            borderWidth: 2,
             flexDirection: "column",
             alignItems: "flex-start",
             gap: 4,
@@ -81,9 +74,12 @@ export function WeekSummary() {
             <Clock size={13} />
             <span>مجموع کارکرد خالص</span>
           </div>
-          <b className="mono" style={{ fontSize: 16, color: "var(--text)" }}>
-            {fmtHMS(netTotal)} <small style={{ fontSize: 11, fontWeight: 600 }}>ساعت</small>
-          </b>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 4, whiteSpace: "nowrap" }}>
+            <b className="mono" style={{ fontSize: 18, color: "var(--text)" }}>
+              {fmtHoursCompactFa(netTotal)}
+            </b>
+            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>
+          </div>
         </div>
 
         {/* Balance Status KPI */}
@@ -93,6 +89,7 @@ export function WeekSummary() {
             padding: "10px 12px",
             background: deficitTotal > 0 ? "rgba(239, 68, 68, 0.08)" : "rgba(34, 197, 94, 0.08)",
             borderColor: deficitTotal > 0 ? "var(--red)" : "var(--green)",
+            borderWidth: 2,
             flexDirection: "column",
             alignItems: "flex-start",
             gap: 4,
@@ -111,13 +108,18 @@ export function WeekSummary() {
             <Sparkles size={13} />
             <span>{deficitTotal > 0 ? "کسری هفته" : overtimeTotal > 0 ? "اضافه‌کاری هفته" : "وضعیت موظفی"}</span>
           </div>
-          <b className="mono" style={{ fontSize: 16, color: deficitTotal > 0 ? "var(--red)" : "var(--green)" }}>
-            {deficitTotal > 0
-              ? `${fmtHMS(deficitTotal)} -`
-              : overtimeTotal > 0
-              ? `+ ${fmtHMS(overtimeTotal)}`
-              : "تکمیل ✔"}
-          </b>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 4, whiteSpace: "nowrap" }}>
+            <b className="mono" style={{ fontSize: 18, color: deficitTotal > 0 ? "var(--red)" : "var(--green)" }}>
+              {deficitTotal > 0
+                ? `${fmtHoursCompactFa(deficitTotal)} -`
+                : overtimeTotal > 0
+                ? `+ ${fmtHoursCompactFa(overtimeTotal)}`
+                : "تکمیل ✔"}
+            </b>
+            {(deficitTotal > 0 || overtimeTotal > 0) && (
+              <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -143,8 +145,8 @@ export function WeekSummary() {
               style={{
                 cursor: "pointer",
                 padding: "10px 12px",
-                background: isRemote ? "rgba(124,58,237,.06)" : "rgba(255,255,255,.04)",
-                borderColor: isRemote ? "var(--violet)" : "rgba(255,255,255,.08)",
+                background: isRemote ? "rgba(124,58,237,.06)" : "var(--surface-2)",
+                borderColor: isRemote ? "var(--violet)" : "var(--border-strong)",
                 borderStyle: isRemote ? "dashed" : "solid",
                 transition: "all 0.15s ease",
               }}
@@ -185,7 +187,7 @@ export function WeekSummary() {
 
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span className="badge badge-muted mono" style={{ fontSize: 11, fontWeight: 800 }}>
-                  {r.net > 0 ? fmtHMS(r.net) : "—"}
+                  {r.net > 0 ? fmtHoursCompactFa(r.net) : "—"}
                 </span>
                 <ChevronLeft size={14} style={{ color: "var(--muted)", opacity: 0.7 }} />
               </div>

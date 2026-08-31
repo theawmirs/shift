@@ -251,9 +251,20 @@ export function CalendarPage() {
           </button>
         </div>
 
-        {/* Quick Month Metrics (No-wrap single line format) */}
+        {/* Quick Month Metrics (No-wrap single line format + explicit semantic borders) */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-          <div className="row" style={{ padding: "8px 6px", flexDirection: "column", alignItems: "center", gap: 3 }}>
+          <div
+            className="row"
+            style={{
+              padding: "8px 6px",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 3,
+              background: "rgba(245, 158, 11, 0.08)",
+              borderColor: "var(--amber)",
+              borderWidth: 2,
+            }}
+          >
             <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>کارکرد کل</span>
             <div style={{ display: "flex", alignItems: "baseline", gap: 2, whiteSpace: "nowrap" }}>
               <b className="mono" style={{ fontSize: 14, color: "var(--amber-2)" }}>
@@ -263,7 +274,18 @@ export function CalendarPage() {
             </div>
           </div>
 
-          <div className="row" style={{ padding: "8px 6px", flexDirection: "column", alignItems: "center", gap: 3 }}>
+          <div
+            className="row"
+            style={{
+              padding: "8px 6px",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 3,
+              background: "var(--surface-2)",
+              borderColor: "var(--border-strong)",
+              borderWidth: 2,
+            }}
+          >
             <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>روزهای کاری</span>
             <div style={{ display: "flex", alignItems: "baseline", gap: 2, whiteSpace: "nowrap" }}>
               <b className="mono" style={{ fontSize: 14 }}>
@@ -273,7 +295,18 @@ export function CalendarPage() {
             </div>
           </div>
 
-          <div className="row" style={{ padding: "8px 6px", flexDirection: "column", alignItems: "center", gap: 3 }}>
+          <div
+            className="row"
+            style={{
+              padding: "8px 6px",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 3,
+              background: "var(--surface-2)",
+              borderColor: "var(--border-strong)",
+              borderWidth: 2,
+            }}
+          >
             <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>دورکاری</span>
             <div style={{ display: "flex", alignItems: "baseline", gap: 2, whiteSpace: "nowrap" }}>
               <b className="mono" style={{ fontSize: 14, color: "#818CF8" }}>
@@ -321,9 +354,9 @@ export function CalendarPage() {
             const isWorked = Boolean(dayRow?.has_events || (dayRow?.net != null && Number(dayRow.net) > 0) || dayRow?.in);
             const isRemote = dayRow?.work_mode === "remote";
 
-            let borderColor = "rgba(0,0,0,.15)";
-            let bg = "#fff";
-            let textColor = "#0F172A";
+            let borderColor = "var(--border-strong)";
+            let bg = "var(--surface-2)";
+            let textColor = "var(--text)";
 
             if (isWorked && isRemote) {
               borderColor = "var(--violet)";
@@ -456,8 +489,8 @@ export function CalendarPage() {
             className="row"
             style={{
               padding: "6px 8px",
-              background: "rgba(255,255,255,0.04)",
-              borderColor: "rgba(255,255,255,0.12)",
+              background: "var(--surface-2)",
+              borderColor: "var(--border-strong)",
               gap: 6,
               justifyContent: "flex-start",
             }}

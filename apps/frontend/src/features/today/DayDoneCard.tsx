@@ -1,6 +1,18 @@
-import { CheckCircle2, LogIn, LogOut, Coffee, BarChart3, ListChecks, FileEdit } from "lucide-react";
+import {
+  CheckCircle2,
+  LogIn,
+  LogOut,
+  Coffee,
+  BarChart3,
+  ListChecks,
+  FileEdit,
+  Clock,
+  Sparkles,
+  Building2,
+  Home,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { fmtHoursFa } from "../../shared/lib/format";
+import { fmtHoursFa, fmtHoursCompactFa } from "../../shared/lib/format";
 
 export interface DayDoneCardProps {
   day: any;
@@ -18,6 +30,8 @@ export function DayDoneCard({ day, weekday, shamsi }: DayDoneCardProps) {
   const overtime = day?.overtime ?? 0;
   const deficit = day?.deficit ?? 0;
   const isRemote = day?.work_mode === "remote";
+  const standardHours = 8;
+  const pct = Math.min(100, Math.round((netHours / standardHours) * 100));
 
   return (
     <div
@@ -25,193 +39,259 @@ export function DayDoneCard({ day, weekday, shamsi }: DayDoneCardProps) {
       style={{
         background: "linear-gradient(180deg, var(--card) 0%, var(--card2) 100%)",
         borderColor: "var(--border-strong)",
+        display: "grid",
+        gap: 14,
       }}
     >
-      {/* Header Badge & Title */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+      {/* ── Top Header Bar with Live Badge & Attendance Mode Chip ── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
         <span
           className="pill pill-live"
           style={{
             background: "#22C55E",
             color: "#052e0b",
-            fontSize: 12,
-            gap: 6,
+            fontSize: 11,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            padding: "5px 10px",
           }}
         >
-          <CheckCircle2 size={15} /> روز کاری به پایان رسید
+          <CheckCircle2 size={14} /> روز کاری پایان یافت
         </span>
-        {isRemote && (
-          <span
-            className="badge"
-            style={{
-              background: "#DDD6FE",
-              color: "#4C1D95",
-              borderColor: "#000",
-              fontWeight: 800,
-            }}
-          >
-            🏠 دورکار
-          </span>
-        )}
+
+        {/* Location mode badge (Remote vs Office) */}
+        <span
+          className="badge"
+          style={{
+            background: isRemote ? "#DDD6FE" : "#FEF3C7",
+            color: isRemote ? "#4C1D95" : "#92400E",
+            border: "1.5px solid #000",
+            fontSize: 11,
+            fontWeight: 800,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            padding: "4px 8px",
+          }}
+        >
+          {isRemote ? <Home size={13} /> : <Building2 size={13} />}
+          <span>{isRemote ? "دورکاری" : "حضور در دفتر"}</span>
+        </span>
       </div>
 
-      <div style={{ marginBottom: 14 }}>
-        <span className="kicker mono" style={{ fontSize: 11 }}>
+      {/* ── Title & Day Meta ── */}
+      <div>
+        <div className="kicker mono" style={{ fontSize: 11 }}>
           {weekday && shamsi ? `${weekday} — ${shamsi}` : "امروز"}
-        </span>
-        <h2 className="display" style={{ fontSize: 22, margin: "4px 0 2px", color: "var(--text)" }}>
+        </div>
+        <h2 className="display" style={{ fontSize: 24, margin: "4px 0 2px", color: "var(--text)" }}>
           خسته نباشی! 🎉
         </h2>
-        <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
-          خروج امروزت ثبت شده و عملکردت برای گزارش محاسبه شد.
+        <p style={{ margin: 0, color: "var(--muted)", fontSize: 12, lineHeight: 1.5 }}>
+          تایم‌شیت امروز با موفقیت بسته شد و ساعات کارکرد در سوابق ذخیره گردید.
         </p>
       </div>
 
-      {/* Overtime Form Submission Reminder Banner if overtime exists */}
+      {/* ── Bento Metric Grid: In/Out Times + Net / Status ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        {/* Clock In */}
+        <div
+          className="row"
+          style={{
+            padding: "10px 12px",
+            background: "var(--surface-2)",
+            borderColor: "var(--border-strong)",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: 4,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--amber-2)", fontSize: 11, fontWeight: 800 }}>
+            <LogIn size={13} />
+            <span>زمان ورود</span>
+          </div>
+          <b className="mono" style={{ fontSize: 17, color: "var(--text)" }}>
+            {inTime}
+          </b>
+        </div>
+
+        {/* Clock Out */}
+        <div
+          className="row"
+          style={{
+            padding: "10px 12px",
+            background: "var(--surface-2)",
+            borderColor: "var(--border-strong)",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: 4,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--muted)", fontSize: 11, fontWeight: 800 }}>
+            <LogOut size={13} />
+            <span>زمان خروج</span>
+          </div>
+          <b className="mono" style={{ fontSize: 17, color: "var(--text)" }}>
+            {outTime}
+          </b>
+        </div>
+
+        {/* Net Hours KPI */}
+        <div
+          className="row"
+          style={{
+            padding: "10px 12px",
+            background: "rgba(245, 158, 11, 0.08)",
+            borderColor: "var(--amber)",
+            borderWidth: 2,
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: 4,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--amber-2)", fontSize: 11, fontWeight: 800 }}>
+            <Clock size={13} />
+            <span>کارکرد خالص</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 3, whiteSpace: "nowrap" }}>
+            <b className="mono" style={{ fontSize: 18, color: "var(--text)" }}>
+              {fmtHoursCompactFa(netHours)}
+            </b>
+            <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>
+          </div>
+        </div>
+
+        {/* Status / Deficit / Overtime KPI */}
+        <div
+          className="row"
+          style={{
+            padding: "10px 12px",
+            background: deficit > 0 ? "rgba(239, 68, 68, 0.08)" : "rgba(34, 197, 94, 0.08)",
+            borderColor: deficit > 0 ? "var(--red)" : "var(--green)",
+            borderWidth: 2,
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: 4,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              color: deficit > 0 ? "var(--red)" : "var(--green)",
+              fontSize: 11,
+              fontWeight: 800,
+            }}
+          >
+            <Sparkles size={13} />
+            <span>{deficit > 0 ? "کسری موظفی" : overtime > 0 ? "اضافه‌کاری" : "وضعیت شیفت"}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 3, whiteSpace: "nowrap" }}>
+            <b className="mono" style={{ fontSize: 16, color: deficit > 0 ? "var(--red)" : "var(--green)" }}>
+              {deficit > 0
+                ? `${fmtHoursCompactFa(deficit)} -`
+                : overtime > 0
+                ? `+ ${fmtHoursCompactFa(overtime)}`
+                : "تکمیل ۱۰۰٪ ✔"}
+            </b>
+            {(deficit > 0 || overtime > 0) && (
+              <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Optional Hourly Leave Indicator ── */}
+      {leaveHours > 0 && (
+        <div
+          className="row"
+          style={{
+            padding: "8px 12px",
+            background: "rgba(96, 165, 250, 0.08)",
+            borderColor: "#60A5FA",
+            fontSize: 12,
+          }}
+        >
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Coffee size={14} style={{ color: "#60A5FA" }} />
+            <b>مرخصی ساعتی استفاده‌شده:</b>
+          </span>
+          <b className="mono">{fmtHoursFa(leaveHours)}</b>
+        </div>
+      )}
+
+      {/* ── Overtime Reminder Banner (if confirmed) ── */}
       {overtime > 0 && (
         <div
           className="row"
           style={{
-            marginBottom: 12,
             borderColor: "var(--amber)",
             background: "rgba(245,158,11,0.12)",
             color: "var(--text)",
             flexDirection: "column",
             alignItems: "stretch",
             gap: 6,
+            padding: "10px 12px",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 800, color: "var(--amber-2)" }}>
-              <FileEdit size={16} /> یادآوری برگه اضافه‌کاری
+              <FileEdit size={16} /> یادآوری ثبت برگه اضافه‌کاری
             </span>
             <span className="badge" style={{ background: "var(--amber)", color: "#0F172A", fontWeight: 800, fontSize: 10 }}>
               {fmtHoursFa(overtime)}
             </span>
           </div>
           <p style={{ margin: 0, fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
-            تسک یادآور برای پر کردن فرم اضافه‌کاری در بخش «تسک‌ها» ثبت شد. لطفاً فرم را تحویل دهید.
+            تسک یادآور برای پر کردن فرم اضافه‌کاری در روز کاری بعدی فعال شد.
           </p>
         </div>
       )}
 
-      {/* Clock In / Out Summary Chips */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-        <div
-          className="row"
-          style={{
-            padding: "10px 12px",
-            background: "rgba(255,255,255,0.06)",
-            justifyContent: "flex-start",
-            gap: 8,
-          }}
-        >
-          <span
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 8,
-              display: "grid",
-              placeItems: "center",
-              background: "#FDE68A",
-              color: "#0F172A",
-              border: "1.5px solid #000",
-            }}
-          >
-            <LogIn size={14} />
-          </span>
-          <div>
-            <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>ساعت ورود</div>
-            <b className="mono" style={{ fontSize: 14 }}>
-              {inTime}
-            </b>
-          </div>
+      {/* ── Completion Progress Bar ── */}
+      <div
+        style={{
+          background: "var(--surface-2)",
+          border: "2px solid var(--border-strong)",
+          borderRadius: 14,
+          padding: "8px 12px",
+          display: "grid",
+          gap: 6,
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11 }}>
+          <span style={{ color: "var(--muted)", fontWeight: 700 }}>میزان پوشش موظفی ۸ ساعته:</span>
+          <b className="mono" style={{ color: pct >= 100 ? "var(--green)" : "var(--amber)" }}>
+            {pct}٪
+          </b>
         </div>
-
-        <div
-          className="row"
-          style={{
-            padding: "10px 12px",
-            background: "rgba(255,255,255,0.06)",
-            justifyContent: "flex-start",
-            gap: 8,
-          }}
-        >
-          <span
+        <div className="progress" style={{ height: 8 }}>
+          <i
             style={{
-              width: 28,
-              height: 28,
-              borderRadius: 8,
-              display: "grid",
-              placeItems: "center",
-              background: "#fff",
-              color: "#0F172A",
-              border: "1.5px solid #000",
+              width: `${pct}%`,
+              background: pct >= 100 ? "var(--green)" : "linear-gradient(90deg, var(--amber), var(--violet))",
             }}
-          >
-            <LogOut size={14} />
-          </span>
-          <div>
-            <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>ساعت خروج</div>
-            <b className="mono" style={{ fontSize: 14 }}>
-              {outTime}
-            </b>
-          </div>
+          />
         </div>
       </div>
 
-      {/* Performance Summary Rows */}
-      <div style={{ display: "grid", gap: 6, marginBottom: 14 }}>
-        <div className="row" style={{ padding: "8px 12px" }}>
-          <b>کارکرد خالص امروز</b>
-          <span className="mono" style={{ fontWeight: 800, color: "var(--amber-2)" }}>
-            {fmtHoursFa(netHours)}
-          </span>
-        </div>
-
-        {leaveHours > 0 && (
-          <div className="row" style={{ padding: "8px 12px" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <Coffee size={13} style={{ color: "var(--muted)" }} />
-              <b>مرخصی ساعتی</b>
-            </span>
-            <span className="mono">{fmtHoursFa(leaveHours)}</span>
-          </div>
-        )}
-
-        <div className="row" style={{ padding: "8px 12px" }}>
-          <b>وضعیت کارکرد</b>
-          <span
-            className="mono"
-            style={{
-              fontWeight: 800,
-              color: deficit > 0 ? "var(--red)" : "var(--green)",
-            }}
-          >
-            {deficit > 0
-              ? `کسری: ${fmtHoursFa(deficit)}`
-              : overtime > 0
-              ? `+ ${fmtHoursFa(overtime)} اضافه‌کاری 🎉`
-              : "تکمیل موظفی بدون کسری ✨"}
-          </span>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
+      {/* ── Quick Action Navigation Buttons ── */}
       <div style={{ display: "flex", gap: 8 }}>
         <button
-          className="btn btn-ghost"
+          className="btn btn-ghost mono"
           style={{ flex: 1, padding: "10px 12px", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
           onClick={() => navigate("/reports")}
         >
-          <BarChart3 size={14} /> مشاهده گزارش‌ها
+          <BarChart3 size={15} /> مشاهده گزارش‌ها
         </button>
         <button
-          className="btn btn-primary"
+          className="btn btn-primary mono"
           style={{ flex: 1, padding: "10px 12px", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
           onClick={() => navigate("/tasks")}
         >
-          <ListChecks size={14} /> تسک‌های من
+          <ListChecks size={15} /> تسک‌های من
         </button>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Download, ChevronDown } from "lucide-react";
+import { AlertTriangle, Download, ChevronDown, Sliders, FileSpreadsheet, Save, Home, Building2 } from "lucide-react";
 import { API } from "../../shared/lib/api";
 import { useToast } from "../../shared/ui/Toast";
 import { CardSkeleton } from "../../shared/ui/Skeleton";
@@ -18,6 +18,7 @@ export function SettingsForm() {
     end_time_end: "17:15",
     standard_hours: "8",
     leave_quota_hours: "208",
+    default_work_mode: "office",
   });
   const [saving, setSaving] = useState<string | null>(null);
   const [selMonth, setSelMonth] = useState("");
@@ -37,16 +38,19 @@ export function SettingsForm() {
     }
   }, [selMonth, months]);
 
-  const onSave = async (k: string) => {
-    const v = String(values[k] || "").trim();
+  const onSave = async (k: string, directVal?: string) => {
+    const v = String(directVal ?? values[k] ?? "").trim();
     if (!v) {
-      push(`❌ ${k} خالیه`, "error");
+      push(`❌ فیلد نمی‌تواند خالی باشد`, "error");
       return;
     }
     setSaving(k);
     try {
       await updateSettingsMutation.mutateAsync({ key: k, value: v });
-      push(`✅ ذخیره شد — ${k} = ${v}`);
+      if (directVal !== undefined) {
+        setValues((s) => ({ ...s, [k]: directVal }));
+      }
+      push(`✅ تنظیم با موفقیت ذخیره شد`);
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
     } finally {
@@ -56,7 +60,7 @@ export function SettingsForm() {
 
   const downloadExcel = async () => {
     if (!selMonth) {
-      push("❌ ماهی انتخاب نشده", "error");
+      push("❌ ابتدا یک ماه را انتخاب کنید", "error");
       return;
     }
     setDlLoading(true);
@@ -68,9 +72,9 @@ export function SettingsForm() {
       a.href = url;
       a.click();
       URL.revokeObjectURL(url);
-      push("📤 اکسل دانلود شد");
+      push("📤 فایل اکسل با موفقیت دانلود شد");
     } catch (e: any) {
-      push(`❌ اکسل: ${e.message}`, "error");
+      push(`❌ خطا در دانلود اکسل: ${e.message}`, "error");
     } finally {
       setDlLoading(false);
     }
@@ -78,129 +82,259 @@ export function SettingsForm() {
 
   if (settingsQuery.isLoading && !settingsQuery.data) return <CardSkeleton rows={4} />;
 
+  const currentDefaultMode = values.default_work_mode || "office";
+
   return (
-    <div className="settings">
-      <div className="card">
-        <div className="section-head">
-          <h2 className="display">تنظیمات</h2>
-          <span className="kicker mono">پیکربندی پایه</span>
+    <div className="card" style={{ display: "grid", gap: 16 }}>
+      {/* ── Section Header ── */}
+      <div className="section-head" style={{ margin: 0 }}>
+        <div>
+          <div className="kicker">SYSTEM CONFIGURATION</div>
+          <h2 className="display" style={{ fontSize: 18, marginTop: 2, display: "flex", alignItems: "center", gap: 8 }}>
+            <Sliders size={18} /> پارامترهای کاری
+          </h2>
         </div>
-        <div style={{ display: "grid", gap: 10 }}>
-          {[
-            { k: "start_time", label: "آغاز پنجره ورود", ph: "07:00" },
-            { k: "start_time_end", label: "اتمام پنجره ورود", ph: "09:15" },
-            { k: "end_time", label: "آغاز پنجره خروج", ph: "15:00" },
-            { k: "end_time_end", label: "اتمام پنجره خروج", ph: "17:15" },
-            { k: "standard_hours", label: "ساعت کاری روزانه (موظفی)", ph: "8" },
-            { k: "leave_quota_hours", label: "سهمیه مرخصی سالانه (ساعت)", ph: "208" },
-          ].map((f) => (
-            <label key={f.k} className="field">
-              <span style={{ fontWeight: 800, fontSize: 12 }}>{f.label}</span>
-              <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input
-                  value={values[f.k] || ""}
-                  onChange={(e) => setValues((s) => ({ ...s, [f.k]: e.target.value }))}
-                  placeholder={f.ph}
-                  className="mono"
-                />
-                <button
-                  className="btn btn-primary"
-                  style={{ width: "auto", padding: "8px 12px", boxShadow: "3px 3px 0 #000", opacity: saving === f.k ? 0.6 : 1 }}
-                  disabled={saving === f.k}
-                  onClick={() => onSave(f.k)}
-                >
-                  {saving === f.k ? "…" : "ذخیره"}
-                </button>
-              </span>
-            </label>
-          ))}
-        </div>
+        <span className="badge badge-muted mono" style={{ fontSize: 10 }}>
+          قوانین تایم‌شیت
+        </span>
+      </div>
 
-        {/* ── Excel Archive Section ── */}
-        <div style={{ marginTop: 18, paddingTop: 16, borderTop: "2px dashed var(--border-strong)" }}>
-          <div className="section-head" style={{ margin: "0 0 10px" }}>
-            <h2 className="display" style={{ fontSize: 14 }}>
-              آرشیو اکسل
-            </h2>
-            <span className="kicker mono">سوابق ماهانه</span>
+      {/* ── 1. Default Work Mode Selector (Office vs Remote) — No redundant badges ── */}
+      <div
+        className="row"
+        style={{
+          padding: "12px",
+          background: "var(--surface-2)",
+          borderColor: "var(--border-strong)",
+          flexDirection: "column",
+          alignItems: "stretch",
+          gap: 10,
+        }}
+      >
+        <div>
+          <div style={{ fontWeight: 800, fontSize: 13, color: "var(--text)" }}>
+            نوع پیش‌فرض قرارداد کاری
           </div>
+          <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2, lineHeight: 1.5 }}>
+            روزهای آینده به طور خودکار با این نوع ثبت می‌شوند (بدون تغییر در سوابق گذشته).
+          </div>
+        </div>
 
-          {months.length === 0 ? (
-            <p style={{ color: "var(--muted)", fontSize: 12, margin: 0 }}>هنوز رکوردی ثبت نشده</p>
-          ) : (
-            <div style={{ display: "grid", gap: 10 }}>
-              <label className="field" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-                <span style={{ fontWeight: 800, fontSize: 12 }}>انتخاب ماه</span>
-                <div style={{ position: "relative" }}>
-                  <select
-                    value={selMonth}
-                    onChange={(e) => setSelMonth(e.target.value)}
-                    className="mono"
-                    style={{
-                      width: "100%",
-                      padding: "10px 36px 10px 12px",
-                      borderRadius: 12,
-                      border: "2px solid #000",
-                      background: "#fff",
-                      color: "#0F172A",
-                      fontWeight: 700,
-                      fontSize: 14,
-                      fontFamily: "YekanBakh, sans-serif",
-                      boxShadow: "3px 3px 0 #000",
-                      appearance: "none",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {months.map((m: any) => (
-                      <option key={m.key} value={m.key}>
-                        {m.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    size={16}
-                    style={{
-                      position: "absolute",
-                      left: 12,
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      pointerEvents: "none",
-                      color: "#0F172A",
-                    }}
-                  />
-                </div>
-              </label>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <button
+            type="button"
+            className="btn"
+            style={{
+              padding: "10px",
+              fontSize: 12,
+              fontWeight: 800,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              background: currentDefaultMode === "office" ? "#FEF3C7" : "transparent",
+              color: currentDefaultMode === "office" ? "#92400E" : "var(--muted)",
+              borderColor: currentDefaultMode === "office" ? "#000" : "var(--border-strong)",
+              boxShadow: currentDefaultMode === "office" ? "3px 3px 0 #000" : "none",
+              cursor: "pointer",
+            }}
+            onClick={() => onSave("default_work_mode", "office")}
+            disabled={saving === "default_work_mode"}
+          >
+            <Building2 size={16} />
+            <span>حضوری در شرکت</span>
+          </button>
 
+          <button
+            type="button"
+            className="btn"
+            style={{
+              padding: "10px",
+              fontSize: 12,
+              fontWeight: 800,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              background: currentDefaultMode === "remote" ? "#DDD6FE" : "transparent",
+              color: currentDefaultMode === "remote" ? "#4C1D95" : "var(--muted)",
+              borderColor: currentDefaultMode === "remote" ? "#000" : "var(--border-strong)",
+              boxShadow: currentDefaultMode === "remote" ? "3px 3px 0 #000" : "none",
+              cursor: "pointer",
+            }}
+            onClick={() => onSave("default_work_mode", "remote")}
+            disabled={saving === "default_work_mode"}
+          >
+            <Home size={16} />
+            <span>کاملاً دورکار (ریموت)</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── 2. Setting Fields Grid ── */}
+      <div style={{ display: "grid", gap: 8 }}>
+        {[
+          { k: "start_time", label: "آغاز پنجره ورود", ph: "07:00", type: "time" },
+          { k: "start_time_end", label: "اتمام پنجره ورود (حداکثر زمان مجاز بدون تأخیر)", ph: "09:15", type: "time" },
+          { k: "end_time", label: "آغاز پنجره خروج", ph: "15:00", type: "time" },
+          { k: "end_time_end", label: "اتمام پنجره خروج", ph: "17:15", type: "time" },
+          { k: "standard_hours", label: "ساعت موظفی روزانه (ساعت)", ph: "8", type: "number" },
+          { k: "leave_quota_hours", label: "سهمیه کل مرخصی سالانه (ساعت)", ph: "208", type: "number" },
+        ].map((f) => (
+          <div
+            key={f.k}
+            className="row"
+            style={{
+              padding: "10px 12px",
+              background: "var(--surface-2)",
+              borderColor: "var(--border-strong)",
+              flexWrap: "wrap",
+              gap: 8,
+            }}
+          >
+            <span style={{ fontWeight: 800, fontSize: 12, color: "var(--text)", flex: 1, minWidth: 140 }}>
+              {f.label}
+            </span>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input
+                type={f.type || "text"}
+                value={values[f.k] || ""}
+                onChange={(e) => setValues((s) => ({ ...s, [f.k]: e.target.value }))}
+                placeholder={f.ph}
+                className="mono input"
+                style={{
+                  width: f.type === "time" ? "120px" : "90px",
+                  padding: "6px 8px",
+                  fontSize: 13,
+                  textAlign: "center",
+                }}
+              />
               <button
-                className="btn btn-ghost"
-                onClick={downloadExcel}
-                disabled={dlLoading || !selMonth}
-                style={{ opacity: dlLoading ? 0.6 : 1 }}
+                className="btn btn-primary mono"
+                style={{
+                  width: "auto",
+                  padding: "8px 12px",
+                  fontSize: 11,
+                  boxShadow: "2px 2px 0 #000",
+                  opacity: saving === f.k ? 0.6 : 1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+                disabled={saving === f.k}
+                onClick={() => onSave(f.k)}
+                title="ذخیره این تنظیم"
               >
-                {dlLoading ? (
-                  <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                {saving === f.k ? (
+                  <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
                 ) : (
-                  <Download size={16} />
+                  <Save size={13} />
                 )}
-                دریافت اکسل {months.find((m: any) => m.key === selMonth)?.label || ""}
+                <span>ذخیره</span>
               </button>
             </div>
-          )}
+          </div>
+        ))}
+      </div>
+
+      {/* ── 3. Excel Export Card Component ── */}
+      <div
+        style={{
+          padding: "12px 14px",
+          background: "var(--surface-2)",
+          border: "2px solid var(--border-strong)",
+          borderRadius: 16,
+          display: "grid",
+          gap: 10,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <FileSpreadsheet size={18} style={{ color: "var(--green)" }} />
+            <b style={{ fontSize: 13, color: "var(--text)" }}>دریافت گزارش اکسل سوابق ماهانه</b>
+          </div>
+          <span className="badge badge-muted mono" style={{ fontSize: 10 }}>
+            خروجی XLSX
+          </span>
         </div>
 
-        <p
-          style={{
-            color: "var(--muted)",
-            fontSize: 11,
-            margin: "14px 0 0",
-            lineHeight: 1.6,
-            display: "flex",
-            gap: 6,
-            alignItems: "center",
-          }}
-        >
-          <AlertTriangle size={14} /> تغییر تنظیمات روی گزارش‌های قبلی هم اعمال می‌شود (retroactive).
-        </p>
+        {months.length === 0 ? (
+          <p style={{ color: "var(--muted)", fontSize: 12, margin: 0 }}>هنوز اطلاعاتی برای ماه‌ها ثبت نشده است.</p>
+        ) : (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ position: "relative", flex: 1, minWidth: 160 }}>
+              <select
+                value={selMonth}
+                onChange={(e) => setSelMonth(e.target.value)}
+                className="mono input"
+                style={{
+                  width: "100%",
+                  padding: "8px 28px 8px 10px",
+                  fontSize: 13,
+                  appearance: "none",
+                  cursor: "pointer",
+                }}
+              >
+                {months.map((m: any) => (
+                  <option key={m.key} value={m.key}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={14}
+                style={{
+                  position: "absolute",
+                  left: 10,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  pointerEvents: "none",
+                  color: "#0F172A",
+                }}
+              />
+            </div>
+
+            <button
+              className="btn btn-ghost mono"
+              onClick={downloadExcel}
+              disabled={dlLoading || !selMonth}
+              style={{
+                width: "auto",
+                flex: "0 0 auto",
+                padding: "8px 14px",
+                fontSize: 12,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                opacity: dlLoading ? 0.6 : 1,
+              }}
+            >
+              {dlLoading ? (
+                <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+              ) : (
+                <Download size={14} />
+              )}
+              <span>دانلود اکسل</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Retroactive Notice ── */}
+      <div
+        className="row"
+        style={{
+          background: "rgba(245, 158, 11, 0.08)",
+          borderColor: "var(--amber)",
+          padding: "10px 12px",
+          gap: 8,
+          alignItems: "center",
+        }}
+      >
+        <AlertTriangle size={16} style={{ color: "var(--amber-2)", flexShrink: 0 }} />
+        <span style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
+          توجه: تغییر مقادیر ساعت موظفی و پنجره‌های تردد روی محاسبات آماری و گزارش‌های قبلی نیز اعمال می‌شود.
+        </span>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import re
 import sqlite3
 from app.core.config import settings
 from app.core import jalali
+from app.db.schema import get_user_settings
 
 DAY_STATUS_LABELS = {
     "idle": "آماده ورود",
@@ -32,6 +33,14 @@ def parse_date(s: str) -> tuple[int, int, int]:
     except Exception:
         raise ValueError(f"فرمت تاریخ نامعتبر است: {s}")
 
+def parse_time_str(s: str, default: str = "00:00") -> tuple[int, int]:
+    try:
+        parts = (s or default).strip().split(":")
+        return int(parts[0]), int(parts[1])
+    except Exception:
+        d_parts = default.split(":")
+        return int(d_parts[0]), int(d_parts[1])
+
 def holiday_name(conn: sqlite3.Connection, sdate: str) -> tuple[bool, str | None]:
     row = conn.execute("SELECT name FROM holidays WHERE date=?", (sdate,)).fetchone()
     if row:
@@ -43,12 +52,31 @@ def holiday_name(conn: sqlite3.Connection, sdate: str) -> tuple[bool, str | None
         return True, "جمعه"
     return False, None
 
+def next_workday(conn: sqlite3.Connection, sdate: str) -> str:
+    """Calculate the next working day (skipping Fridays and official holidays)."""
+    jy, jm, jd = parse_date(sdate)
+    gy, gm, gd = jalali.jalali_to_gregorian(jy, jm, jd)
+    cur_date = datetime.date(gy, gm, gd)
+    while True:
+        cur_date += datetime.timedelta(days=1)
+        if cur_date.weekday() == 4: # Friday
+            continue
+        njy, njm, njd = jalali.gregorian_to_jalali(cur_date.year, cur_date.month, cur_date.day)
+        next_sdate = f"{njy:04d}-{njm:02d}-{njd:02d}"
+        row = conn.execute("SELECT 1 FROM holidays WHERE date=?", (next_sdate,)).fetchone()
+        if not row:
+            return next_sdate
+
 def get_work_mode(conn: sqlite3.Connection, sdate: str, user_id: int | None = None) -> str:
     if user_id is None:
         row = conn.execute("SELECT mode FROM day_work_mode WHERE shamsi_date=? AND user_id IS NULL", (sdate,)).fetchone()
     else:
         row = conn.execute("SELECT mode FROM day_work_mode WHERE shamsi_date=? AND user_id=?", (sdate, user_id)).fetchone()
-    return row["mode"] if row else "office"
+    if row:
+        return row["mode"]
+    # Fallback to user's configured default_work_mode from settings
+    u_settings = get_user_settings(conn, user_id=user_id)
+    return u_settings.get("default_work_mode", "office")
 
 def set_work_mode(conn: sqlite3.Connection, sdate: str, mode: str, user_id: int | None = None) -> None:
     if user_id is None:
@@ -96,6 +124,15 @@ def compute_day(conn: sqlite3.Connection, sdate: str, user_id: int | None = None
     is_hol, hol_name = holiday_name(conn, sdate)
     wm = get_work_mode(conn, sdate, user_id)
     events = day_events(conn, sdate, user_id)
+    u_settings = get_user_settings(conn, user_id=user_id)
+
+    # Dynamic settings per user
+    standard = float(u_settings.get("standard_hours", "8"))
+    start_time_end_str = u_settings.get("start_time_end", "09:15")
+    end_time_end_str = u_settings.get("end_time_end", "17:15")
+
+    sh_end, sm_end = parse_time_str(start_time_end_str, "09:15")
+    eh_end, em_end = parse_time_str(end_time_end_str, "17:15")
 
     in_dt = None
     out_dt = None
@@ -123,21 +160,9 @@ def compute_day(conn: sqlite3.Connection, sdate: str, user_id: int | None = None
     leave_closed = sum((company_clock(b) - company_clock(a)).total_seconds() / 3600.0 for a, b in leave_intervals)
     leave_h = max(0.0, leave_closed)
 
-    net = max(0.0, gross - leave_h)
-    late = 0.0
-    if in_dt and not is_hol:
-        # Window starts at 07:00, threshold at 09:15
-        in_clock = company_clock(in_dt)
-        lim = in_clock.replace(hour=9, minute=15, second=0, microsecond=0)
-        if in_clock > lim:
-            late = (in_clock - lim).total_seconds() / 3600.0
-
-    standard = 8.0
-    deficit = 0.0
+    # Check explicit OT in note of out event
     overtime = 0.0
     ot_declared = False
-
-    # Check explicit OT in note of out event or summary
     for et, _, note in events:
         if et == "out" and note and "ot:" in note:
             try:
@@ -146,13 +171,42 @@ def compute_day(conn: sqlite3.Connection, sdate: str, user_id: int | None = None
             except Exception:
                 pass
 
+    late = 0.0
+    if in_dt and not is_hol:
+        in_clock = company_clock(in_dt)
+        lim_in = in_clock.replace(hour=sh_end, minute=sm_end, second=0, microsecond=0)
+        if in_clock > lim_in:
+            late = (in_clock - lim_in).total_seconds() / 3600.0
+
     if is_hol:
+        net = max(0.0, gross - leave_h)
         overtime = net
         deficit = 0.0
         ot_declared = True
     else:
-        if out_dt:
-            deficit = max(0.0, standard - net)
+        if ot_declared and overtime > 0:
+            # When overtime is explicitly declared, net includes the full overtime duration
+            net = max(0.0, gross - leave_h)
+            deficit = max(0.0, standard - (net - overtime)) if out_dt else 0.0
+        else:
+            # Overtime is NOT declared (or rejected):
+            # 1. Physical presence after end_time_end is excluded from standard shift net
+            # 2. Net cannot exceed standard_hours (capped)
+            if in_dt and out_dt:
+                out_clock = company_clock(out_dt)
+                lim_out = out_clock.replace(hour=eh_end, minute=em_end, second=0, microsecond=0)
+                effective_out = min(out_clock, lim_out) if out_clock > lim_out else out_clock
+                effective_gross = max(0.0, (effective_out - company_clock(in_dt)).total_seconds() / 3600.0)
+                effective_net = max(0.0, effective_gross - leave_h)
+                net = min(standard, effective_net)
+                deficit = max(0.0, standard - net)
+            elif in_dt:
+                net = max(0.0, (company_clock(now_tehran()) - company_clock(in_dt)).total_seconds() / 3600.0 - leave_h)
+                deficit = 0.0
+            else:
+                net = 0.0
+                deficit = 0.0
+            overtime = 0.0
 
     return {
         "date": sdate,
@@ -271,6 +325,10 @@ def record_event(conn: sqlite3.Connection, event_type: str, at: str | None = Non
         )
     conn.commit()
 
+    if event_type == "in":
+        cur_mode = get_work_mode(conn, sdate, user_id=user_id)
+        set_work_mode(conn, sdate, cur_mode, user_id=user_id)
+
     time_str = dt_tehran.strftime("%H:%M")
     labels = {
         "in": f"✅ ورود در ساعت {time_str} ثبت شد",
@@ -296,14 +354,20 @@ def record_overtime(conn: sqlite3.Connection, hours: str, date_str: str | None =
     else:
         conn.execute("UPDATE events SET note=? WHERE shamsi_date=? AND event_type='out' AND user_id=?", (f"ot:{ot_val}", sdate, user_id))
 
-    # Automatically create a task reminder to fill the overtime form if > 0
+    # Automatically create a task reminder to fill the overtime form on the NEXT working day
     if ot_val > 0:
         total_mins = int(round(ot_val * 60))
         h = total_mins // 60
         m = total_mins % 60
-        dur_str = f"{h} ساعت و ${m} دقیقه" if h > 0 and m > 0 else f"{h} ساعت" if h > 0 else f"{m} دقیقه"
-        task_title = f"📝 پر کردن برگه اضافه‌کاری ({dur_str} - {sdate})"
+        dur_str = f"{h} ساعت و {m} دقیقه" if h > 0 and m > 0 else f"{h} ساعت" if h > 0 else f"{m} دقیقه"
+        jy, jm, jd = parse_date(sdate)
+        month_names = ["", "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"]
+        date_readable = f"{jd} {month_names[jm]} {jy}"
+        task_title = f"📝 پر کردن برگه اضافه‌کاری ({dur_str} - {date_readable})"
         
+        # Calculate next working day for due_date
+        next_due_date = next_workday(conn, sdate)
+
         # Check if task already exists
         existing_task = conn.execute(
             "SELECT id FROM tasks WHERE shamsi_date=? AND title=? AND ((? IS NULL AND user_id IS NULL) OR user_id=?)",
@@ -312,8 +376,8 @@ def record_overtime(conn: sqlite3.Connection, hours: str, date_str: str | None =
         if not existing_task:
             now_str = datetime.datetime.now(datetime.timezone.utc).isoformat()
             conn.execute(
-                "INSERT INTO tasks(shamsi_date, title, done, user_id, created_at) VALUES(?, ?, 0, ?, ?)",
-                (sdate, task_title, user_id, now_str),
+                "INSERT INTO tasks(shamsi_date, title, due_date, done, user_id, created_at) VALUES(?, ?, ?, 0, ?, ?)",
+                (sdate, task_title, next_due_date, user_id, now_str),
             )
 
     conn.commit()
