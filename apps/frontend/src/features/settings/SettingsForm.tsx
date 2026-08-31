@@ -99,7 +99,7 @@ export function SettingsForm() {
         </span>
       </div>
 
-      {/* ── 1. Default Work Mode Selector (Office vs Remote) — No redundant badges ── */}
+      {/* ── 1. Default Work Mode Selector (Office vs Remote) ── */}
       <div
         className="row"
         style={{
@@ -320,19 +320,23 @@ export function SettingsForm() {
         )}
       </div>
 
-      {/* ── Retroactive Notice ── */}
+      {/* ── Strict RTL Retroactive Notice Box ── */}
       <div
         className="row"
         style={{
           background: "rgba(245, 158, 11, 0.08)",
           borderColor: "var(--amber)",
-          padding: "10px 12px",
-          gap: 8,
-          alignItems: "center",
+          padding: "10px 14px",
+          gap: 10,
+          direction: "rtl",
+          textAlign: "right",
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "flex-start",
         }}
       >
-        <AlertTriangle size={16} style={{ color: "var(--amber-2)", flexShrink: 0 }} />
-        <span style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
+        <AlertTriangle size={18} style={{ color: "var(--amber-2)", flexShrink: 0, marginTop: 1 }} />
+        <span style={{ fontSize: 11.5, color: "var(--text)", lineHeight: 1.6, fontWeight: 700, flex: 1, textAlign: "right", direction: "rtl" }}>
           توجه: تغییر مقادیر ساعت موظفی و پنجره‌های تردد روی محاسبات آماری و گزارش‌های قبلی نیز اعمال می‌شود.
         </span>
       </div>
