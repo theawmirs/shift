@@ -149,10 +149,10 @@ export function TasksList() {
         // 1. Unfinished (open) always first!
         if (a.done !== b.done) return a.done ? 1 : -1;
 
-        // 2. Today's tasks first among the same completion state
-        const aIsToday = a.due_date === todayStr || a.shamsi_date === todayStr;
-        const bIsToday = b.due_date === todayStr || b.shamsi_date === todayStr;
-        if (aIsToday !== bIsToday) return aIsToday ? -1 : 1;
+        // 2. Exact Today's due date first among the same completion state
+        const aIsDueToday = a.due_date ? a.due_date === todayStr : a.shamsi_date === todayStr;
+        const bIsDueToday = b.due_date ? b.due_date === todayStr : b.shamsi_date === todayStr;
+        if (aIsDueToday !== bIsDueToday) return aIsDueToday ? -1 : 1;
 
         // 3. Priority weight (high > medium > low)
         const prioWeight: Record<string, number> = { high: 3, medium: 2, low: 1 };
@@ -164,13 +164,14 @@ export function TasksList() {
       });
   }, [tasks, filter, priorityFilter, q, todayStr]);
 
-  // Separate Today's open tasks from Other tasks
+  // Separate Today's open tasks from Other tasks (Strictly by due_date if exists, else created shamsi_date)
   const { todayOpenTasks, regularTasks } = useMemo(() => {
     const todayOpen: TaskType[] = [];
     const regular: TaskType[] = [];
 
     allFiltered.forEach((t) => {
-      const isDueToday = !t.done && (t.due_date === todayStr || t.shamsi_date === todayStr);
+      // If task has an explicit due_date, strict match on due_date. Only fallback to shamsi_date if no due_date set.
+      const isDueToday = !t.done && (t.due_date ? t.due_date === todayStr : t.shamsi_date === todayStr);
       if (isDueToday) {
         todayOpen.push(t);
       } else {
@@ -334,7 +335,8 @@ export function TasksList() {
   };
 
   const renderTaskCard = (t: TaskType, isTodayHighlight = false) => {
-    const isDueToday = t.due_date === todayStr;
+    // Strictly due today if due_date equals todayStr
+    const isDueToday = t.due_date ? t.due_date === todayStr : t.shamsi_date === todayStr;
 
     return (
       <div
@@ -734,7 +736,7 @@ export function TasksList() {
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <SunMedium size={16} style={{ color: "var(--amber)" }} />
                   <span style={{ fontSize: 13, fontWeight: 900, color: "var(--text)" }}>
-                    تسک‌های اختصاصی امروز
+                    تسک‌های سررسید امروز ({formatShamsiDateText(todayStr)})
                   </span>
                 </div>
                 <span
@@ -747,7 +749,7 @@ export function TasksList() {
                     fontSize: 10,
                   }}
                 >
-                  {todayOpenTasks.length} تسک فوری
+                  {todayOpenTasks.length} تسک
                 </span>
               </div>
 
