@@ -16,12 +16,16 @@ import {
   CheckCircle2,
   CircleDashed,
   Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  SunMedium,
+  Clock,
 } from "lucide-react";
 import { API } from "../../shared/lib/api";
 import { useToast } from "../../shared/ui/Toast";
 import { CardSkeleton } from "../../shared/ui/Skeleton";
 import { Drawer } from "../../shared/ui/Drawer";
-import { ShamsiCalendar } from "../../shared/ui/ShamsiCalendar";
+import { ShamsiCalendar, jalaliStr } from "../../shared/ui/ShamsiCalendar";
 import { formatShamsiDateText } from "../../shared/lib/format";
 
 export interface TaskType {
@@ -35,6 +39,45 @@ export interface TaskType {
   shamsi_date?: string;
 }
 
+const PAGE_SIZE = 6;
+
+// Pure Jalali helper for Today detection
+function getTodayJalaliString(): string {
+  const d = new Date();
+  const gy = d.getFullYear(),
+    gm = d.getMonth() + 1,
+    gd = d.getDate();
+  let _gy = gy - 1600,
+    _gm = gm - 1,
+    _gd = gd - 1;
+  const _GD = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  const _JD = [31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29];
+  let gDayNo =
+    365 * _gy + Math.floor((_gy + 3) / 4) - Math.floor((_gy + 99) / 100) + Math.floor((_gy + 399) / 400);
+  for (let i = 0; i < _gm; i++) gDayNo += _GD[i];
+  if (_gm > 1 && ((_gy % 4 === 0 && _gy % 100 !== 0) || _gy % 400 === 0)) gDayNo += 1;
+  gDayNo += _gd;
+  let jDayNo = gDayNo - 79;
+  let jNp = Math.floor(jDayNo / 12053);
+  jDayNo %= 12053;
+  let jy = 979 + 33 * jNp + 4 * Math.floor(jDayNo / 1461);
+  jDayNo %= 1461;
+  if (jDayNo >= 366) {
+    jy += Math.floor((jDayNo - 1) / 365);
+    jDayNo = (jDayNo - 1) % 365;
+  }
+  let i = 0;
+  for (let k = 0; k < 11; k++) {
+    if (jDayNo < _JD[k]) {
+      i = k;
+      break;
+    }
+    jDayNo -= _JD[k];
+    i = k + 1;
+  }
+  return jalaliStr(jy, i + 1, jDayNo + 1);
+}
+
 export function TasksList() {
   const { push } = useToast();
   const [tasks, setTasks] = useState<TaskType[]>([]);
@@ -43,6 +86,7 @@ export function TasksList() {
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   // Drawer modal states
   const [activeTaskModal, setActiveTaskModal] = useState<"add" | "edit" | null>(null);
@@ -56,6 +100,8 @@ export function TasksList() {
   const [formDueDate, setFormDueDate] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const todayStr = useMemo(() => getTodayJalaliString(), []);
 
   const load = async () => {
     setLoading(true);
@@ -74,12 +120,18 @@ export function TasksList() {
     load();
   }, []);
 
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setPage(1);
+  }, [filter, priorityFilter, q]);
+
   const totalCount = tasks.length;
   const doneCount = useMemo(() => tasks.filter((t) => t.done).length, [tasks]);
   const openCount = totalCount - doneCount;
   const progressPercent = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
 
-  const filtered = useMemo(() => {
+  // Filtered & Sorted master array
+  const allFiltered = useMemo(() => {
     return tasks
       .filter((t) => {
         if (filter === "open" && t.done) return false;
@@ -94,20 +146,56 @@ export function TasksList() {
         return true;
       })
       .sort((a, b) => {
-        // Unfinished first, then by priority (high > medium > low), then by ID desc
+        // 1. Unfinished (open) always first!
         if (a.done !== b.done) return a.done ? 1 : -1;
+
+        // 2. Today's tasks first among the same completion state
+        const aIsToday = a.due_date === todayStr || a.shamsi_date === todayStr;
+        const bIsToday = b.due_date === todayStr || b.shamsi_date === todayStr;
+        if (aIsToday !== bIsToday) return aIsToday ? -1 : 1;
+
+        // 3. Priority weight (high > medium > low)
         const prioWeight: Record<string, number> = { high: 3, medium: 2, low: 1 };
         const diffPrio = (prioWeight[b.priority || "medium"] || 2) - (prioWeight[a.priority || "medium"] || 2);
         if (diffPrio !== 0) return diffPrio;
+
+        // 4. Newest first
         return b.id - a.id;
       });
-  }, [tasks, filter, priorityFilter, q]);
+  }, [tasks, filter, priorityFilter, q, todayStr]);
+
+  // Separate Today's open tasks from Other tasks
+  const { todayOpenTasks, regularTasks } = useMemo(() => {
+    const todayOpen: TaskType[] = [];
+    const regular: TaskType[] = [];
+
+    allFiltered.forEach((t) => {
+      const isDueToday = !t.done && (t.due_date === todayStr || t.shamsi_date === todayStr);
+      if (isDueToday) {
+        todayOpen.push(t);
+      } else {
+        regular.push(t);
+      }
+    });
+
+    return { todayOpenTasks: todayOpen, regularTasks: regular };
+  }, [allFiltered, todayStr]);
+
+  // Pagination on the regular tasks list
+  const totalRegular = regularTasks.length;
+  const totalPages = Math.max(1, Math.ceil(totalRegular / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+
+  const paginatedRegularTasks = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return regularTasks.slice(start, start + PAGE_SIZE);
+  }, [regularTasks, currentPage]);
 
   const openAddModal = () => {
     setFormTitle("");
     setFormDesc("");
     setFormPriority("medium");
-    setFormDueDate("");
+    setFormDueDate(todayStr); // Defaults to today for quick scheduling
     setShowDatePicker(false);
     setActiveTaskModal("add");
   };
@@ -245,6 +333,144 @@ export function TasksList() {
     );
   };
 
+  const renderTaskCard = (t: TaskType, isTodayHighlight = false) => {
+    const isDueToday = t.due_date === todayStr;
+
+    return (
+      <div
+        key={t.id}
+        className="card"
+        style={{
+          padding: "12px 14px",
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 12,
+          background: t.done
+            ? "var(--surface-2)"
+            : isTodayHighlight
+            ? "rgba(245, 158, 11, 0.08)"
+            : "linear-gradient(180deg, var(--card) 0%, var(--card2) 100%)",
+          borderColor: isTodayHighlight ? "var(--amber)" : t.done ? "var(--border)" : "var(--border-strong)",
+          borderWidth: isTodayHighlight ? 2.5 : 2,
+          opacity: t.done ? 0.6 : 1,
+          transition: "all 0.18s ease",
+          boxShadow: isTodayHighlight ? "4px 4px 0 var(--amber)" : "3px 3px 0 #000",
+        }}
+      >
+        {/* Checkbox (Right Side RTL) */}
+        <button
+          type="button"
+          aria-label={t.done ? "علامت‌گذاری باز" : "علامت‌گذاری انجام‌شده"}
+          style={{
+            width: 26,
+            height: 26,
+            minWidth: 26,
+            borderRadius: 8,
+            border: "2.5px solid #000",
+            background: t.done ? "var(--green)" : "#fff",
+            display: "grid",
+            placeItems: "center",
+            boxShadow: "2px 2px 0 #000",
+            cursor: "pointer",
+            marginTop: 2,
+            padding: 0,
+            transition: "transform 0.1s ease",
+          }}
+          onClick={() => handleToggle(t.id)}
+        >
+          {t.done && <Check size={16} strokeWidth={3.5} color="#052e0b" />}
+        </button>
+
+        {/* Task Details (Middle) */}
+        <div style={{ flex: 1, display: "grid", gap: 5, cursor: "pointer", minWidth: 0 }} onClick={() => openEditModal(t)}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            <span
+              style={{
+                fontSize: 14,
+                fontWeight: 800,
+                color: "var(--text)",
+                textDecoration: t.done ? "line-through" : "none",
+                wordBreak: "break-word",
+              }}
+            >
+              {t.title}
+            </span>
+            {renderPriorityBadge(t.priority)}
+            {isDueToday && !t.done && (
+              <span
+                className="badge"
+                style={{
+                  background: "var(--amber)",
+                  color: "#0F172A",
+                  border: "1.5px solid #000",
+                  fontSize: 10,
+                  fontWeight: 900,
+                  padding: "1px 6px",
+                }}
+              >
+                امروز ⚡
+              </span>
+            )}
+          </div>
+
+          {t.description && (
+            <p
+              style={{
+                margin: 0,
+                fontSize: 12,
+                color: "var(--muted)",
+                lineHeight: 1.5,
+                textDecoration: t.done ? "line-through" : "none",
+                wordBreak: "break-word",
+              }}
+            >
+              {t.description}
+            </p>
+          )}
+
+          {t.due_date && (
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                fontSize: 11,
+                color: isDueToday && !t.done ? "var(--amber-2)" : "var(--muted)",
+                fontWeight: isDueToday && !t.done ? 800 : 600,
+                marginTop: 2,
+              }}
+            >
+              <Calendar size={12} />
+              <span className="mono">
+                {isDueToday ? "سررسید: امروز" : `مهلت: ${formatShamsiDateText(t.due_date)}`}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Action Buttons (Left Side RTL) */}
+        <div style={{ display: "flex", gap: 5, alignItems: "center", flexShrink: 0 }}>
+          <button
+            className="icon-btn"
+            style={{ width: 32, height: 32, boxShadow: "2px 2px 0 #000" }}
+            onClick={() => openEditModal(t)}
+            title="ویرایش"
+          >
+            <Edit3 size={14} />
+          </button>
+          <button
+            className="icon-btn"
+            style={{ width: 32, height: 32, boxShadow: "2px 2px 0 #000", color: "var(--red)" }}
+            onClick={() => setDeleteConfirmTask(t)}
+            title="حذف"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) return <CardSkeleton rows={4} />;
   if (err)
     return (
@@ -287,8 +513,8 @@ export function TasksList() {
         {/* Progress Bar & Stats */}
         <div
           style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "2px solid rgba(255,255,255,0.08)",
+            background: "var(--surface-2)",
+            border: "2px solid var(--border-strong)",
             borderRadius: 14,
             padding: "10px 12px",
             display: "grid",
@@ -298,14 +524,13 @@ export function TasksList() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
             <span style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700 }}>
               <Sparkles size={14} style={{ color: "var(--amber)" }} />
-              <span>پیشرفت کل:</span>
+              <span>پیشرفت کل تسک‌ها:</span>
             </span>
             <b className="mono" style={{ fontSize: 12, color: progressPercent === 100 ? "var(--green)" : "var(--text)" }}>
               {doneCount} از {totalCount} تسک ({progressPercent}٪)
             </b>
           </div>
 
-          {/* Neo-brutalist Progress Track */}
           <div className="progress" style={{ height: 10 }}>
             <i
               style={{
@@ -327,7 +552,7 @@ export function TasksList() {
             gap: 8,
             alignItems: "center",
             background: "var(--bg)",
-            border: "2px solid #000",
+            border: "2px solid var(--border-strong)",
             borderRadius: 12,
             padding: "8px 12px",
             boxShadow: "2px 2px 0 #000",
@@ -458,7 +683,7 @@ export function TasksList() {
       </div>
 
       {/* ── 3. Task Items List ── */}
-      {filtered.length === 0 ? (
+      {allFiltered.length === 0 ? (
         <div
           className="card"
           style={{
@@ -476,7 +701,7 @@ export function TasksList() {
               height: 48,
               borderRadius: 14,
               border: "2px solid #000",
-              background: "rgba(255,255,255,0.04)",
+              background: "var(--surface-2)",
               display: "grid",
               placeItems: "center",
               boxShadow: "3px 3px 0 #000",
@@ -494,118 +719,126 @@ export function TasksList() {
           </p>
         </div>
       ) : (
-        <div style={{ display: "grid", gap: 8 }}>
-          {filtered.map((t) => {
-            return (
+        <div style={{ display: "grid", gap: 12 }}>
+          {/* ── SEPARATOR: TODAY'S OPEN TASKS (PINNED FIRST) ── */}
+          {todayOpenTasks.length > 0 && (
+            <div style={{ display: "grid", gap: 8 }}>
               <div
-                key={t.id}
-                className="card"
                 style={{
-                  padding: "12px 14px",
                   display: "flex",
-                  alignItems: "flex-start",
-                  gap: 12,
-                  background: t.done ? "rgba(0,0,0,0.18)" : "linear-gradient(180deg, var(--card) 0%, var(--card2) 100%)",
-                  borderColor: t.done ? "var(--border)" : "var(--border-strong)",
-                  opacity: t.done ? 0.65 : 1,
-                  transition: "all 0.18s ease",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "4px 6px",
                 }}
               >
-                {/* Checkbox (Right Side RTL) */}
-                <button
-                  type="button"
-                  aria-label={t.done ? "علامت‌گذاری باز" : "علامت‌گذاری انجام‌شده"}
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <SunMedium size={16} style={{ color: "var(--amber)" }} />
+                  <span style={{ fontSize: 13, fontWeight: 900, color: "var(--text)" }}>
+                    تسک‌های اختصاصی امروز
+                  </span>
+                </div>
+                <span
+                  className="badge"
                   style={{
-                    width: 26,
-                    height: 26,
-                    minWidth: 26,
-                    borderRadius: 8,
-                    border: "2.5px solid #000",
-                    background: t.done ? "var(--green)" : "#fff",
-                    display: "grid",
-                    placeItems: "center",
-                    boxShadow: "2px 2px 0 #000",
-                    cursor: "pointer",
-                    marginTop: 2,
-                    padding: 0,
-                    transition: "transform 0.1s ease",
+                    background: "var(--amber)",
+                    color: "#0F172A",
+                    border: "1.5px solid #000",
+                    fontWeight: 900,
+                    fontSize: 10,
                   }}
-                  onClick={() => handleToggle(t.id)}
                 >
-                  {t.done && <Check size={16} strokeWidth={3.5} color="#052e0b" />}
-                </button>
-
-                {/* Task Details (Middle) */}
-                <div style={{ flex: 1, display: "grid", gap: 5, cursor: "pointer", minWidth: 0 }} onClick={() => openEditModal(t)}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                    <span
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 800,
-                        color: "var(--text)",
-                        textDecoration: t.done ? "line-through" : "none",
-                        wordBreak: "break-word",
-                      }}
-                    >
-                      {t.title}
-                    </span>
-                    {renderPriorityBadge(t.priority)}
-                  </div>
-
-                  {t.description && (
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: 12,
-                        color: "var(--muted)",
-                        lineHeight: 1.5,
-                        textDecoration: t.done ? "line-through" : "none",
-                        wordBreak: "break-word",
-                      }}
-                    >
-                      {t.description}
-                    </p>
-                  )}
-
-                  {t.due_date && (
-                    <div
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                        fontSize: 11,
-                        color: "var(--muted)",
-                        marginTop: 2,
-                      }}
-                    >
-                      <Calendar size={12} />
-                      <span className="mono">مهلت: {formatShamsiDateText(t.due_date)}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Action Buttons (Left Side RTL) */}
-                <div style={{ display: "flex", gap: 5, alignItems: "center", flexShrink: 0 }}>
-                  <button
-                    className="icon-btn"
-                    style={{ width: 32, height: 32, boxShadow: "2px 2px 0 #000" }}
-                    onClick={() => openEditModal(t)}
-                    title="ویرایش"
-                  >
-                    <Edit3 size={14} />
-                  </button>
-                  <button
-                    className="icon-btn"
-                    style={{ width: 32, height: 32, boxShadow: "2px 2px 0 #000", color: "var(--red)" }}
-                    onClick={() => setDeleteConfirmTask(t)}
-                    title="حذف"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
+                  {todayOpenTasks.length} تسک فوری
+                </span>
               </div>
-            );
-          })}
+
+              <div style={{ display: "grid", gap: 8 }}>
+                {todayOpenTasks.map((t) => renderTaskCard(t, true))}
+              </div>
+            </div>
+          )}
+
+          {/* ── REGULAR & OTHER TASKS LIST ── */}
+          {paginatedRegularTasks.length > 0 && (
+            <div style={{ display: "grid", gap: 8 }}>
+              {todayOpenTasks.length > 0 && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "4px 6px",
+                    marginTop: 4,
+                  }}
+                >
+                  <Clock size={15} style={{ color: "var(--muted)" }} />
+                  <span style={{ fontSize: 12, fontWeight: 800, color: "var(--muted)" }}>
+                    سایر تسک‌ها ({totalRegular}):
+                  </span>
+                </div>
+              )}
+
+              <div style={{ display: "grid", gap: 8 }}>
+                {paginatedRegularTasks.map((t) => renderTaskCard(t, false))}
+              </div>
+            </div>
+          )}
+
+          {/* ── PAGINATION CONTROLS ── */}
+          {totalPages > 1 && (
+            <div
+              className="card"
+              style={{
+                padding: "8px 12px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                background: "var(--surface-2)",
+                borderColor: "var(--border-strong)",
+              }}
+            >
+              <button
+                type="button"
+                className="btn btn-ghost mono"
+                style={{
+                  width: "auto",
+                  padding: "6px 12px",
+                  fontSize: 11,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  opacity: currentPage >= totalPages ? 0.35 : 1,
+                  pointerEvents: currentPage >= totalPages ? "none" : "auto",
+                }}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                <span>صفحه بعد</span>
+                <ChevronLeft size={14} />
+              </button>
+
+              <div className="mono" style={{ fontSize: 12, fontWeight: 800, color: "var(--text)" }}>
+                صفحه {currentPage} از {totalPages}
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-ghost mono"
+                style={{
+                  width: "auto",
+                  padding: "6px 12px",
+                  fontSize: 11,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  opacity: currentPage <= 1 ? 0.35 : 1,
+                  pointerEvents: currentPage <= 1 ? "none" : "auto",
+                }}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                <ChevronRight size={14} />
+                <span>صفحه قبل</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 
