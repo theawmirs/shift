@@ -301,8 +301,11 @@ def record_overtime(conn: sqlite3.Connection, hours: str, date_str: str | None =
         total_mins = int(round(ot_val * 60))
         h = total_mins // 60
         m = total_mins % 60
-        dur_str = f"{h} ساعت و ${m} دقیقه" if h > 0 and m > 0 else f"{h} ساعت" if h > 0 else f"{m} دقیقه"
-        task_title = f"📝 پر کردن برگه اضافه‌کاری ({dur_str} - {sdate})"
+        dur_str = f"{h} ساعت و {m} دقیقه" if h > 0 and m > 0 else f"{h} ساعت" if h > 0 else f"{m} دقیقه"
+        jy, jm, jd = parse_date(sdate)
+        month_names = ["", "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"]
+        date_readable = f"{jd} {month_names[jm]} {jy}"
+        task_title = f"📝 پر کردن برگه اضافه‌کاری ({dur_str} - {date_readable})"
         
         # Check if task already exists
         existing_task = conn.execute(
