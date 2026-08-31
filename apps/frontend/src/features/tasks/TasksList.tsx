@@ -1,6 +1,22 @@
-import { useEffect, useState } from "react";
-import { AnimatePresence } from "framer-motion";
-import { ListChecks, BadgeCheck, Trash2, Search, Plus, Edit3, Calendar, AlertTriangle, CalendarDays, X } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import {
+  ListChecks,
+  Check,
+  Trash2,
+  Search,
+  Plus,
+  Edit3,
+  Calendar,
+  AlertTriangle,
+  CalendarDays,
+  X,
+  Flame,
+  Zap,
+  Leaf,
+  CheckCircle2,
+  CircleDashed,
+  Sparkles,
+} from "lucide-react";
 import { API } from "../../shared/lib/api";
 import { useToast } from "../../shared/ui/Toast";
 import { CardSkeleton } from "../../shared/ui/Skeleton";
@@ -58,20 +74,34 @@ export function TasksList() {
     load();
   }, []);
 
-  const filtered = tasks.filter((t) => {
-    if (filter === "open" && t.done) return false;
-    if (filter === "done" && !t.done) return false;
-    if (priorityFilter !== "all" && (t.priority || "medium") !== priorityFilter) return false;
-    if (q.trim()) {
-      const term = q.trim().toLowerCase();
-      const matchTitle = t.title?.toLowerCase().includes(term);
-      const matchDesc = t.description?.toLowerCase().includes(term);
-      if (!matchTitle && !matchDesc) return false;
-    }
-    return true;
-  });
+  const totalCount = tasks.length;
+  const doneCount = useMemo(() => tasks.filter((t) => t.done).length, [tasks]);
+  const openCount = totalCount - doneCount;
+  const progressPercent = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
 
-  const openCount = tasks.filter((t) => !t.done).length;
+  const filtered = useMemo(() => {
+    return tasks
+      .filter((t) => {
+        if (filter === "open" && t.done) return false;
+        if (filter === "done" && !t.done) return false;
+        if (priorityFilter !== "all" && (t.priority || "medium") !== priorityFilter) return false;
+        if (q.trim()) {
+          const term = q.trim().toLowerCase();
+          const matchTitle = t.title?.toLowerCase().includes(term);
+          const matchDesc = t.description?.toLowerCase().includes(term);
+          if (!matchTitle && !matchDesc) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        // Unfinished first, then by priority (high > medium > low), then by ID desc
+        if (a.done !== b.done) return a.done ? 1 : -1;
+        const prioWeight: Record<string, number> = { high: 3, medium: 2, low: 1 };
+        const diffPrio = (prioWeight[b.priority || "medium"] || 2) - (prioWeight[a.priority || "medium"] || 2);
+        if (diffPrio !== 0) return diffPrio;
+        return b.id - a.id;
+      });
+  }, [tasks, filter, priorityFilter, q]);
 
   const openAddModal = () => {
     setFormTitle("");
@@ -133,7 +163,7 @@ export function TasksList() {
     try {
       const r = await API.patchTask(id, { done: !t.done });
       setTasks(r.tasks || []);
-      push(t.done ? `↩️ «${t.title}» باز شد` : `✅ «${t.title}» انجام شد`);
+      push(t.done ? `↩️ تسک بازگردانده شد` : `🎉 تسک انجام شد!`);
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
     }
@@ -157,21 +187,60 @@ export function TasksList() {
   const renderPriorityBadge = (p?: string) => {
     if (p === "high") {
       return (
-        <span className="badge" style={{ background: "#FEE2E2", color: "#991B1B", border: "1.5px solid #000", fontSize: 10, fontWeight: 800 }}>
-          🔥 فوری
+        <span
+          className="badge"
+          style={{
+            background: "#FEE2E2",
+            color: "#991B1B",
+            border: "1.5px solid #000",
+            fontSize: 10,
+            fontWeight: 800,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 3,
+            padding: "2px 7px",
+          }}
+        >
+          <Flame size={11} /> فوری
         </span>
       );
     }
     if (p === "low") {
       return (
-        <span className="badge" style={{ background: "#F3F4F6", color: "#4B5563", border: "1.5px solid #000", fontSize: 10, fontWeight: 800 }}>
-          کم
+        <span
+          className="badge"
+          style={{
+            background: "#F3F4F6",
+            color: "#4B5563",
+            border: "1.5px solid #000",
+            fontSize: 10,
+            fontWeight: 800,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 3,
+            padding: "2px 7px",
+          }}
+        >
+          <Leaf size={11} /> عادی
         </span>
       );
     }
     return (
-      <span className="badge" style={{ background: "#FEF3C7", color: "#92400E", border: "1.5px solid #000", fontSize: 10, fontWeight: 800 }}>
-        متوسط
+      <span
+        className="badge"
+        style={{
+          background: "#FEF3C7",
+          color: "#92400E",
+          border: "1.5px solid #000",
+          fontSize: 10,
+          fontWeight: 800,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 3,
+          padding: "2px 7px",
+        }}
+      >
+        <Zap size={11} /> متوسط
       </span>
     );
   };
@@ -188,42 +257,87 @@ export function TasksList() {
     );
 
   return (
-    <div className="card brutal rotate1">
-      {/* Header & Quick Add Button */}
-      <div className="section-head" style={{ marginBottom: 12 }}>
-        <div>
-          <h2 className="display">تسک‌های کاری</h2>
-          <span className="badge badge-ok" style={{ marginTop: 4, display: "inline-flex" }}>
-            <ListChecks size={14} /> {openCount} باقی · {tasks.length} کل
-          </span>
+    <div style={{ display: "grid", gap: 12 }}>
+      {/* ── 1. Hero & Progress Widget ── */}
+      <div className="card" style={{ display: "grid", gap: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div className="kicker">TASK MANAGER</div>
+            <h2 className="hero-title" style={{ fontSize: 22, marginTop: 4 }}>
+              مدیریت وظایف
+            </h2>
+          </div>
+          <button
+            className="btn btn-primary"
+            style={{
+              width: "auto",
+              padding: "8px 14px",
+              fontSize: 12,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              boxShadow: "3px 3px 0 #000",
+            }}
+            onClick={openAddModal}
+          >
+            <Plus size={16} /> تسک جدید
+          </button>
         </div>
-        <button
-          className="btn btn-primary"
-          style={{ width: "auto", padding: "8px 14px", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}
-          onClick={openAddModal}
+
+        {/* Progress Bar & Stats */}
+        <div
+          style={{
+            background: "rgba(255,255,255,0.04)",
+            border: "2px solid rgba(255,255,255,0.08)",
+            borderRadius: 14,
+            padding: "10px 12px",
+            display: "grid",
+            gap: 8,
+          }}
         >
-          <Plus size={16} /> تسک جدید
-        </button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700 }}>
+              <Sparkles size={14} style={{ color: "var(--amber)" }} />
+              <span>پیشرفت کل:</span>
+            </span>
+            <b className="mono" style={{ fontSize: 12, color: progressPercent === 100 ? "var(--green)" : "var(--text)" }}>
+              {doneCount} از {totalCount} تسک ({progressPercent}٪)
+            </b>
+          </div>
+
+          {/* Neo-brutalist Progress Track */}
+          <div className="progress" style={{ height: 10 }}>
+            <i
+              style={{
+                width: `${progressPercent}%`,
+                transition: "width 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+                background: progressPercent === 100 ? "var(--green)" : "linear-gradient(90deg, var(--amber), var(--violet))",
+              }}
+            />
+          </div>
+        </div>
       </div>
 
-      {/* Filters & Search */}
-      <div style={{ display: "grid", gap: 8, marginBottom: 14 }}>
+      {/* ── 2. Search & Segmented Filters ── */}
+      <div className="card" style={{ padding: "12px", display: "grid", gap: 10 }}>
+        {/* Search Input with quick clear */}
         <div
           style={{
             display: "flex",
-            gap: 6,
+            gap: 8,
             alignItems: "center",
-            background: "rgba(255,255,255,.06)",
-            border: "2px solid rgba(255,255,255,.08)",
-            borderRadius: 14,
-            padding: "6px 12px",
+            background: "var(--bg)",
+            border: "2px solid #000",
+            borderRadius: 12,
+            padding: "8px 12px",
+            boxShadow: "2px 2px 0 #000",
           }}
         >
-          <Search size={15} color="var(--muted)" />
+          <Search size={15} color="var(--muted)" style={{ flexShrink: 0 }} />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="جستجو در عنوان و توضیحات تسک…"
+            placeholder="جستجو در عنوان یا متن تسک‌ها…"
             style={{
               flex: 1,
               background: "transparent",
@@ -232,101 +346,209 @@ export function TasksList() {
               color: "var(--text)",
               fontFamily: "YekanBakh",
               fontSize: 12,
+              fontWeight: 600,
             }}
           />
+          {q && (
+            <button
+              type="button"
+              onClick={() => setQ("")}
+              style={{
+                background: "transparent",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+                display: "grid",
+                placeItems: "center",
+                color: "var(--muted)",
+              }}
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
 
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "space-between" }}>
-          {/* Status Filter */}
-          <div style={{ display: "flex", gap: 4 }}>
-            {(["all", "open", "done"] as const).map((k) => (
+        {/* Status Tabs (Segmented Control) */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr 1fr",
+            gap: 6,
+            background: "rgba(0,0,0,0.15)",
+            padding: 4,
+            borderRadius: 12,
+            border: "1.5px solid var(--border-strong)",
+          }}
+        >
+          {[
+            { k: "all", label: "همه", icon: ListChecks, count: totalCount },
+            { k: "open", label: "در جریان", icon: CircleDashed, count: openCount },
+            { k: "done", label: "انجام‌شده", icon: CheckCircle2, count: doneCount },
+          ].map((tab) => {
+            const active = filter === tab.k;
+            const Icon = tab.icon;
+            return (
               <button
-                key={k}
-                className={`badge ${filter === k ? "badge-ok" : "badge-muted"}`}
-                style={{ cursor: "pointer", fontSize: 11 }}
-                onClick={() => setFilter(k)}
+                key={tab.k}
+                onClick={() => setFilter(tab.k as any)}
+                style={{
+                  border: active ? "2px solid #000" : "2px solid transparent",
+                  borderRadius: 9,
+                  background: active ? "var(--amber)" : "transparent",
+                  color: active ? "#0F172A" : "var(--muted)",
+                  fontWeight: 800,
+                  fontSize: 11,
+                  padding: "6px 4px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 5,
+                  cursor: "pointer",
+                  boxShadow: active ? "2px 2px 0 #000" : "none",
+                  transition: "all 0.15s ease",
+                }}
               >
-                {k === "all" ? "همه" : k === "open" ? "باز" : "انجام‌شده"}
+                <Icon size={12} />
+                <span>{tab.label}</span>
+                <span
+                  className="mono"
+                  style={{
+                    fontSize: 10,
+                    background: active ? "#000" : "rgba(255,255,255,0.08)",
+                    color: active ? "#fff" : "inherit",
+                    padding: "1px 5px",
+                    borderRadius: 999,
+                  }}
+                >
+                  {tab.count}
+                </span>
               </button>
-            ))}
-          </div>
+            );
+          })}
+        </div>
 
-          {/* Priority Filter */}
-          <div style={{ display: "flex", gap: 4 }}>
-            {(["all", "high", "medium", "low"] as const).map((p) => (
+        {/* Priority Filter Chips */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
+          <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, flexShrink: 0 }}>اولویت:</span>
+          {[
+            { k: "all", label: "همه" },
+            { k: "high", label: "فوری 🔥" },
+            { k: "medium", label: "متوسط ⚡" },
+            { k: "low", label: "عادی 🌱" },
+          ].map((p) => {
+            const active = priorityFilter === p.k;
+            return (
               <button
-                key={p}
-                className={`badge ${priorityFilter === p ? "badge-ok" : "badge-muted"}`}
-                style={{ cursor: "pointer", fontSize: 11 }}
-                onClick={() => setPriorityFilter(p)}
+                key={p.k}
+                onClick={() => setPriorityFilter(p.k as any)}
+                className={`badge ${active ? "badge-ok" : "badge-muted"}`}
+                style={{
+                  cursor: "pointer",
+                  fontSize: 11,
+                  padding: "4px 8px",
+                  flexShrink: 0,
+                  transition: "all 0.12s ease",
+                }}
               >
-                {p === "all" ? "اولویت: همه" : p === "high" ? "فوری" : p === "medium" ? "متوسط" : "کم"}
+                {p.label}
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Task Items List */}
+      {/* ── 3. Task Items List ── */}
       {filtered.length === 0 ? (
         <div
+          className="card"
           style={{
             textAlign: "center",
-            padding: "24px 10px",
+            padding: "32px 14px",
             color: "var(--muted)",
-            border: "2px dashed rgba(255,255,255,.12)",
-            borderRadius: 16,
+            display: "grid",
+            gap: 8,
+            justifyItems: "center",
           }}
         >
-          <p style={{ margin: 0, fontWeight: 800, fontSize: 13 }}>
-            {tasks.length === 0 ? "هنوز هیچ تسکی نداری — با دکمه بالا یکی اضافه کن ✨" : "نتیجه‌ای مطابق جستجو پیدا نشد"}
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 14,
+              border: "2px solid #000",
+              background: "rgba(255,255,255,0.04)",
+              display: "grid",
+              placeItems: "center",
+              boxShadow: "3px 3px 0 #000",
+            }}
+          >
+            <ListChecks size={24} style={{ opacity: 0.6 }} />
+          </div>
+          <b style={{ fontSize: 14, color: "var(--text)" }}>
+            {tasks.length === 0 ? "هیچ تسکی وجود ندارد" : "تسک منطبق با فیلتر یافت نشد"}
+          </b>
+          <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5, maxWidth: 260 }}>
+            {tasks.length === 0
+              ? "برای برنامه‌ریزی کارهای روزمره، از دکمه «تسک جدید» استفاده کنید."
+              : "عبارت جستجو یا فیلترهای وضعیت و اولویت را تغییر دهید."}
           </p>
         </div>
       ) : (
-        <div className="list" style={{ display: "grid", gap: 8 }}>
-          <AnimatePresence>
-            {filtered.map((t) => (
+        <div style={{ display: "grid", gap: 8 }}>
+          {filtered.map((t) => {
+            return (
               <div
                 key={t.id}
-                className="row"
+                className="card"
                 style={{
+                  padding: "12px 14px",
+                  display: "flex",
                   alignItems: "flex-start",
-                  padding: "10px 12px",
-                  background: t.done ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.06)",
+                  gap: 12,
+                  background: t.done ? "rgba(0,0,0,0.18)" : "linear-gradient(180deg, var(--card) 0%, var(--card2) 100%)",
+                  borderColor: t.done ? "var(--border)" : "var(--border-strong)",
+                  opacity: t.done ? 0.65 : 1,
+                  transition: "all 0.18s ease",
                 }}
               >
-                {/* Checkbox */}
-                <span
+                {/* Checkbox (Right Side RTL) */}
+                <button
+                  type="button"
+                  aria-label={t.done ? "علامت‌گذاری باز" : "علامت‌گذاری انجام‌شده"}
                   style={{
-                    width: 22,
-                    height: 22,
+                    width: 26,
+                    height: 26,
+                    minWidth: 26,
                     borderRadius: 8,
-                    border: "2px solid #000",
+                    border: "2.5px solid #000",
                     background: t.done ? "var(--green)" : "#fff",
                     display: "grid",
                     placeItems: "center",
                     boxShadow: "2px 2px 0 #000",
                     cursor: "pointer",
-                    flexShrink: 0,
                     marginTop: 2,
+                    padding: 0,
+                    transition: "transform 0.1s ease",
                   }}
                   onClick={() => handleToggle(t.id)}
                 >
-                  {t.done ? <BadgeCheck size={14} color="#052e0b" /> : null}
-                </span>
+                  {t.done && <Check size={16} strokeWidth={3.5} color="#052e0b" />}
+                </button>
 
-                {/* Content */}
-                <div style={{ flex: 1, display: "grid", gap: 4, cursor: "pointer" }} onClick={() => openEditModal(t)}>
+                {/* Task Details (Middle) */}
+                <div style={{ flex: 1, display: "grid", gap: 5, cursor: "pointer", minWidth: 0 }} onClick={() => openEditModal(t)}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                    <b
+                    <span
                       style={{
-                        fontSize: 13,
+                        fontSize: 14,
+                        fontWeight: 800,
+                        color: "var(--text)",
                         textDecoration: t.done ? "line-through" : "none",
-                        opacity: t.done ? 0.6 : 1,
+                        wordBreak: "break-word",
                       }}
                     >
                       {t.title}
-                    </b>
+                    </span>
                     {renderPriorityBadge(t.priority)}
                   </div>
 
@@ -334,11 +556,11 @@ export function TasksList() {
                     <p
                       style={{
                         margin: 0,
-                        fontSize: 11,
+                        fontSize: 12,
                         color: "var(--muted)",
                         lineHeight: 1.5,
                         textDecoration: t.done ? "line-through" : "none",
-                        opacity: t.done ? 0.5 : 0.9,
+                        wordBreak: "break-word",
                       }}
                     >
                       {t.description}
@@ -346,35 +568,44 @@ export function TasksList() {
                   )}
 
                   {t.due_date && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: "var(--muted)" }}>
-                      <Calendar size={11} />
-                      <span>مهلت: {formatShamsiDateText(t.due_date)}</span>
+                    <div
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        fontSize: 11,
+                        color: "var(--muted)",
+                        marginTop: 2,
+                      }}
+                    >
+                      <Calendar size={12} />
+                      <span className="mono">مهلت: {formatShamsiDateText(t.due_date)}</span>
                     </div>
                   )}
                 </div>
 
-                {/* Action Buttons */}
-                <div style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
+                {/* Action Buttons (Left Side RTL) */}
+                <div style={{ display: "flex", gap: 5, alignItems: "center", flexShrink: 0 }}>
                   <button
                     className="icon-btn"
-                    style={{ width: 28, height: 28, boxShadow: "1.5px 1.5px 0 #000" }}
+                    style={{ width: 32, height: 32, boxShadow: "2px 2px 0 #000" }}
                     onClick={() => openEditModal(t)}
                     title="ویرایش"
                   >
-                    <Edit3 size={13} />
+                    <Edit3 size={14} />
                   </button>
                   <button
                     className="icon-btn"
-                    style={{ width: 28, height: 28, boxShadow: "1.5px 1.5px 0 #000", color: "var(--red)" }}
+                    style={{ width: 32, height: 32, boxShadow: "2px 2px 0 #000", color: "var(--red)" }}
                     onClick={() => setDeleteConfirmTask(t)}
                     title="حذف"
                   >
-                    <Trash2 size={13} />
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>
-            ))}
-          </AnimatePresence>
+            );
+          })}
         </div>
       )}
 
@@ -382,72 +613,78 @@ export function TasksList() {
       <Drawer
         open={activeTaskModal !== null}
         onClose={() => setActiveTaskModal(null)}
-        title={activeTaskModal === "add" ? "افزودن تسک جدید" : "ویرایش مشخصات تسک"}
-        height="auto"
+        title={activeTaskModal === "add" ? "افزودن تسک جدید" : "ویرایش تسک"}
+        height="82vh"
       >
-        <div style={{ display: "grid", gap: 12, padding: "6px 0" }}>
-          <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+        <div style={{ display: "grid", gap: 14, padding: "4px 0" }}>
+          <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
             <span style={{ fontSize: 12, fontWeight: 800 }}>عنوان تسک:</span>
             <input
               value={formTitle}
               onChange={(e) => setFormTitle(e.target.value)}
-              placeholder="مثال: تکمیل گزارش ماهانه یا جلسه با تیم"
-              style={{ width: "100%", padding: "10px 12px", fontSize: 13 }}
+              placeholder="مثال: تکمیل گزارش عملکرد یا پیگیری پروژه…"
+              className="input"
               autoFocus
             />
           </label>
 
-          <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+          <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
             <span style={{ fontSize: 12, fontWeight: 800 }}>توضیحات و یادداشت (اختیاری):</span>
             <textarea
               value={formDesc}
               onChange={(e) => setFormDesc(e.target.value)}
-              placeholder="جزئیات بیشتر، چک‌لیست یا نکات مهم…"
+              placeholder="جزئیات بیشتر، چک‌لیست یا نکات لازم…"
               rows={3}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                fontSize: 12,
-                borderRadius: 12,
-                border: "2px solid #000",
-                background: "#fff",
-                color: "#0F172A",
-                fontFamily: "YekanBakh",
-                boxShadow: "3px 3px 0 #000",
-                resize: "vertical",
-              }}
+              className="input"
+              style={{ resize: "vertical" }}
             />
           </label>
 
-          {/* Priority selector */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 800 }}>اولویت:</span>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+          {/* Priority selector cards */}
+          <div className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 800 }}>اولویت تسک:</span>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, width: "100%" }}>
               {[
-                { k: "low", label: "کم", bg: "#F3F4F6", color: "#4B5563" },
-                { k: "medium", label: "متوسط", bg: "#FEF3C7", color: "#92400E" },
-                { k: "high", label: "فوری 🔥", bg: "#FEE2E2", color: "#991B1B" },
-              ].map((p) => (
-                <button
-                  key={p.k}
-                  type="button"
-                  className={`btn ${formPriority === p.k ? "btn-primary" : "btn-ghost"}`}
-                  style={{
-                    padding: "8px",
-                    fontSize: 12,
-                    fontWeight: 800,
-                  }}
-                  onClick={() => setFormPriority(p.k as any)}
-                >
-                  {p.label}
-                </button>
-              ))}
+                { k: "low", label: "عادی", icon: Leaf, bg: "#F3F4F6", color: "#374151" },
+                { k: "medium", label: "متوسط", icon: Zap, bg: "#FEF3C7", color: "#92400E" },
+                { k: "high", label: "فوری", icon: Flame, bg: "#FEE2E2", color: "#991B1B" },
+              ].map((p) => {
+                const selected = formPriority === p.k;
+                const Icon = p.icon;
+                return (
+                  <button
+                    key={p.k}
+                    type="button"
+                    style={{
+                      padding: "10px 6px",
+                      borderRadius: 12,
+                      border: selected ? "2.5px solid #000" : "1.5px solid var(--border-strong)",
+                      background: selected ? p.bg : "var(--bg)",
+                      color: selected ? p.color : "var(--text)",
+                      boxShadow: selected ? "3px 3px 0 #000" : "none",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 4,
+                      cursor: "pointer",
+                      fontWeight: 800,
+                      fontSize: 12,
+                      transition: "all 0.12s ease",
+                    }}
+                    onClick={() => setFormPriority(p.k as any)}
+                  >
+                    <Icon size={16} />
+                    <span>{p.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <div className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 800 }}>مهلت انجام (تاریخ سررسید):</span>
-            
+          {/* Due date picker */}
+          <div className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 800 }}>مهلت انجام (سررسید):</span>
+
             <div style={{ display: "flex", gap: 8, width: "100%", alignItems: "center" }}>
               <button
                 type="button"
@@ -466,7 +703,7 @@ export function TasksList() {
               >
                 <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <CalendarDays size={16} />
-                  <b>{formDueDate ? formatShamsiDateText(formDueDate) : "انتخاب تاریخ از تقویم"}</b>
+                  <b>{formDueDate ? formatShamsiDateText(formDueDate) : "انتخاب تاریخ مهلت"}</b>
                 </span>
                 <span className="badge badge-muted mono" style={{ fontSize: 11 }}>
                   {formDueDate ? formDueDate : "بدون مهلت"}
@@ -477,7 +714,7 @@ export function TasksList() {
                 <button
                   type="button"
                   className="icon-btn"
-                  style={{ width: 36, height: 36, flexShrink: 0 }}
+                  style={{ width: 38, height: 38, flexShrink: 0 }}
                   onClick={() => setFormDueDate("")}
                   title="پاک کردن مهلت"
                 >
@@ -502,7 +739,7 @@ export function TasksList() {
 
           <button
             className="btn btn-primary"
-            style={{ width: "100%", padding: "12px", fontSize: 13, fontWeight: 800, marginTop: 4 }}
+            style={{ width: "100%", padding: "12px", fontSize: 14, fontWeight: 800, marginTop: 6 }}
             onClick={handleSaveTask}
             disabled={saving}
           >
