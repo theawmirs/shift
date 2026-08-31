@@ -352,7 +352,7 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
           <span>ریز کارکرد روزهای ماه:</span>
         </div>
 
-        <div style={{ display: "grid", gap: 6, maxHeight: 300, overflowY: "auto", paddingRight: 2 }}>
+        <div className="custom-scroll" style={{ display: "grid", gap: 6, maxHeight: 300, overflowY: "auto", paddingLeft: 4, paddingRight: 2 }}>
           {m.rows
             ?.filter((r: any) => r.has_events || r.is_holiday)
             .map((r: any) => {
