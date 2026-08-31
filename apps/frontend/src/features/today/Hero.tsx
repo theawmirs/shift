@@ -1,23 +1,4 @@
-import { useEffect, useState } from "react";
-import { useMotionValue, useSpring, useTransform } from "framer-motion";
-import { Clock3, Timer, BadgeCheck, BarChart3, Radio } from "lucide-react";
-
-function AnimatedNumber({ value }: { value: number }) {
-  const mv = useMotionValue(value);
-  const spring = useSpring(mv, { stiffness: 90, damping: 20 });
-  const rounded = useTransform(spring, (v) => v.toFixed(2));
-  const [display, setDisplay] = useState(value.toFixed(2));
-  useEffect(() => mv.set(value), [value, mv]);
-  useEffect(() => {
-    const unsub = rounded.on("change", (v) => setDisplay(v));
-    return () => unsub();
-  }, [rounded]);
-  return (
-    <span className="mono" style={{ fontWeight: 800 }}>
-      {display}
-    </span>
-  );
-}
+import { Clock3, BadgeCheck, BarChart3, Radio, Hourglass } from "lucide-react";
 
 export function Hero({
   liveMinutes,
@@ -35,6 +16,14 @@ export function Hero({
   const standardHours = 8;
   const pct = Math.min(100, Math.round((liveHours / standardHours) * 100));
   const isWorking = inTime !== "—" && inTime !== "" && inTime !== null;
+
+  // Remaining or overtime duration
+  const diffMinutes = Math.round(standardHours * 60 - liveMinutes);
+  const isCompleted = diffMinutes <= 0;
+  const remAbs = Math.abs(diffMinutes);
+  const remH = Math.floor(remAbs / 60);
+  const remM = remAbs % 60;
+  const remFormatted = `${remH}:${String(remM).padStart(2, "0")}`;
 
   return (
     <div
@@ -70,9 +59,9 @@ export function Hero({
               <span
                 className="pill pill-idle"
                 style={{
-                  background: "rgba(255,255,255,0.08)",
+                  background: "var(--surface-2)",
                   color: "var(--muted)",
-                  border: "1.5px solid #000",
+                  border: "1.5px solid var(--border-strong)",
                   fontSize: 11,
                   display: "inline-flex",
                   alignItems: "center",
@@ -88,7 +77,7 @@ export function Hero({
 
         {/* Main Live Hours Counter */}
         <div>
-          <h2 className="hero-title display" style={{ fontSize: 24 }}>
+          <h2 className="hero-title display" style={{ fontSize: 26 }}>
             {isWorking ? (
               <>
                 تا الان{" "}
@@ -108,18 +97,26 @@ export function Hero({
           </p>
         </div>
 
-        {/* Telemetry Chips in Single Responsive Row */}
+        {/* Telemetry Chips in Single Responsive Row — No redundancy */}
         <div className="time-row">
           <div className="time-chip">
-            <Timer size={15} />
-            <b>
-              <AnimatedNumber value={liveHours} />
-            </b>{" "}
-            ساعت
-          </div>
-          <div className="time-chip time-chip--light">
             <BadgeCheck size={15} /> موظفی ۸:۰۰
           </div>
+
+          <div
+            className="time-chip"
+            style={{
+              background: isCompleted ? "rgba(34, 197, 94, 0.15)" : "var(--card2)",
+              color: isCompleted ? "var(--green)" : "var(--text)",
+              borderColor: isCompleted ? "var(--green)" : "#000",
+            }}
+          >
+            <Hourglass size={14} />
+            <span>
+              {isCompleted ? `+${remFormatted} اضافه‌کار` : `${remFormatted} تا تکمیل`}
+            </span>
+          </div>
+
           <div className="time-chip time-chip--violet">
             <BarChart3 size={15} /> پیشرفت {pct}%
           </div>
