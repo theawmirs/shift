@@ -218,7 +218,7 @@ export function CalendarPage() {
   const monthRemoteDays = monthReport?.totals?.remote_days || 0;
 
   return (
-    <div className="page-fade" style={{ display: "grid", gap: 12 }}>
+    <div className="page-fade calendar-container" style={{ display: "grid", gap: 12 }}>
       {/* ── 1. Month Telemetry Card ── */}
       <div className="card" style={{ display: "grid", gap: 12 }}>
         {/* Navigation Header */}
@@ -380,7 +380,7 @@ export function CalendarPage() {
               <button
                 key={dateStr}
                 onClick={() => handleDayClick(d, dayRow, isHoliday, officialHolidayName)}
-                className="mono"
+                className="mono calendar-cell-btn"
                 style={{
                   aspectRatio: "1",
                   borderRadius: 12,
