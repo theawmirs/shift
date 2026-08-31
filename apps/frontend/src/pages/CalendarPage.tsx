@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useHolidaysQuery, useMonthReportQuery } from "../shared/api/queries";
 import { DayDetailDrawer } from "../features/month/DayDetailDrawer";
-import { formatShamsiDateText, fmtHoursFa } from "../shared/lib/format";
+import { formatShamsiDateText, fmtHoursCompactFa } from "../shared/lib/format";
 
 // ── Pure JS Jalali helpers (matching ShamsiCalendar / jalali.py) ──
 const _GD = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -251,27 +251,36 @@ export function CalendarPage() {
           </button>
         </div>
 
-        {/* Quick Month Metrics */}
+        {/* Quick Month Metrics (No-wrap single line format) */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-          <div className="row" style={{ padding: "8px 6px", flexDirection: "column", alignItems: "center", gap: 2 }}>
+          <div className="row" style={{ padding: "8px 6px", flexDirection: "column", alignItems: "center", gap: 3 }}>
             <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>کارکرد کل</span>
-            <b className="mono" style={{ fontSize: 13, color: "var(--amber-2)" }}>
-              {monthNetHours > 0 ? fmtHoursFa(monthNetHours) : "۰"}
-            </b>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 2, whiteSpace: "nowrap" }}>
+              <b className="mono" style={{ fontSize: 14, color: "var(--amber-2)" }}>
+                {fmtHoursCompactFa(monthNetHours)}
+              </b>
+              <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>
+            </div>
           </div>
 
-          <div className="row" style={{ padding: "8px 6px", flexDirection: "column", alignItems: "center", gap: 2 }}>
+          <div className="row" style={{ padding: "8px 6px", flexDirection: "column", alignItems: "center", gap: 3 }}>
             <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>روزهای کاری</span>
-            <b className="mono" style={{ fontSize: 13 }}>
-              {monthWorkDays} روز
-            </b>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 2, whiteSpace: "nowrap" }}>
+              <b className="mono" style={{ fontSize: 14 }}>
+                {monthWorkDays}
+              </b>
+              <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>روز</span>
+            </div>
           </div>
 
-          <div className="row" style={{ padding: "8px 6px", flexDirection: "column", alignItems: "center", gap: 2 }}>
+          <div className="row" style={{ padding: "8px 6px", flexDirection: "column", alignItems: "center", gap: 3 }}>
             <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>دورکاری</span>
-            <b className="mono" style={{ fontSize: 13, color: "#818CF8" }}>
-              {monthRemoteDays} روز
-            </b>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 2, whiteSpace: "nowrap" }}>
+              <b className="mono" style={{ fontSize: 14, color: "#818CF8" }}>
+                {monthRemoteDays}
+              </b>
+              <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>روز</span>
+            </div>
           </div>
         </div>
       </div>

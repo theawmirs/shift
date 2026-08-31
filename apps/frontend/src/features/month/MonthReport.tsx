@@ -15,11 +15,7 @@ import {
 import { CardSkeleton } from "../../shared/ui/Skeleton";
 import { useMonthReport } from "./useMonthReport";
 import { DayDetailDrawer } from "./DayDetailDrawer";
-import { fmtHoursFa, formatShamsiDateText } from "../../shared/lib/format";
-
-function fmtFa(v: any) {
-  return fmtHoursFa(v);
-}
+import { fmtHoursFa, fmtHoursCompactFa, formatShamsiDateText } from "../../shared/lib/format";
 
 export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "success" | "error") => void }) {
   const [selectedDay, setSelectedDay] = useState<any | null>(null);
@@ -187,7 +183,7 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
         )}
       </div>
 
-      {/* ── Bento KPI Metric Grid (2x2) ── */}
+      {/* ── Bento KPI Metric Grid (2x2) with No-Wrap Single Line Text ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         {/* KPI 1: Net Work */}
         <div
@@ -205,9 +201,12 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
             <Clock size={13} />
             <span>خالص کارکرد</span>
           </div>
-          <b className="mono" style={{ fontSize: 16, color: "var(--text)" }}>
-            {fmtFa(netHours)}
-          </b>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 4, whiteSpace: "nowrap" }}>
+            <b className="mono" style={{ fontSize: 18, color: "var(--text)" }}>
+              {fmtHoursCompactFa(netHours)}
+            </b>
+            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>
+          </div>
         </div>
 
         {/* KPI 2: Overtime */}
@@ -226,9 +225,12 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
             <TrendingUp size={13} />
             <span>اضافه‌کاری</span>
           </div>
-          <b className="mono" style={{ fontSize: 16, color: overtimeHours > 0 ? "var(--green)" : "var(--muted)" }}>
-            {overtimeHours > 0 ? fmtFa(overtimeHours) : "۰ ساعت"}
-          </b>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 4, whiteSpace: "nowrap" }}>
+            <b className="mono" style={{ fontSize: 18, color: overtimeHours > 0 ? "var(--green)" : "var(--muted)" }}>
+              {overtimeHours > 0 ? fmtHoursCompactFa(overtimeHours) : "۰:۰۰"}
+            </b>
+            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>
+          </div>
         </div>
 
         {/* KPI 3: Deficit */}
@@ -247,9 +249,12 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
             <TrendingDown size={13} />
             <span>کسری موظفی</span>
           </div>
-          <b className="mono" style={{ fontSize: 16, color: deficitHours > 0 ? "var(--red)" : "var(--green)" }}>
-            {deficitHours > 0 ? fmtFa(deficitHours) : "بدون کسری 🎉"}
-          </b>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 4, whiteSpace: "nowrap" }}>
+            <b className="mono" style={{ fontSize: 18, color: deficitHours > 0 ? "var(--red)" : "var(--green)" }}>
+              {deficitHours > 0 ? `${fmtHoursCompactFa(deficitHours)} -` : "بدون کسری 🎉"}
+            </b>
+            {deficitHours > 0 && <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>}
+          </div>
         </div>
 
         {/* KPI 4: Workdays count */}
@@ -268,9 +273,12 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
             <Calendar size={13} />
             <span>روزهای حضور</span>
           </div>
-          <b className="mono" style={{ fontSize: 16, color: "var(--text)" }}>
-            {workDays} <small style={{ fontSize: 11, color: "var(--muted)" }}>از {workDays + holidayDays} روز</small>
-          </b>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 4, whiteSpace: "nowrap" }}>
+            <b className="mono" style={{ fontSize: 18, color: "var(--text)" }}>
+              {workDays}
+            </b>
+            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>از {workDays + holidayDays} روز</span>
+          </div>
         </div>
       </div>
 
@@ -385,7 +393,7 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
 
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span className="mono" style={{ fontSize: 12, color: r.net > 0 ? "var(--text)" : "var(--muted)" }}>
-                      {r.in || "—"} تا {r.out || "—"} {r.net > 0 ? `(${fmtFa(r.net)})` : ""}
+                      {r.in || "—"} تا {r.out || "—"} {r.net > 0 ? `(${fmtHoursFa(r.net)})` : ""}
                     </span>
                     <ChevronLeft size={13} style={{ color: "var(--muted)" }} />
                   </div>
