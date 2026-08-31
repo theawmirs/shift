@@ -126,7 +126,6 @@ button{font:inherit; font-family:inherit}
   padding: 0;
   max-width: none; margin: 0;
   overflow-x:clip;
-  /* bottom-nav height ≈ 62 + safe-area; + extra breathing room */
   --nav-h: 62px;
 }
 [data-theme="light"] .app{
@@ -364,6 +363,43 @@ button{font:inherit; font-family:inherit}
 [data-theme="light"] .skeleton{ background: linear-gradient(90deg, rgba(15,23,42,.06) 25%, rgba(15,23,42,.12) 37%, rgba(15,23,42,.06) 63%); background-size:400% 100% }
 @keyframes shimmer{ 0%{ background-position: 100% 0 } 100%{ background-position: -100% 0 } }
 
+/* ─── Modern Login Page Layout ─── */
+.login-wrapper {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 16px;
+  background:
+    radial-gradient(800px 450px at 50% 15%, rgba(99, 102, 241, 0.22), transparent 70%),
+    radial-gradient(600px 350px at 80% 85%, rgba(245, 158, 11, 0.15), transparent 60%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+  box-sizing: border-box;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 440px;
+  background: linear-gradient(180deg, var(--card) 0%, var(--card2) 100%);
+  border: 3px solid #000;
+  border-radius: var(--radius-lg);
+  box-shadow: 8px 8px 0 #000;
+  padding: 28px 22px;
+  display: grid;
+  gap: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (min-width: 860px) {
+  .login-container {
+    max-width: 480px;
+    padding: 36px 30px;
+    gap: 24px;
+    box-shadow: 10px 10px 0 #000;
+  }
+}
+
 /* ─── Desktop Layout Architecture (Responsive md/lg/xl) ─── */
 .desktop-sidebar {
   display: none;
@@ -489,7 +525,7 @@ button{font:inherit; font-family:inherit}
   }
 
   .topbar {
-    display: none; /* Topbar is seamlessly integrated into Desktop Sidebar */
+    display: none;
   }
 
   .content {
