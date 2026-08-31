@@ -72,7 +72,11 @@ def get_work_mode(conn: sqlite3.Connection, sdate: str, user_id: int | None = No
         row = conn.execute("SELECT mode FROM day_work_mode WHERE shamsi_date=? AND user_id IS NULL", (sdate,)).fetchone()
     else:
         row = conn.execute("SELECT mode FROM day_work_mode WHERE shamsi_date=? AND user_id=?", (sdate, user_id)).fetchone()
-    return row["mode"] if row else "office"
+    if row:
+        return row["mode"]
+    # Fallback to user's configured default_work_mode from settings
+    u_settings = get_user_settings(conn, user_id=user_id)
+    return u_settings.get("default_work_mode", "office")
 
 def set_work_mode(conn: sqlite3.Connection, sdate: str, mode: str, user_id: int | None = None) -> None:
     if user_id is None:

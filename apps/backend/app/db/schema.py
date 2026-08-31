@@ -8,6 +8,7 @@ DEFAULT_SETTINGS = {
     "end_time_end": "17:15",
     "system_offset_min": "0",
     "leave_quota_hours": "208",
+    "default_work_mode": "office",  # office or remote
     "jwt_secret": "default_worktime_secret_change_me_in_production",
 }
 
@@ -40,12 +41,11 @@ HOLIDAYS_1405 = [
     ("1405-12-29", "ملی‌شدن صنعت نفت"),
 ]
 
-def init_db(conn: sqlite3.Connection):
-    """Ensure all required tables, columns, indexes, and seed settings exist."""
+def init_db(conn: sqlite3.Connection) -> None:
     conn.executescript("""
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      telegram_id INTEGER UNIQUE NOT NULL,
+      telegram_id INTEGER UNIQUE,
       username TEXT,
       first_name TEXT,
       last_name TEXT,
@@ -89,13 +89,12 @@ def init_db(conn: sqlite3.Connection):
       user_id INTEGER NOT NULL REFERENCES users(id),
       start_date TEXT NOT NULL,
       end_date TEXT NOT NULL,
-      type TEXT NOT NULL CHECK(type IN ('annual','sick','unpaid','casual')),
+      hours REAL NOT NULL DEFAULT 8.0,
+      label TEXT NOT NULL,
       reason TEXT,
-      hours REAL NOT NULL,
       created_at TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_daily_leaves_user_start ON daily_leaves(user_id, start_date);
-    CREATE INDEX IF NOT EXISTS idx_daily_leaves_user_type ON daily_leaves(user_id, type);
+    CREATE INDEX IF NOT EXISTS idx_daily_leaves_user ON daily_leaves(user_id, start_date, end_date);
 
     CREATE TABLE IF NOT EXISTS events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,7 +102,7 @@ def init_db(conn: sqlite3.Connection):
       event_type TEXT NOT NULL,
       ts_utc TEXT NOT NULL,
       shamsi_date TEXT NOT NULL,
-      weekday TEXT,
+      weekday TEXT NOT NULL,
       note TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_events_date ON events(shamsi_date);
@@ -115,32 +114,32 @@ def init_db(conn: sqlite3.Connection):
       shamsi_date TEXT NOT NULL,
       title TEXT NOT NULL,
       description TEXT,
-      priority TEXT NOT NULL DEFAULT 'medium' CHECK(priority IN ('low','medium','high')),
+      priority TEXT NOT NULL DEFAULT 'medium',
       due_date TEXT,
       done INTEGER NOT NULL DEFAULT 0,
-      day_num INTEGER,
       created_at TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_tasks_date ON tasks(shamsi_date);
-    CREATE INDEX IF NOT EXISTS idx_tasks_user_date ON tasks(user_id, shamsi_date);
+    CREATE INDEX IF NOT EXISTS idx_tasks_user ON tasks(user_id, done);
 
     CREATE TABLE IF NOT EXISTS day_work_mode (
-      shamsi_date TEXT NOT NULL,
-      user_id INTEGER REFERENCES users(id),
+      shamsi_date TEXT,
+      user_id INTEGER,
       mode TEXT NOT NULL CHECK(mode IN ('office','remote')),
-      PRIMARY KEY (shamsi_date, user_id)
+      PRIMARY KEY(shamsi_date, user_id)
     );
     CREATE INDEX IF NOT EXISTS idx_day_mode_user_date ON day_work_mode(user_id, shamsi_date);
 
     CREATE TABLE IF NOT EXISTS monthly_summaries (
-      month_key TEXT NOT NULL,
-      user_id INTEGER REFERENCES users(id),
-      year INT, month INT, month_name TEXT,
-      net_hours REAL, gross_hours REAL, overtime REAL, deficit REAL,
-      leave_hours REAL, work_days INT, holiday_days INT,
-      late_days INT, total_lateness REAL, standard_hours REAL,
-      generated_at TEXT,
-      PRIMARY KEY (month_key, user_id)
+      user_id INTEGER,
+      month_key TEXT,
+      net REAL,
+      gross REAL,
+      leave REAL,
+      overtime REAL,
+      deficit REAL,
+      late_total REAL,
+      PRIMARY KEY(user_id, month_key)
     );
     CREATE INDEX IF NOT EXISTS idx_summaries_user ON monthly_summaries(user_id);
 
@@ -199,4 +198,3 @@ def set_user_setting(conn: sqlite3.Connection, user_id: int, key: str, value: st
         (user_id, key, value),
     )
     conn.commit()
-

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Download, ChevronDown, Sliders, FileSpreadsheet, Save } from "lucide-react";
+import { AlertTriangle, Download, ChevronDown, Sliders, FileSpreadsheet, Save, Home, Building2 } from "lucide-react";
 import { API } from "../../shared/lib/api";
 import { useToast } from "../../shared/ui/Toast";
 import { CardSkeleton } from "../../shared/ui/Skeleton";
@@ -18,6 +18,7 @@ export function SettingsForm() {
     end_time_end: "17:15",
     standard_hours: "8",
     leave_quota_hours: "208",
+    default_work_mode: "office",
   });
   const [saving, setSaving] = useState<string | null>(null);
   const [selMonth, setSelMonth] = useState("");
@@ -37,8 +38,8 @@ export function SettingsForm() {
     }
   }, [selMonth, months]);
 
-  const onSave = async (k: string) => {
-    const v = String(values[k] || "").trim();
+  const onSave = async (k: string, directVal?: string) => {
+    const v = String(directVal ?? values[k] ?? "").trim();
     if (!v) {
       push(`❌ فیلد نمی‌تواند خالی باشد`, "error");
       return;
@@ -46,6 +47,9 @@ export function SettingsForm() {
     setSaving(k);
     try {
       await updateSettingsMutation.mutateAsync({ key: k, value: v });
+      if (directVal !== undefined) {
+        setValues((s) => ({ ...s, [k]: directVal }));
+      }
       push(`✅ تنظیم با موفقیت ذخیره شد`);
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
@@ -78,6 +82,8 @@ export function SettingsForm() {
 
   if (settingsQuery.isLoading && !settingsQuery.data) return <CardSkeleton rows={4} />;
 
+  const currentDefaultMode = values.default_work_mode || "office";
+
   return (
     <div className="card" style={{ display: "grid", gap: 16 }}>
       {/* ── Section Header ── */}
@@ -93,7 +99,84 @@ export function SettingsForm() {
         </span>
       </div>
 
-      {/* ── Setting Fields Grid ── */}
+      {/* ── 1. Default Work Mode Selector (Office vs Remote) ── */}
+      <div
+        className="row"
+        style={{
+          padding: "12px",
+          background: "var(--surface-2)",
+          borderColor: "var(--border-strong)",
+          flexDirection: "column",
+          alignItems: "stretch",
+          gap: 10,
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 13, color: "var(--text)" }}>
+              نوع پیش‌فرض قرارداد کاری
+            </div>
+            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+              روزهای کاری به طور خودکار با این نوع شروع می‌شوند (قابل تغییر روزانه در صفحه امروز).
+            </div>
+          </div>
+          <span className="badge badge-muted mono" style={{ fontSize: 10 }}>
+            پیش‌فرض روزها
+          </span>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <button
+            type="button"
+            className="btn"
+            style={{
+              padding: "10px",
+              fontSize: 12,
+              fontWeight: 800,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              background: currentDefaultMode === "office" ? "#FEF3C7" : "transparent",
+              color: currentDefaultMode === "office" ? "#92400E" : "var(--muted)",
+              borderColor: currentDefaultMode === "office" ? "#000" : "var(--border-strong)",
+              boxShadow: currentDefaultMode === "office" ? "3px 3px 0 #000" : "none",
+              cursor: "pointer",
+            }}
+            onClick={() => onSave("default_work_mode", "office")}
+            disabled={saving === "default_work_mode"}
+          >
+            <Building2 size={16} />
+            <span>حضوری در شرکت</span>
+          </button>
+
+          <button
+            type="button"
+            className="btn"
+            style={{
+              padding: "10px",
+              fontSize: 12,
+              fontWeight: 800,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              background: currentDefaultMode === "remote" ? "#DDD6FE" : "transparent",
+              color: currentDefaultMode === "remote" ? "#4C1D95" : "var(--muted)",
+              borderColor: currentDefaultMode === "remote" ? "#000" : "var(--border-strong)",
+              boxShadow: currentDefaultMode === "remote" ? "3px 3px 0 #000" : "none",
+              cursor: "pointer",
+            }}
+            onClick={() => onSave("default_work_mode", "remote")}
+            disabled={saving === "default_work_mode"}
+          >
+            <Home size={16} />
+            <span>کاملاً دورکار (ریموت)</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── 2. Setting Fields Grid ── */}
       <div style={{ display: "grid", gap: 8 }}>
         {[
           { k: "start_time", label: "آغاز پنجره ورود", ph: "07:00", type: "time" },
@@ -159,7 +242,7 @@ export function SettingsForm() {
         ))}
       </div>
 
-      {/* ── Excel Export Card Component ── */}
+      {/* ── 3. Excel Export Card Component ── */}
       <div
         style={{
           padding: "12px 14px",
