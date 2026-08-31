@@ -43,6 +43,21 @@ def holiday_name(conn: sqlite3.Connection, sdate: str) -> tuple[bool, str | None
         return True, "جمعه"
     return False, None
 
+def next_workday(conn: sqlite3.Connection, sdate: str) -> str:
+    """Calculate the next working day (skipping Fridays and official holidays)."""
+    jy, jm, jd = parse_date(sdate)
+    gy, gm, gd = jalali.jalali_to_gregorian(jy, jm, jd)
+    cur_date = datetime.date(gy, gm, gd)
+    while True:
+        cur_date += datetime.timedelta(days=1)
+        if cur_date.weekday() == 4: # Friday
+            continue
+        njy, njm, njd = jalali.gregorian_to_jalali(cur_date.year, cur_date.month, cur_date.day)
+        next_sdate = f"{njy:04d}-{njm:02d}-{njd:02d}"
+        row = conn.execute("SELECT 1 FROM holidays WHERE date=?", (next_sdate,)).fetchone()
+        if not row:
+            return next_sdate
+
 def get_work_mode(conn: sqlite3.Connection, sdate: str, user_id: int | None = None) -> str:
     if user_id is None:
         row = conn.execute("SELECT mode FROM day_work_mode WHERE shamsi_date=? AND user_id IS NULL", (sdate,)).fetchone()
@@ -296,7 +311,7 @@ def record_overtime(conn: sqlite3.Connection, hours: str, date_str: str | None =
     else:
         conn.execute("UPDATE events SET note=? WHERE shamsi_date=? AND event_type='out' AND user_id=?", (f"ot:{ot_val}", sdate, user_id))
 
-    # Automatically create a task reminder to fill the overtime form if > 0
+    # Automatically create a task reminder to fill the overtime form on the NEXT working day
     if ot_val > 0:
         total_mins = int(round(ot_val * 60))
         h = total_mins // 60
@@ -307,6 +322,9 @@ def record_overtime(conn: sqlite3.Connection, hours: str, date_str: str | None =
         date_readable = f"{jd} {month_names[jm]} {jy}"
         task_title = f"📝 پر کردن برگه اضافه‌کاری ({dur_str} - {date_readable})"
         
+        # Calculate next working day for due_date
+        next_due_date = next_workday(conn, sdate)
+
         # Check if task already exists
         existing_task = conn.execute(
             "SELECT id FROM tasks WHERE shamsi_date=? AND title=? AND ((? IS NULL AND user_id IS NULL) OR user_id=?)",
@@ -315,8 +333,8 @@ def record_overtime(conn: sqlite3.Connection, hours: str, date_str: str | None =
         if not existing_task:
             now_str = datetime.datetime.now(datetime.timezone.utc).isoformat()
             conn.execute(
-                "INSERT INTO tasks(shamsi_date, title, done, user_id, created_at) VALUES(?, ?, 0, ?, ?)",
-                (sdate, task_title, user_id, now_str),
+                "INSERT INTO tasks(shamsi_date, title, due_date, done, user_id, created_at) VALUES(?, ?, ?, 0, ?, ?)",
+                (sdate, task_title, next_due_date, user_id, now_str),
             )
 
     conn.commit()

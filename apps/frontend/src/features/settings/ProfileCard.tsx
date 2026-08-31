@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { User as UserIcon, LogOut, Save, CheckCircle2 } from "lucide-react";
+import { useState } from "react";
+import { User as UserIcon, LogOut, Save, CheckCircle2, ShieldCheck } from "lucide-react";
 import { API } from "../../shared/lib/api";
 import { useAuth } from "../../shared/lib/auth";
 import { useToast } from "../../shared/ui/Toast";
@@ -21,24 +21,6 @@ export function ProfileCard() {
   const [name, setName] = useState(() => (user as any)?.display_name || (user as any)?.displayName || "");
   const [saving, setSaving] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-
-  useEffect(() => {
-    // keep input in sync when user loads
-    if (user) setName((user as any).display_name || (user as any).displayName || "");
-  }, [(user as any)?.display_name, (user as any)?.displayName]);
-
-  // fetch fresh /me if user not yet loaded (e.g. hard refresh)
-  useEffect(() => {
-    if (!user) {
-      API.authMe()
-        .then((d) => {
-          const u = d.user || d;
-          setUser(u);
-          setName(u.display_name || u.displayName || "");
-        })
-        .catch(() => {});
-    }
-  }, []);
 
   const dn = displayNameOf(user);
   const photo = (user as any)?.photo_url || (user as any)?.photoUrl || "";
@@ -76,43 +58,58 @@ export function ProfileCard() {
     setUser(null);
     await logout();
     push("خارج شدید — دوباره وارد شوید");
-    // force reload to LoginPage (App will render LoginPage when token is null)
     window.location.href = "/";
   };
 
   return (
-    <div className="card" style={{ display: "grid", gap: 14 }}>
-    
+    <div className="card" style={{ display: "grid", gap: 16 }}>
+      {/* ── Header ── */}
       <div className="section-head" style={{ margin: 0 }}>
-        <h2 className="display" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <UserIcon size={18} /> پروفایل
-        </h2>
-        <span className="kicker mono">حساب کاربری</span>
+        <div>
+          <div className="kicker">ACCOUNT & PROFILE</div>
+          <h2 className="display" style={{ fontSize: 18, marginTop: 2, display: "flex", alignItems: "center", gap: 8 }}>
+            <UserIcon size={18} /> اطلاعات کاربری
+          </h2>
+        </div>
+        <span className="badge badge-ok" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10 }}>
+          <ShieldCheck size={12} /> احراز هویت شده
+        </span>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+      {/* ── Avatar & Identity Overview ── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          padding: "10px 12px",
+          background: "var(--surface-2)",
+          border: "2px solid var(--border-strong)",
+          borderRadius: 16,
+        }}
+      >
         {photo ? (
           <img
             src={photo}
             alt={dn}
             style={{
-              width: 64,
-              height: 64,
-              borderRadius: 18,
-              border: "3px solid #000",
-              boxShadow: "4px 4px 0 #000",
+              width: 54,
+              height: 54,
+              borderRadius: 16,
+              border: "2.5px solid #000",
+              boxShadow: "3px 3px 0 #000",
               objectFit: "cover",
             }}
           />
         ) : (
           <div
             style={{
-              width: 64,
-              height: 64,
-              borderRadius: 18,
-              border: "3px solid #000",
-              boxShadow: "4px 4px 0 #000",
-              background: "linear-gradient(135deg,var(--amber),var(--amber-2))",
+              width: 54,
+              height: 54,
+              borderRadius: 16,
+              border: "2.5px solid #000",
+              boxShadow: "3px 3px 0 #000",
+              background: "linear-gradient(135deg, var(--amber), var(--amber-2))",
               display: "grid",
               placeItems: "center",
               fontWeight: 900,
@@ -123,51 +120,45 @@ export function ProfileCard() {
             {initials}
           </div>
         )}
-        <div style={{ display: "grid", gap: 4 }}>
-          <div style={{ fontWeight: 900, fontSize: 16, display: "flex", alignItems: "center", gap: 6 }}>
-            {dn}{" "}
+
+        <div style={{ flex: 1, display: "grid", gap: 3 }}>
+          <div style={{ fontWeight: 900, fontSize: 15, display: "flex", alignItems: "center", gap: 6, color: "var(--text)" }}>
+            <span>{dn}</span>
             <span
               style={{
                 background: "#22C55E",
                 color: "#052e0b",
-                border: "2px solid #000",
+                border: "1.5px solid #000",
                 borderRadius: 999,
-                padding: "2px 8px",
-                fontSize: 10,
+                padding: "1px 6px",
+                fontSize: 9,
+                fontWeight: 900,
                 display: "inline-flex",
                 alignItems: "center",
-                gap: 4,
+                gap: 3,
               }}
             >
-              <CheckCircle2 size={12} /> متصل
+              <CheckCircle2 size={10} /> فعال
             </span>
           </div>
-          <div style={{ color: "var(--muted)", fontSize: 13, fontWeight: 700, direction: "ltr", textAlign: "right" }}>
+
+          <div style={{ color: "var(--muted)", fontSize: 12, fontWeight: 700, direction: "ltr", textAlign: "right" }}>
             {username}
           </div>
         </div>
       </div>
 
-      <div style={{ display: "grid", gap: 8 }}>
-        <label style={{ fontWeight: 800, fontSize: 12 }}>نام نمایشی</label>
+      {/* ── Edit Display Name Input Group ── */}
+      <div style={{ display: "grid", gap: 6 }}>
+        <label style={{ fontWeight: 800, fontSize: 12, color: "var(--text)" }}>نام نمایشی در سامانه</label>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="مثلاً علی"
+            placeholder="مثلاً علی یا امیرحسین"
             maxLength={30}
-            style={{
-              flex: 1,
-              padding: "12px 14px",
-              borderRadius: 14,
-              border: "3px solid #000",
-              background: "#fff",
-              color: "#0F172A",
-              fontWeight: 800,
-              fontFamily: "YekanBakh, sans-serif",
-              boxShadow: "3px 3px 0 #000",
-              outline: "none",
-            }}
+            className="input"
+            style={{ flex: 1 }}
           />
           <button
             onClick={onSave}
@@ -175,7 +166,7 @@ export function ProfileCard() {
             className="btn btn-primary"
             style={{
               width: "auto",
-              padding: "10px 14px",
+              padding: "10px 16px",
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
@@ -183,46 +174,19 @@ export function ProfileCard() {
             }}
           >
             {saving ? (
-              <span
-                className="spinner"
-                style={{
-                  width: 16,
-                  height: 16,
-                  borderWidth: 2,
-                  borderTopColor: "#0F172A",
-                  borderColor: "rgba(15,23,42,.2)",
-                }}
-              />
+              <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2, borderTopColor: "#0F172A" }} />
             ) : (
-              <Save size={16} />
+              <Save size={15} />
             )}
             ذخیره
           </button>
         </div>
         <span style={{ fontSize: 11, color: "var(--muted)" }}>
-          ۲ تا ۳۰ کاراکتر — در همه‌جا به همین نام نمایش داده می‌شوید.
+          این نام در سربرگ گزارش‌ها و بالای پنل کاربری نمایش داده می‌شود.
         </span>
       </div>
 
-      <div style={{ display: "grid", gap: 8 }}>
-        <label style={{ fontWeight: 800, fontSize: 12 }}>نام کاربری تلگرام</label>
-        <input
-          value={username}
-          readOnly
-          disabled
-          style={{
-            width: "100%",
-            padding: "12px 14px",
-            borderRadius: 14,
-            border: "2px solid var(--border-strong)",
-            background: "rgba(255,255,255,.06)",
-            color: "var(--muted)",
-            fontWeight: 700,
-            fontFamily: "YekanBakh, sans-serif",
-          }}
-        />
-      </div>
-
+      {/* ── Logout Action Button ── */}
       <button
         onClick={onLogout}
         disabled={loggingOut}
@@ -236,14 +200,16 @@ export function ProfileCard() {
           justifyContent: "center",
           gap: 8,
           opacity: loggingOut ? 0.7 : 1,
+          padding: "12px",
+          fontWeight: 800,
         }}
       >
         {loggingOut ? (
           <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
         ) : (
-          <LogOut size={18} />
+          <LogOut size={16} />
         )}
-        خروج از حساب
+        خروج از حساب کاربری
       </button>
     </div>
   );
