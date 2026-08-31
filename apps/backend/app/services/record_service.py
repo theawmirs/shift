@@ -3,6 +3,7 @@ import re
 import sqlite3
 from app.core.config import settings
 from app.core import jalali
+from app.db.schema import get_user_settings
 
 DAY_STATUS_LABELS = {
     "idle": "آماده ورود",
@@ -31,6 +32,14 @@ def parse_date(s: str) -> tuple[int, int, int]:
         return int(parts[0]), int(parts[1]), int(parts[2])
     except Exception:
         raise ValueError(f"فرمت تاریخ نامعتبر است: {s}")
+
+def parse_time_str(s: str, default: str = "00:00") -> tuple[int, int]:
+    try:
+        parts = (s or default).strip().split(":")
+        return int(parts[0]), int(parts[1])
+    except Exception:
+        d_parts = default.split(":")
+        return int(d_parts[0]), int(d_parts[1])
 
 def holiday_name(conn: sqlite3.Connection, sdate: str) -> tuple[bool, str | None]:
     row = conn.execute("SELECT name FROM holidays WHERE date=?", (sdate,)).fetchone()
@@ -111,6 +120,15 @@ def compute_day(conn: sqlite3.Connection, sdate: str, user_id: int | None = None
     is_hol, hol_name = holiday_name(conn, sdate)
     wm = get_work_mode(conn, sdate, user_id)
     events = day_events(conn, sdate, user_id)
+    u_settings = get_user_settings(conn, user_id=user_id)
+
+    # Dynamic settings per user
+    standard = float(u_settings.get("standard_hours", "8"))
+    start_time_end_str = u_settings.get("start_time_end", "09:15")
+    end_time_end_str = u_settings.get("end_time_end", "17:15")
+
+    sh_end, sm_end = parse_time_str(start_time_end_str, "09:15")
+    eh_end, em_end = parse_time_str(end_time_end_str, "17:15")
 
     in_dt = None
     out_dt = None
@@ -138,21 +156,9 @@ def compute_day(conn: sqlite3.Connection, sdate: str, user_id: int | None = None
     leave_closed = sum((company_clock(b) - company_clock(a)).total_seconds() / 3600.0 for a, b in leave_intervals)
     leave_h = max(0.0, leave_closed)
 
-    net = max(0.0, gross - leave_h)
-    late = 0.0
-    if in_dt and not is_hol:
-        # Window starts at 07:00, threshold at 09:15
-        in_clock = company_clock(in_dt)
-        lim = in_clock.replace(hour=9, minute=15, second=0, microsecond=0)
-        if in_clock > lim:
-            late = (in_clock - lim).total_seconds() / 3600.0
-
-    standard = 8.0
-    deficit = 0.0
+    # Check explicit OT in note of out event
     overtime = 0.0
     ot_declared = False
-
-    # Check explicit OT in note of out event or summary
     for et, _, note in events:
         if et == "out" and note and "ot:" in note:
             try:
@@ -161,13 +167,42 @@ def compute_day(conn: sqlite3.Connection, sdate: str, user_id: int | None = None
             except Exception:
                 pass
 
+    late = 0.0
+    if in_dt and not is_hol:
+        in_clock = company_clock(in_dt)
+        lim_in = in_clock.replace(hour=sh_end, minute=sm_end, second=0, microsecond=0)
+        if in_clock > lim_in:
+            late = (in_clock - lim_in).total_seconds() / 3600.0
+
     if is_hol:
+        net = max(0.0, gross - leave_h)
         overtime = net
         deficit = 0.0
         ot_declared = True
     else:
-        if out_dt:
-            deficit = max(0.0, standard - net)
+        if ot_declared and overtime > 0:
+            # When overtime is explicitly declared, net includes the full overtime duration
+            net = max(0.0, gross - leave_h)
+            deficit = max(0.0, standard - (net - overtime)) if out_dt else 0.0
+        else:
+            # Overtime is NOT declared (or rejected):
+            # 1. Physical presence after end_time_end is excluded from standard shift net
+            # 2. Net cannot exceed standard_hours (capped)
+            if in_dt and out_dt:
+                out_clock = company_clock(out_dt)
+                lim_out = out_clock.replace(hour=eh_end, minute=em_end, second=0, microsecond=0)
+                effective_out = min(out_clock, lim_out) if out_clock > lim_out else out_clock
+                effective_gross = max(0.0, (effective_out - company_clock(in_dt)).total_seconds() / 3600.0)
+                effective_net = max(0.0, effective_gross - leave_h)
+                net = min(standard, effective_net)
+                deficit = max(0.0, standard - net)
+            elif in_dt:
+                net = max(0.0, (company_clock(now_tehran()) - company_clock(in_dt)).total_seconds() / 3600.0 - leave_h)
+                deficit = 0.0
+            else:
+                net = 0.0
+                deficit = 0.0
+            overtime = 0.0
 
     return {
         "date": sdate,
