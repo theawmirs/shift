@@ -390,23 +390,26 @@ export function ActionGrid({
               ? "اگر فراموش کردید موقع ورود دکمه را بزنید، ساعت دقیق ورود خود را ثبت کنید:"
               : "اگر فراموش کردید موقع خروج دکمه را بزنید، ساعت دقیق خروج خود را ثبت کنید:"}
           </p>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%" }}>
             <input
               type="time"
               value={customTime}
               onChange={(e) => setCustomTime(e.target.value)}
               className="mono"
               style={{
-                fontSize: 22,
+                fontSize: 20,
                 fontWeight: 800,
-                padding: "10px 16px",
+                padding: "10px 14px",
                 borderRadius: 14,
                 border: "2px solid #000",
                 boxShadow: "3px 3px 0 #000",
                 background: "#fff",
                 color: "#0F172A",
                 textAlign: "center",
-                width: "160px",
+                width: "100%",
+                maxWidth: "240px",
+                boxSizing: "border-box",
+                direction: "ltr",
               }}
             />
           </div>
