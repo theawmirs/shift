@@ -1,14 +1,21 @@
 import { useState } from "react";
-import { ChevronDown, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Trash2,
+  Download,
+  Calendar,
+  Clock,
+  TrendingDown,
+  TrendingUp,
+  Coffee,
+  PieChart,
+} from "lucide-react";
 import { CardSkeleton } from "../../shared/ui/Skeleton";
 import { useMonthReport } from "./useMonthReport";
 import { DayDetailDrawer } from "./DayDetailDrawer";
-
-import { fmtHoursFa, formatShamsiDateText } from "../../shared/lib/format";
-
-function fmtFa(v: any) {
-  return fmtHoursFa(v);
-}
+import { fmtHoursFa, fmtHoursCompactFa, formatShamsiDateText } from "../../shared/lib/format";
 
 export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "success" | "error") => void }) {
   const [selectedDay, setSelectedDay] = useState<any | null>(null);
@@ -38,8 +45,8 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
 
   if (!loading && months.length === 0) {
     return (
-      <div className="card">
-        <p style={{ color: "var(--muted)", fontWeight: 700 }}>
+      <div className="card" style={{ textAlign: "center", padding: "24px 14px" }}>
+        <p style={{ color: "var(--muted)", margin: 0, fontWeight: 700 }}>
           هنوز اطلاعاتی برای ماه‌های کاری ثبت نشده است.
         </p>
       </div>
@@ -50,160 +57,285 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
     return <CardSkeleton rows={5} />;
   }
 
-  const noWork = m.totals?.work_days === 0 && (m.totals?.net || 0) === 0;
+  const currentMonthIdx = months.findIndex((mo: any) => mo.key === selMonth);
+  const handlePrevMonth = () => {
+    if (currentMonthIdx < months.length - 1) {
+      setSelMonth(months[currentMonthIdx + 1].key);
+    }
+  };
+  const handleNextMonth = () => {
+    if (currentMonthIdx > 0) {
+      setSelMonth(months[currentMonthIdx - 1].key);
+    }
+  };
+
+  const netHours = m.totals?.net || 0;
+  const overtimeHours = m.totals?.overtime || 0;
+  const deficitHours = m.totals?.deficit || 0;
+  const remoteDays = m.totals?.remote_days || 0;
+  const workDays = m.totals?.work_days || 0;
+  const holidayDays = m.totals?.holiday_days || 0;
+
+  const leaveRemaining = m.leave_balance?.remaining ?? 0;
+  const leaveQuota = m.leave_balance?.quota ?? 208;
+  const leaveUsedPct = Math.min(100, Math.round(((leaveQuota - leaveRemaining) / leaveQuota) * 100));
 
   return (
-    <div className="card">
-      {/* ── Month Selector ── */}
-      <div style={{ marginBottom: 14 }}>
-        <label className="field" style={{ flexDirection: "column", alignItems: "stretch", gap: 6 }}>
-          <span style={{ fontWeight: 800, fontSize: 12 }}>انتخاب ماه گزارش</span>
-          <div style={{ position: "relative" }}>
-            <select
-              value={selMonth}
-              onChange={(e) => setSelMonth(e.target.value)}
-              className="mono"
+    <div className="card" style={{ display: "grid", gap: 14 }}>
+      {/* ── Month Selector Header ── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+          background: "rgba(0,0,0,0.15)",
+          padding: "6px 8px",
+          borderRadius: 14,
+          border: "1.5px solid var(--border-strong)",
+        }}
+      >
+        <button
+          type="button"
+          onClick={handleNextMonth}
+          disabled={currentMonthIdx <= 0}
+          className="icon-btn"
+          style={{
+            width: 32,
+            height: 32,
+            opacity: currentMonthIdx <= 0 ? 0.35 : 1,
+            cursor: currentMonthIdx <= 0 ? "default" : "pointer",
+          }}
+          title="ماه بعد"
+        >
+          <ChevronRight size={16} />
+        </button>
+
+        <div style={{ position: "relative", flex: 1, maxWidth: 220 }}>
+          <select
+            value={selMonth}
+            onChange={(e) => setSelMonth(e.target.value)}
+            className="mono"
+            style={{
+              width: "100%",
+              padding: "8px 28px 8px 12px",
+              borderRadius: 10,
+              border: "2px solid #000",
+              background: "#fff",
+              color: "#0F172A",
+              fontWeight: 800,
+              fontSize: 13,
+              fontFamily: "YekanBakh, sans-serif",
+              boxShadow: "2px 2px 0 #000",
+              appearance: "none",
+              textAlign: "center",
+              cursor: "pointer",
+            }}
+          >
+            {months.map((mo: any) => (
+              <option key={mo.key} value={mo.key}>
+                {mo.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown
+            size={14}
+            style={{
+              position: "absolute",
+              left: 10,
+              top: "50%",
+              transform: "translateY(-50%)",
+              pointerEvents: "none",
+              color: "#0F172A",
+            }}
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={handlePrevMonth}
+          disabled={currentMonthIdx >= months.length - 1}
+          className="icon-btn"
+          style={{
+            width: 32,
+            height: 32,
+            opacity: currentMonthIdx >= months.length - 1 ? 0.35 : 1,
+            cursor: currentMonthIdx >= months.length - 1 ? "default" : "pointer",
+          }}
+          title="ماه قبل"
+        >
+          <ChevronLeft size={16} />
+        </button>
+      </div>
+
+      {/* ── Title & Remote Badge ── */}
+      <div className="section-head" style={{ margin: 0 }}>
+        <div>
+          <div className="kicker">MONTHLY PERFORMANCE</div>
+          <h2 className="display" style={{ fontSize: 18, marginTop: 2 }}>
+            گزارش {m.month_name} {m.year}
+          </h2>
+        </div>
+        {remoteDays > 0 && (
+          <span className="badge" style={{ background: "#DDD6FE", color: "#4C1D95", border: "1.5px solid #000", fontSize: 10 }}>
+            🏠 {remoteDays} روز دورکار
+          </span>
+        )}
+      </div>
+
+      {/* ── Bento KPI Metric Grid (2x2) with No-Wrap Single Line Text ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        {/* KPI 1: Net Work */}
+        <div
+          className="row"
+          style={{
+            padding: "10px 12px",
+            background: "rgba(245, 158, 11, 0.08)",
+            borderColor: "var(--amber)",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: 4,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--amber-2)", fontSize: 11, fontWeight: 800 }}>
+            <Clock size={13} />
+            <span>خالص کارکرد</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 4, whiteSpace: "nowrap" }}>
+            <b className="mono" style={{ fontSize: 18, color: "var(--text)" }}>
+              {fmtHoursCompactFa(netHours)}
+            </b>
+            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>
+          </div>
+        </div>
+
+        {/* KPI 2: Overtime */}
+        <div
+          className="row"
+          style={{
+            padding: "10px 12px",
+            background: overtimeHours > 0 ? "rgba(34, 197, 94, 0.08)" : "rgba(255,255,255,0.04)",
+            borderColor: overtimeHours > 0 ? "var(--green)" : "rgba(255,255,255,0.08)",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: 4,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 6, color: overtimeHours > 0 ? "var(--green)" : "var(--muted)", fontSize: 11, fontWeight: 800 }}>
+            <TrendingUp size={13} />
+            <span>اضافه‌کاری</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 4, whiteSpace: "nowrap" }}>
+            <b className="mono" style={{ fontSize: 18, color: overtimeHours > 0 ? "var(--green)" : "var(--muted)" }}>
+              {overtimeHours > 0 ? fmtHoursCompactFa(overtimeHours) : "۰:۰۰"}
+            </b>
+            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>
+          </div>
+        </div>
+
+        {/* KPI 3: Deficit */}
+        <div
+          className="row"
+          style={{
+            padding: "10px 12px",
+            background: deficitHours > 0 ? "rgba(239, 68, 68, 0.08)" : "rgba(34, 197, 94, 0.08)",
+            borderColor: deficitHours > 0 ? "var(--red)" : "var(--green)",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: 4,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 6, color: deficitHours > 0 ? "var(--red)" : "var(--green)", fontSize: 11, fontWeight: 800 }}>
+            <TrendingDown size={13} />
+            <span>کسری موظفی</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 4, whiteSpace: "nowrap" }}>
+            <b className="mono" style={{ fontSize: 18, color: deficitHours > 0 ? "var(--red)" : "var(--green)" }}>
+              {deficitHours > 0 ? `${fmtHoursCompactFa(deficitHours)} -` : "بدون کسری 🎉"}
+            </b>
+            {deficitHours > 0 && <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>}
+          </div>
+        </div>
+
+        {/* KPI 4: Workdays count */}
+        <div
+          className="row"
+          style={{
+            padding: "10px 12px",
+            background: "rgba(255,255,255,0.04)",
+            borderColor: "rgba(255,255,255,0.08)",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: 4,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--muted)", fontSize: 11, fontWeight: 800 }}>
+            <Calendar size={13} />
+            <span>روزهای حضور</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 4, whiteSpace: "nowrap" }}>
+            <b className="mono" style={{ fontSize: 18, color: "var(--text)" }}>
+              {workDays}
+            </b>
+            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>از {workDays + holidayDays} روز</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Annual Leave Balance Progress Track ── */}
+      <div
+        style={{
+          background: "rgba(255,255,255,0.04)",
+          border: "2px solid rgba(255,255,255,0.08)",
+          borderRadius: 14,
+          padding: "10px 12px",
+          display: "grid",
+          gap: 6,
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700 }}>
+            <Coffee size={14} style={{ color: "var(--amber)" }} />
+            <span>مانده مرخصی سال {m.year}:</span>
+          </span>
+          <b className="mono" style={{ fontSize: 12 }}>
+            {leaveRemaining} از {leaveQuota} ساعت
+          </b>
+        </div>
+
+        <div className="progress" style={{ height: 8 }}>
+          <i
+            style={{
+              width: `${100 - leaveUsedPct}%`,
+              background: "linear-gradient(90deg, var(--amber), #60A5FA)",
+              transition: "width 0.3s ease",
+            }}
+          />
+        </div>
+      </div>
+
+      {/* ── Daily Leaves in this month ── */}
+      {leaves.length > 0 && (
+        <div style={{ display: "grid", gap: 6 }}>
+          <span style={{ fontSize: 12, fontWeight: 800, color: "var(--muted)" }}>مرخصی‌های روزانه این ماه:</span>
+          {leaves.map((it: any) => (
+            <div
+              key={it.id}
+              className="row"
               style={{
-                width: "100%",
-                padding: "10px 36px 10px 12px",
-                borderRadius: 12,
-                border: "2px solid #000",
-                background: "#fff",
-                color: "#0F172A",
-                fontWeight: 700,
-                fontSize: 14,
-                fontFamily: "YekanBakh, sans-serif",
-                boxShadow: "3px 3px 0 #000",
-                appearance: "none",
-                cursor: "pointer",
+                padding: "8px 10px",
+                fontSize: 12,
+                background: "rgba(96,165,250,.08)",
+                borderColor: "#60a5fa",
               }}
             >
-              {months.map((mo: any) => (
-                <option key={mo.key} value={mo.key}>
-                  {mo.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              size={16}
-              style={{
-                position: "absolute",
-                left: 12,
-                top: "50%",
-                transform: "translateY(-50%)",
-                pointerEvents: "none",
-                color: "#0F172A",
-              }}
-            />
-          </div>
-        </label>
-      </div>
-
-      <div className="section-head">
-        <h2 className="display">
-          گزارش ماه — {m.month_name} {m.year}
-        </h2>
-        <span className="pill" style={{ background: "#fff", color: "#0F172A" }}>
-          {m.month_key} {m.totals?.remote_days ? `· 🏠 ${m.totals.remote_days}` : ""}
-        </span>
-      </div>
-
-      {noWork && (
-        <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 0 10px" }}>
-          هنوز برای این ماه ثبت کاری نداری — بعد از اولین ورود، خلاصه‌ات اینجا میاد.
-        </p>
-      )}
-
-      <div style={{ display: "grid", gap: 8 }}>
-        <div className="row">
-          <b>خالص کار</b>
-          <span className="mono" style={{ fontWeight: 800 }}>
-            {fmtFa(m.totals?.net)}
-          </span>
-        </div>
-        <div className="row">
-          <b>ناخالص</b>
-          <span className="mono">{fmtFa(m.totals?.gross)}</span>
-        </div>
-        <div className="row">
-          <b>مرخصی</b>
-          <span className="mono">{m.totals?.leave > 0 ? fmtFa(m.totals.leave) : "بدون مرخصی"}</span>
-        </div>
-        <div className="row">
-          <b>کسری</b>
-          <span
-            className="mono"
-            style={{ fontWeight: 800, color: m.totals?.deficit > 0 ? "var(--red)" : "var(--green)" }}
-          >
-            {m.totals?.deficit > 0 ? fmtFa(m.totals.deficit) : "بدون کسری 🎉"}
-          </span>
-        </div>
-        <div className="row">
-          <b>اضافه‌کاری (اعلام‌شده)</b>
-          <span className="mono">{m.totals?.overtime > 0 ? fmtFa(m.totals.overtime) : "نداری"}</span>
-        </div>
-        <div className="row">
-          <b>تأخیر</b>
-          <span className="mono">
-            {m.totals?.late_days > 0
-              ? `${m.totals.late_days} روز · ${fmtFa(m.totals.late_total)}`
-              : "بدون تأخیر ✔"}
-          </span>
-        </div>
-        <div className="row">
-          <b>روزهای کاری</b>
-          <span className="mono">
-            {m.totals?.work_days || 0} روز (از مجموع {(m.totals?.work_days || 0) + (m.totals?.holiday_days || 0)} روز) · تعطیل {m.totals?.holiday_days || 0} روز
-            {m.totals?.holiday_worked > 0 ? ` (+${m.totals.holiday_worked} روز کار در تعطیلی)` : ""}
-          </span>
-        </div>
-        {m.totals?.remote_days > 0 && (
-          <div className="row" style={{ borderStyle: "dashed", borderColor: "var(--violet)" }}>
-            <b>🏠 دورکار</b>
-            <span className="mono" style={{ fontWeight: 800 }}>
-              {m.totals.remote_days} روز
-            </span>
-          </div>
-        )}
-        <div className="row" style={{ background: "var(--card2)", borderStyle: "dashed" }}>
-          <b>مانده مرخصی سال {m.year}</b>
-          <span className="mono" style={{ fontWeight: 800 }}>
-            {m.leave_balance?.remaining === 0
-              ? "۰ ساعت"
-              : `${m.leave_balance?.remaining} از ${m.leave_balance?.quota} ساعت`}
-          </span>
-        </div>
-        {m.daily_leaves_summary && Object.keys(m.daily_leaves_summary).length > 0 && (
-          <div
-            className="row"
-            style={{ background: "rgba(96,165,250,.08)", borderColor: "#60a5fa" }}
-          >
-            <b>🗓 مرخصی روزانه</b>
-            <span className="mono" style={{ fontSize: 12 }}>
-              {Object.entries(m.daily_leaves_summary)
-                .map(([k, v]) => `${v} ${k}`)
-                .join(" + ")}{" "}
-              · {m.totals?.leave > 0 ? `${m.totals.leave} ساعت` : ""}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {leaves.length > 0 && (
-        <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
-          <small className="mono" style={{ fontWeight: 800, fontSize: 12 }}>
-            مرخصی روزانه این ماه
-          </small>
-          {leaves.map((it: any) => (
-            <div key={it.id} className="row" style={{ padding: "8px 10px", fontSize: 12 }}>
-              <span className="mono">
-                {it.start_date}
-                {it.end_date !== it.start_date ? ` → ${it.end_date}` : ""} · {it.label} · {it.hours}{" "}
-                ساعت{it.reason ? ` · ${it.reason}` : ""}
+              <span className="mono" style={{ fontSize: 12 }}>
+                {it.start_date} {it.end_date !== it.start_date ? `تا ${it.end_date}` : ""} · {it.label} ({it.hours} ساعت)
+                {it.reason ? ` · ${it.reason}` : ""}
               </span>
               <button
                 className="btn btn-ghost mono"
-                style={{ fontSize: 11, padding: "4px 8px" }}
+                style={{ fontSize: 11, padding: "4px 8px", width: "auto", color: "var(--red)", borderColor: "var(--red)" }}
                 onClick={() => cancelLeave(it.id)}
               >
                 <Trash2 size={12} /> لغو
@@ -213,62 +345,83 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
         </div>
       )}
 
-      <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
-        <button className="btn btn-ghost" style={{ flex: 1 }} onClick={downloadExcel}>
-          ⬇ دانلود اکسل
-        </button>
+      {/* ── Daily Breakdown List (Interactive Cards) ── */}
+      <div style={{ display: "grid", gap: 6 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
+          <PieChart size={13} />
+          <span>ریز کارکرد روزهای ماه:</span>
+        </div>
+
+        <div style={{ display: "grid", gap: 6, maxHeight: 300, overflowY: "auto", paddingRight: 2 }}>
+          {m.rows
+            ?.filter((r: any) => r.has_events || r.is_holiday)
+            .map((r: any) => {
+              const isRemote = r.work_mode === "remote";
+              return (
+                <div
+                  key={r.date}
+                  className="row"
+                  onClick={() =>
+                    setSelectedDay({
+                      ...r,
+                      label: `${r.weekday || ""}، ${formatShamsiDateText(r.date)}`,
+                    })
+                  }
+                  style={{
+                    padding: "8px 10px",
+                    cursor: "pointer",
+                    background: isRemote ? "rgba(124,58,237,.06)" : "rgba(255,255,255,.04)",
+                    borderColor: isRemote ? "var(--violet)" : undefined,
+                    borderStyle: isRemote ? "dashed" : "solid",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <small className="mono" style={{ fontSize: 12, fontWeight: 700 }}>
+                      {r.date.slice(5)} · {r.weekday}
+                    </small>
+                    {r.is_holiday && (
+                      <span className="badge badge-warn" style={{ fontSize: 9, padding: "2px 6px" }}>
+                        {r.holiday_name || "تعطیل"}
+                      </span>
+                    )}
+                    {isRemote && (
+                      <span className="badge" style={{ background: "#DDD6FE", color: "#4C1D95", fontSize: 9, padding: "2px 6px" }}>
+                        دورکار
+                      </span>
+                    )}
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span className="mono" style={{ fontSize: 12, color: r.net > 0 ? "var(--text)" : "var(--muted)" }}>
+                      {r.in || "—"} تا {r.out || "—"} {r.net > 0 ? `(${fmtHoursFa(r.net)})` : ""}
+                    </span>
+                    <ChevronLeft size={13} style={{ color: "var(--muted)" }} />
+                  </div>
+                </div>
+              );
+            })}
+        </div>
       </div>
 
-      <details style={{ marginTop: 10 }}>
-        <summary className="mono" style={{ cursor: "pointer", color: "var(--muted)", fontSize: 12 }}>
-          ریز روزها
-        </summary>
-        <div style={{ display: "grid", gap: 6, marginTop: 8, maxHeight: 260, overflowY: "auto" }}>
-          {m.rows
-            ?.filter((r: any) => r.has_events)
-            .map((r: any) => (
-              <div
-                key={r.date}
-                className="row"
-                onClick={() =>
-                  setSelectedDay({
-                    ...r,
-                    label: `${r.weekday || ""}، ${formatShamsiDateText(r.date)}`,
-                  })
-                }
-                style={{
-                  padding: "8px 10px",
-                  cursor: "pointer",
-                  borderStyle: r.work_mode === "remote" ? "dashed" : undefined,
-                  borderColor: r.work_mode === "remote" ? "var(--violet)" : undefined,
-                }}
-              >
-                <small className="mono">
-                  {r.date} · {r.weekday}
-                  {r.is_holiday ? ` · ${r.holiday_name}` : ""} — {r.in || "—"}→{r.out || "—"} ·{" "}
-                  {r.net > 0 ? fmtHoursFa(r.net) : "—"}{" "}
-                  {r.work_mode === "remote" ? " 🏠 دورکار" : ""}
-                </small>
-                <span className="badge badge-muted mono" style={{ fontSize: 10 }}>
-                  {r.work_mode === "remote"
-                    ? "دورکار"
-                    : r.is_holiday
-                    ? "تعطیل"
-                    : "کاری"}
-                </span>
-              </div>
-            ))}
-          {!m.rows?.some((r: any) => r.has_events) && (
-            <p style={{ color: "var(--muted)", fontSize: 12 }}>ثبت کاری برای این ماه نیست.</p>
-          )}
-        </div>
-      </details>
+      {/* ── Export Excel Action ── */}
+      <button
+        className="btn btn-primary"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          padding: "10px",
+          fontSize: 13,
+          fontWeight: 800,
+        }}
+        onClick={downloadExcel}
+      >
+        <Download size={15} /> دریافت فایل خروجی اکسل ({m.month_name})
+      </button>
 
-      <DayDetailDrawer
-        open={Boolean(selectedDay)}
-        onClose={() => setSelectedDay(null)}
-        day={selectedDay}
-      />
+      {/* ── Day Detail Drawer ── */}
+      <DayDetailDrawer open={Boolean(selectedDay)} onClose={() => setSelectedDay(null)} day={selectedDay} />
     </div>
   );
 }
