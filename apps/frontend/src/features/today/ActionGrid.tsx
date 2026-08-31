@@ -84,10 +84,38 @@ export function ActionGrid({
   }
 
   const items = [
-    { k: "in", title: "ورود", desc: "ثبت ورود امروز", Icon: LogIn, cls: "action--in" },
-    { k: "out", title: "خروج", desc: "ثبت خروج + گزارش", Icon: LogOut, cls: "action--out" },
-    { k: "leave", title: "مرخصی", desc: "شروع مرخصی ساعتی", Icon: Coffee, cls: "action--leave" },
-    { k: "back", title: "برگشتم", desc: "پایان مرخصی", Icon: Undo2, cls: "action--back" },
+    {
+      k: "in",
+      title: "ثبت ورود",
+      desc: "شروع تایم‌شیت کاری",
+      Icon: LogIn,
+      bg: "linear-gradient(135deg, #FDE68A, #F59E0B)",
+      activeRing: day_status === "idle" || (day_status === "holiday" && holidayOptIn),
+    },
+    {
+      k: "out",
+      title: "ثبت خروج",
+      desc: "اتمام کار و گزارش",
+      Icon: LogOut,
+      bg: "#FFFFFF",
+      activeRing: day_status === "working" && !leave_open,
+    },
+    {
+      k: "leave",
+      title: "مرخصی ساعتی",
+      desc: "توقف موقت محاسبه کارکرد",
+      Icon: Coffee,
+      bg: "linear-gradient(135deg, #C7D2FE, #818CF8)",
+      activeRing: day_status === "working" && !leave_open,
+    },
+    {
+      k: "back",
+      title: "بازگشت از مرخصی",
+      desc: "ادامه روز کاری",
+      Icon: Undo2,
+      bg: "linear-gradient(135deg, #A7F3D0, #34D399)",
+      activeRing: day_status === "on_leave" || leave_open,
+    },
   ];
 
   const handleActionClick = (k: string) => {
@@ -119,37 +147,136 @@ export function ActionGrid({
   };
 
   return (
-    <div>
-      <div className="actions">
+    <div style={{ display: "grid", gap: 10 }}>
+      {/* ── Top Bar: Work Mode Toggle (Office vs Remote) ── */}
+      <div
+        className="card"
+        style={{
+          padding: "10px 14px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          background: isRemote ? "rgba(124, 58, 237, 0.08)" : "rgba(245, 158, 11, 0.08)",
+          borderColor: isRemote ? "var(--violet)" : "var(--amber)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 12,
+              border: "2px solid #000",
+              background: isRemote ? "var(--violet)" : "var(--amber)",
+              color: isRemote ? "#fff" : "#0F172A",
+              display: "grid",
+              placeItems: "center",
+              boxShadow: "2px 2px 0 #000",
+            }}
+          >
+            {isRemote ? <Home size={18} /> : <Building2 size={18} />}
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)" }}>
+              محل حضور: {isRemote ? "دورکاری 🏠" : "حضوری در دفتر 🏢"}
+            </div>
+            <div style={{ fontSize: 11, color: "var(--muted)" }}>
+              {isRemote ? "امروز دورکار ثبت شده‌اید" : "امروز در محل شرکت حاضر هستید"}
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="btn btn-ghost mono"
+          style={{
+            width: "auto",
+            padding: "6px 12px",
+            fontSize: 11,
+            fontWeight: 800,
+            borderRadius: 10,
+            boxShadow: "2px 2px 0 #000",
+          }}
+          onClick={onRemoteToggle}
+        >
+          تغییر به {isRemote ? "حضوری" : "دورکار"}
+        </button>
+      </div>
+
+      {/* ── 2x2 Main Actions Grid ── */}
+      <div className="actions" style={{ gap: 10 }}>
         {items.map((it) => {
           const dis = isDisabled(it.k);
           const t = titleFor(it.k);
+          const Icon = it.Icon;
+
           return (
             <button
               key={it.k}
-              className={`action ${it.cls}`}
+              className="action"
               disabled={dis}
               title={t || undefined}
               aria-disabled={dis}
-              style={dis ? { opacity: 0.45, pointerEvents: "none", cursor: "not-allowed" } : undefined}
+              style={{
+                background: it.bg,
+                opacity: dis ? 0.42 : 1,
+                pointerEvents: dis ? "none" : "auto",
+                cursor: dis ? "not-allowed" : "pointer",
+                boxShadow: it.activeRing ? "5px 5px 0 #000" : "3px 3px 0 #000",
+                transform: it.activeRing ? "translate(-1px, -1px)" : "none",
+                position: "relative",
+                overflow: "hidden",
+              }}
               onClick={() => {
                 if (dis) return;
                 handleActionClick(it.k);
               }}
             >
-              <span className="ico">
-                <it.Icon size={18} />
-              </span>
-              <h3>{it.title}</h3>
-              <p>{it.desc}</p>
+              {it.activeRing && (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: 8,
+                    left: 8,
+                    width: 8,
+                    height: 8,
+                    borderRadius: 999,
+                    background: "#22C55E",
+                    boxShadow: "0 0 0 2px #000",
+                  }}
+                />
+              )}
+
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 12,
+                  display: "grid",
+                  placeItems: "center",
+                  border: "2px solid #000",
+                  background: "#fff",
+                  color: "#0F172A",
+                  boxShadow: "2px 2px 0 #000",
+                }}
+              >
+                <Icon size={18} strokeWidth={2.5} />
+              </div>
+
+              <div style={{ textAlign: "right", marginTop: 2 }}>
+                <h3 style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "#0F172A" }}>{it.title}</h3>
+                <p style={{ margin: "2px 0 0", fontSize: 11, color: "rgba(15,23,42,0.72)", lineHeight: 1.4 }}>
+                  {it.desc}
+                </p>
+              </div>
             </button>
           );
         })}
       </div>
 
-      {/* Manual Time Override Trigger */}
+      {/* ── Manual Time Overrides ── */}
       {(day_status === "idle" || day_status === "working" || (day_status === "holiday" && holidayOptIn)) && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 2 }}>
           <button
             className="btn btn-ghost mono"
             style={{
@@ -159,13 +286,15 @@ export function ActionGrid({
               alignItems: "center",
               justifyContent: "center",
               gap: 6,
-              opacity: day_status !== "idle" ? 0.4 : 1,
-              pointerEvents: day_status !== "idle" ? "none" : "auto",
+              opacity: day_status !== "idle" && !(day_status === "holiday" && holidayOptIn) ? 0.45 : 1,
+              pointerEvents: day_status !== "idle" && !(day_status === "holiday" && holidayOptIn) ? "none" : "auto",
+              borderRadius: 12,
             }}
             onClick={() => setOverrideModal("in")}
           >
             <Clock size={13} /> ورود دستی (ساعت دلخواه)
           </button>
+
           <button
             className="btn btn-ghost mono"
             style={{
@@ -175,8 +304,9 @@ export function ActionGrid({
               alignItems: "center",
               justifyContent: "center",
               gap: 6,
-              opacity: day_status !== "working" ? 0.4 : 1,
+              opacity: day_status !== "working" ? 0.45 : 1,
               pointerEvents: day_status !== "working" ? "none" : "auto",
+              borderRadius: 12,
             }}
             onClick={() => setOverrideModal("out")}
           >
@@ -185,7 +315,7 @@ export function ActionGrid({
         </div>
       )}
 
-      {/* Overtime Decision Modal */}
+      {/* ── Overtime Decision Modal ── */}
       <Drawer
         open={Boolean(otModal?.open)}
         onClose={() => {
@@ -247,7 +377,7 @@ export function ActionGrid({
         )}
       </Drawer>
 
-      {/* Override Time Drawer */}
+      {/* ── Override Time Drawer ── */}
       <Drawer
         open={overrideModal !== null}
         onClose={() => setOverrideModal(null)}
@@ -257,8 +387,8 @@ export function ActionGrid({
         <div style={{ display: "grid", gap: 14, padding: "8px 0" }}>
           <p style={{ color: "var(--muted)", fontSize: 12, margin: 0 }}>
             {overrideModal === "in"
-              ? "اگه یادت رفته بود موقع ورود دکمه بزنی، ساعت واقعی ورودت رو وارد کن:"
-              : "اگه یادت رفته بود موقع خروج دکمه بزنی، ساعت واقعی خروجت رو وارد کن:"}
+              ? "اگر فراموش کردید موقع ورود دکمه را بزنید، ساعت دقیق ورود خود را ثبت کنید:"
+              : "اگر فراموش کردید موقع خروج دکمه را بزنید، ساعت دقیق خروج خود را ثبت کنید:"}
           </p>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
             <input
@@ -282,40 +412,13 @@ export function ActionGrid({
           </div>
           <button
             className="btn btn-primary"
-            style={{ fontWeight: 800 }}
+            style={{ fontWeight: 800, padding: "12px" }}
             onClick={handleManualSubmit}
           >
             ثبت {overrideModal === "in" ? "ورود" : "خروج"} در ساعت {customTime}
           </button>
         </div>
       </Drawer>
-
-      <button
-        className={`action ${isRemote ? "action--remote" : "action--office"}`}
-        style={{
-          width: "100%",
-          marginTop: 10,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "12px 14px",
-        }}
-        onClick={onRemoteToggle}
-        aria-label="toggle remote"
-      >
-        <span style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <span className="ico">{isRemote ? <Home size={18} /> : <Building2 size={18} />}</span>
-          <span style={{ textAlign: "right" }}>
-            <h3 style={{ margin: 0, fontSize: 13 }}>{isRemote ? "🏠 دورکار" : "🏢 حضوری"}</h3>
-            <p style={{ margin: 0, fontSize: 11 }}>
-              {isRemote ? "امروز دورکاری — بزن حضوری شه" : "امروز حضوری — بزن دورکار شه"}
-            </p>
-          </span>
-        </span>
-        <span className={`badge ${isRemote ? "badge-ok" : "badge-muted"}`} style={{ fontSize: 11 }}>
-          {isRemote ? "دورکار" : "حضوری"}
-        </span>
-      </button>
     </div>
   );
 }
