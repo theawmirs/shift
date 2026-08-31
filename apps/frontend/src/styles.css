@@ -538,6 +538,17 @@ button{font:inherit; font-family:inherit}
     display: none;
   }
 
+  /* Compact Desktop Calendar styling */
+  .calendar-container {
+    max-width: 580px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  .calendar-cell-btn {
+    max-height: 52px;
+    font-size: 12px;
+  }
+
   /* Desktop Grid Enhancements */
   .actions {
     grid-template-columns: repeat(4, 1fr);
@@ -569,5 +580,8 @@ button{font:inherit; font-family:inherit}
   .content {
     max-width: 980px;
     padding: 36px 32px 80px;
+  }
+  .calendar-container {
+    max-width: 600px;
   }
 }

@@ -218,7 +218,7 @@ export function CalendarPage() {
   const monthRemoteDays = monthReport?.totals?.remote_days || 0;
 
   return (
-    <div className="page-fade" style={{ display: "grid", gap: 12 }}>
+    <div className="page-fade calendar-container" style={{ display: "grid", gap: 12 }}>
       {/* ── 1. Month Telemetry Card ── */}
       <div className="card" style={{ display: "grid", gap: 12 }}>
         {/* Navigation Header */}
@@ -319,16 +319,16 @@ export function CalendarPage() {
       </div>
 
       {/* ── 2. Calendar Grid Card ── */}
-      <div className="card" style={{ padding: "14px 12px" }}>
+      <div className="card" style={{ padding: "14px 14px" }}>
         {/* Weekday Labels */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 8 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, marginBottom: 8 }}>
           {WD.map((w, idx) => (
             <span
               key={w}
               className="mono"
               style={{
                 textAlign: "center",
-                fontSize: 11,
+                fontSize: 11.5,
                 fontWeight: 800,
                 color: idx === 6 ? "var(--red)" : "var(--muted)",
               }}
@@ -338,11 +338,20 @@ export function CalendarPage() {
           ))}
         </div>
 
-        {/* Days Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
+        {/* Days Grid with uniform 6px gap and square aspect ratio */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, width: "100%" }}>
           {grid.map((d, i) => {
             if (d == null) {
-              return <div key={`empty-${i}`} style={{ aspectRatio: "1" }} />;
+              return (
+                <div
+                  key={`empty-${i}`}
+                  style={{
+                    aspectRatio: "1 / 1",
+                    width: "100%",
+                    visibility: "hidden",
+                  }}
+                />
+              );
             }
             const dateStr = jalaliStr(jy, jm, d);
             const dateNorm = `${jy}-${jm}-${d}`;
@@ -380,9 +389,10 @@ export function CalendarPage() {
               <button
                 key={dateStr}
                 onClick={() => handleDayClick(d, dayRow, isHoliday, officialHolidayName)}
-                className="mono"
+                className="mono calendar-cell-btn"
                 style={{
-                  aspectRatio: "1",
+                  aspectRatio: "1 / 1",
+                  width: "100%",
                   borderRadius: 12,
                   border: `2px solid ${borderColor}`,
                   background: bg,
@@ -403,6 +413,7 @@ export function CalendarPage() {
                   alignItems: "center",
                   justifyContent: "center",
                   transition: "transform 0.1s ease",
+                  boxSizing: "border-box",
                 }}
               >
                 <span>{d}</span>
