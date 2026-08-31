@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { API } from "../shared/lib/api";
 import { HeroSkeleton, CardSkeleton } from "../shared/ui/Skeleton";
 import { useTodayQuery, useRecordMutation } from "../shared/api/queries";
+import { AlertCircle, CheckCircle, Info, Sparkles } from "lucide-react";
 
 function computeFallbackDayStatus(day: any) {
   if (!day) return { status: null, label: null, reason: null };
@@ -97,7 +98,7 @@ export function TodayPage() {
       status.day?.month
     ]
   } ${status.day?.year}`;
-  // spec-02: day_status banner (only holiday/done) — read top-level or nested day, fallback compute client-side
+
   let day_status = status.day_status ?? status.day?.day_status ?? null;
   let day_status_label = status.day_status_label ?? status.day?.day_status_label ?? null;
   let day_status_reason = status.day_status_reason ?? status.day?.day_status_reason ?? null;
@@ -110,106 +111,184 @@ export function TodayPage() {
   const bannerReason = day_status_reason || day_status_label || null;
   const holidayName = status.holiday_name || status.day?.holiday_name || day_status_reason || "تعطیل";
   const showHolidayGate = day_status === "holiday" && !holidayOptIn && !status.day?.in && !status.day?.out;
+
   let banner = null;
   if (day_status === "holiday" && !showHolidayGate) {
     const label =
       day_status_reason ||
       (status.holiday_name
-        ? `🏖 امروز تعطیله (${status.holiday_name}) — ثبت ورود/خروج بسته‌ست`
+        ? `امروز تعطیل رسمی است (${status.holiday_name})`
         : day_status_label
-        ? `🏖 ${day_status_label} — ثبت ورود/خروج بسته‌ست`
-        : "🏖 امروز تعطیله — ثبت ورود/خروج بسته‌ست");
+        ? `${day_status_label}`
+        : "امروز تعطیل است");
     banner = (
       <div
         className="card"
         style={{
-          marginTop: 10,
           borderColor: "var(--amber, #f59e0b)",
-          background: "rgba(245,158,11,.12)",
+          background: "rgba(245,158,11,.10)",
           color: "var(--amber, #92400e)",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "12px 14px",
         }}
       >
-        <b>{label}</b>
-        {bannerReason && bannerReason !== label ? (
-          <div style={{ fontSize: 12, opacity: 0.9, marginTop: 4 }}>{bannerReason}</div>
-        ) : null}
+        <AlertCircle size={20} style={{ flexShrink: 0, color: "var(--amber)" }} />
+        <div>
+          <b style={{ fontSize: 13 }}>{label}</b>
+          {bannerReason && bannerReason !== label ? (
+            <div style={{ fontSize: 11, opacity: 0.9, marginTop: 2 }}>{bannerReason}</div>
+          ) : null}
+        </div>
       </div>
     );
   } else if (day_status === "done") {
-    const label = day_status_reason || "✅ امروز خروج زدی — روز کاری تمومه، تا فردا";
+    const label = day_status_reason || "امروز قبلاً خروج ثبت شده است";
     banner = (
       <div
         className="card"
         style={{
-          marginTop: 10,
           borderColor: "var(--green, #22c55e)",
           background: "rgba(34,197,94,.10)",
           color: "var(--green, #166534)",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "12px 14px",
         }}
       >
-        <b>{label}</b>
-        {bannerReason && bannerReason !== label ? (
-          <div style={{ fontSize: 12, opacity: 0.9, marginTop: 4 }}>{bannerReason}</div>
-        ) : null}
+        <CheckCircle size={20} style={{ flexShrink: 0, color: "var(--green)" }} />
+        <div>
+          <b style={{ fontSize: 13 }}>{label}</b>
+          {bannerReason && bannerReason !== label ? (
+            <div style={{ fontSize: 11, opacity: 0.9, marginTop: 2 }}>{bannerReason}</div>
+          ) : null}
+        </div>
       </div>
     );
   } else if (day_status === "on_leave") {
-    const label = day_status_reason || "🟦 امروز مرخصی روزانه";
+    const label = day_status_reason || "شما در مرخصی ساعتی هستید";
     banner = (
       <div
         className="card"
         style={{
-          marginTop: 10,
           borderColor: "#60a5fa",
-          background: "rgba(96,165,250,.12)",
+          background: "rgba(96,165,250,.10)",
           color: "#1e40af",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "12px 14px",
         }}
       >
-        <b>{label}</b>
-        {bannerReason && bannerReason !== label ? (
-          <div style={{ fontSize: 12, opacity: 0.9, marginTop: 4 }}>{bannerReason}</div>
-        ) : null}
+        <Info size={20} style={{ flexShrink: 0, color: "#2563eb" }} />
+        <div>
+          <b style={{ fontSize: 13 }}>{label}</b>
+          {bannerReason && bannerReason !== label ? (
+            <div style={{ fontSize: 11, opacity: 0.9, marginTop: 2 }}>{bannerReason}</div>
+          ) : null}
+        </div>
       </div>
     );
   }
+
   return (
-    <div className="page-fade">
+    <div className="page-fade" style={{ display: "grid", gap: 12 }}>
       {day_status === "done" ? (
         <DayDoneCard day={status.day} weekday={status.weekday} shamsi={shamsi} />
       ) : showHolidayGate ? (
         <>
-          <Hero liveMinutes={liveMinutes} shamsi={shamsi} weekday={status.weekday} inTime={status.day?.in || "—"} />
-          <div style={{ height: 12 }} />
-          <div className="card" style={{ display: "grid", gap: 12, textAlign: "center", padding: "18px 14px", borderColor: "var(--amber)" }}>
-            <div style={{ fontSize: 28 }}>🏖️</div>
+          <Hero liveMinutes={liveMinutes} shamsi={shamsi} weekday={status.weekday} inTime={status.day?.in || "—"} status={day_status} />
+          
+          {/* Holiday Decision Gate */}
+          <div
+            className="card"
+            style={{
+              display: "grid",
+              gap: 14,
+              textAlign: "center",
+              padding: "20px 16px",
+              borderColor: "var(--amber)",
+              background: "linear-gradient(180deg, var(--card) 0%, var(--card2) 100%)",
+            }}
+          >
+            <div
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 16,
+                border: "2px solid #000",
+                background: "linear-gradient(135deg, var(--amber), var(--amber-2))",
+                display: "grid",
+                placeItems: "center",
+                margin: "0 auto",
+                boxShadow: "3px 3px 0 #000",
+                fontSize: 24,
+              }}
+            >
+              🏖️
+            </div>
+
             <div>
-              <b style={{ fontSize: 15 }}>امروز {holidayName} — تعطیله</b>
+              <b style={{ fontSize: 16, color: "var(--text)" }}>امروز {holidayName} — تعطیل رسمی</b>
               <p style={{ margin: "6px 0 0", color: "var(--muted)", fontSize: 12, lineHeight: 1.6 }}>
-                می‌خوای امروز هم مشغول به کار باشی؟ اگر «بله» بزنی، دکمه‌های ورود/خروج برات فعال می‌شه — در غیر این‌صورت روز تعطیل می‌مونه.
+                آیا مایلید امروز هم مشغول به کار باشید؟ با انتخاب «بله»، دکمه‌های ثبت تردد فعال شده و کارکرد به عنوان اضافه‌کاری منظور می‌گردد.
               </p>
             </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setHolidayOptIn(true)}>
-                بله، امروز کار می‌کنم
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 }}>
+              <button
+                className="btn btn-primary"
+                style={{ padding: "10px", fontWeight: 800, fontSize: 12 }}
+                onClick={() => setHolidayOptIn(true)}
+              >
+                بله، کار می‌کنم
               </button>
-              <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setHolidayOptIn(false)}>
-                نه، تعطیلم
+              <button
+                className="btn btn-ghost"
+                style={{ padding: "10px", fontSize: 12 }}
+                onClick={() => setHolidayOptIn(false)}
+              >
+                نه، روز تعطیله
               </button>
             </div>
-            <small style={{ color: "var(--muted)", fontSize: 11 }}>تا وقتی ورود نزنی، هیچ محدودیتی ایجاد نمی‌شه — هر lúc می‌تونی با «بله» برگردی.</small>
           </div>
         </>
       ) : (
         <>
-          <Hero liveMinutes={liveMinutes} shamsi={shamsi} weekday={status.weekday} inTime={status.day?.in || "—"} />
+          <Hero liveMinutes={liveMinutes} shamsi={shamsi} weekday={status.weekday} inTime={status.day?.in || "—"} status={day_status} />
           {banner}
+
           {day_status === "holiday" && holidayOptIn && (
-            <div className="card" style={{ marginTop: 10, background: "rgba(16,185,129,.08)", borderColor: "#10b981", padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-              <small style={{ fontWeight: 800, color: "#047857" }}>✅ حالت کار در تعطیلی فعال — ورودت به‌صورت اضافه‌کاری محاسبه می‌شه.</small>
-              <button className="btn btn-ghost" style={{ width: "auto", padding: "6px 10px", fontSize: 11 }} onClick={() => setHolidayOptIn(false)}>برگشت</button>
+            <div
+              className="card"
+              style={{
+                background: "rgba(16,185,129,.08)",
+                borderColor: "#10b981",
+                padding: "10px 14px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Sparkles size={16} style={{ color: "#10b981", flexShrink: 0 }} />
+                <small style={{ fontWeight: 800, color: "#047857", fontSize: 12 }}>
+                  حالت کار در تعطیلی فعال شد — کارکرد شما محاسبه می‌شود.
+                </small>
+              </div>
+              <button
+                className="btn btn-ghost mono"
+                style={{ width: "auto", padding: "4px 10px", fontSize: 11, borderRadius: 8, boxShadow: "1.5px 1.5px 0 #000" }}
+                onClick={() => setHolidayOptIn(false)}
+              >
+                انصراف
+              </button>
             </div>
           )}
-          <div style={{ height: 12 }} />
+
           <ActionGrid
             onAction={onAction}
             onRemoteToggle={onRemoteToggle}
@@ -224,9 +303,11 @@ export function TodayPage() {
           />
         </>
       )}
-      <div style={{ height: 12 }} />
+
+      {/* Daily Leaves Module */}
       <DailyLeaveCard onChanged={() => refetch()} />
-      <div style={{ height: 12 }} />
+
+      {/* Weekly Summary Module */}
       <WeekSummary />
     </div>
   );
