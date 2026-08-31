@@ -36,12 +36,11 @@ def _validate_and_save_setting(body: SettingsUpdateRequest, uid: int | None, con
         if body.value not in ("office", "remote"):
             raise HTTPException(status_code=400, detail="نوع قرارداد کاری نامعتبر است")
         
-        # When changing default_work_mode, ensure all PAST days (before today) with attendance events 
+        # When changing default_work_mode, ensure all days WITH EXISTING EVENTS (including today if started/done)
         # have their historical mode frozen using INSERT OR REPLACE into day_work_mode.
-        cur_today = record_service.today_str()
         past_events = conn.execute(
-            "SELECT DISTINCT shamsi_date FROM events WHERE shamsi_date < ? AND ((? IS NULL AND user_id IS NULL) OR user_id = ?)",
-            (cur_today, uid, uid),
+            "SELECT DISTINCT shamsi_date FROM events WHERE (? IS NULL AND user_id IS NULL) OR user_id = ?",
+            (uid, uid),
         ).fetchall()
         for p in past_events:
             s = p["shamsi_date"]

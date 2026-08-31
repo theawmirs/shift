@@ -325,6 +325,10 @@ def record_event(conn: sqlite3.Connection, event_type: str, at: str | None = Non
         )
     conn.commit()
 
+    if event_type == "in":
+        cur_mode = get_work_mode(conn, sdate, user_id=user_id)
+        set_work_mode(conn, sdate, cur_mode, user_id=user_id)
+
     time_str = dt_tehran.strftime("%H:%M")
     labels = {
         "in": f"✅ ورود در ساعت {time_str} ثبت شد",
