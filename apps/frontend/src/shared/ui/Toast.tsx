@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, XCircle } from "lucide-react";
+import { Button } from "./Button";
 
 export type ToastVariant = "success" | "error";
 
@@ -73,13 +74,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 </span>
                 {t.msg}
               </span>
-              <button
-                className="btn btn-ghost"
+              <Button
+                variant="ghost"
+                size="sm"
                 style={{ width: "auto", padding: "6px 10px", boxShadow: "2px 2px 0 #000" }}
                 onClick={() => dismiss(t.id)}
               >
                 باشه
-              </button>
+              </Button>
             </motion.div>
           ))}
         </AnimatePresence>

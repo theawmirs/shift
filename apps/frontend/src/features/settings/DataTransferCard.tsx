@@ -3,6 +3,7 @@ import { Download, Upload, FileText, CheckCircle2, AlertCircle, ArrowUpRight, Da
 import { API } from "../../shared/lib/api";
 import { useToast } from "../../shared/ui/Toast";
 import { Drawer } from "../../shared/ui/Drawer";
+import { Button } from "../../shared/ui/Button";
 
 export function DataTransferCard({ onImportSuccess }: { onImportSuccess?: () => void }) {
   const { push } = useToast();
@@ -105,14 +106,15 @@ export function DataTransferCard({ onImportSuccess }: { onImportSuccess?: () => 
           <p style={{ margin: 0, fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
             دریافت فایل متنی CSV شامل تمام لاگ‌های ورود، خروج و مرخصی‌ها.
           </p>
-          <button
-            className="btn btn-primary"
+          <Button
+            variant="primary"
             style={{ padding: "8px 10px", fontSize: 11, fontWeight: 800, marginTop: "auto" }}
             onClick={handleExportCSV}
-            disabled={exportLoading}
+            loading={exportLoading}
+            loadingText="در حال دریافت…"
           >
-            {exportLoading ? "در حال دریافت…" : "دانلود کل داده‌ها"}
-          </button>
+            دانلود کل داده‌ها
+          </Button>
         </div>
 
         {/* Import Action Card */}
@@ -245,13 +247,13 @@ export function DataTransferCard({ onImportSuccess }: { onImportSuccess?: () => 
               </div>
             )}
 
-            <button
-              className="btn btn-primary"
+            <Button
+              variant="primary"
               style={{ width: "100%", padding: "10px", fontWeight: 800, marginTop: 6 }}
               onClick={() => setImportResult(null)}
             >
               متوجه شدم
-            </button>
+            </Button>
           </div>
         )}
       </Drawer>

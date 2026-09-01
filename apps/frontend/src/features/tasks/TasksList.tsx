@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useToast } from "../../shared/ui/Toast";
 import { Drawer } from "../../shared/ui/Drawer";
+import { Button } from "../../shared/ui/Button";
 import { TasksSkeleton, Skeleton } from "../../shared/ui/Skeleton";
 import { ShamsiCalendar } from "../../shared/ui/ShamsiCalendar";
 import { formatShamsiDateText } from "../../shared/lib/format";
@@ -723,19 +724,27 @@ export function TasksList() {
                   <button
                     type="button"
                     onClick={() => handleToggle(t.id)}
+                    disabled={togglingId === t.id}
                     style={{
                       background: "transparent",
                       border: "none",
-                      cursor: "pointer",
+                      cursor: togglingId === t.id ? "wait" : "pointer",
                       padding: 0,
                       display: "grid",
                       placeItems: "center",
                       color: t.done ? "var(--green)" : "var(--muted)",
                       flexShrink: 0,
+                      opacity: togglingId === t.id ? 0.5 : 1,
                     }}
                     title={t.done ? "علامت به عنوان انجام‌نشده" : "علامت به عنوان انجام‌شده"}
                   >
-                    {t.done ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+                    {togglingId === t.id ? (
+                      <span className="spinner spinner--sm" />
+                    ) : t.done ? (
+                      <CheckCircle2 size={20} />
+                    ) : (
+                      <Circle size={20} />
+                    )}
                   </button>
 
                   {/* Task Content */}
@@ -1048,30 +1057,25 @@ export function TasksList() {
 
           {/* Action Buttons */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
-            <button
+            <Button
               type="button"
-              className="btn btn-ghost"
+              variant="ghost"
               onClick={() => setActiveTaskModal(null)}
               disabled={saving}
             >
               انصراف
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="button"
-              className="btn btn-primary"
+              variant="primary"
               onClick={handleSaveTask}
-              disabled={saving}
+              loading={saving}
+              loadingText={activeTaskModal === "add" ? "در حال ثبت…" : "در حال ذخیره…"}
               style={{ fontWeight: 900 }}
             >
-              {saving ? (
-                <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
-              ) : activeTaskModal === "add" ? (
-                "ثبت تسک جدید"
-              ) : (
-                "ذخیره تغییرات"
-              )}
-            </button>
+              {activeTaskModal === "add" ? "ثبت تسک جدید" : "ذخیره تغییرات"}
+            </Button>
           </div>
         </div>
       </Drawer>
@@ -1088,23 +1092,24 @@ export function TasksList() {
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 6 }}>
-            <button
+            <Button
               type="button"
-              className="btn btn-ghost"
+              variant="ghost"
               onClick={() => setDeleteConfirmTask(null)}
               disabled={saving}
             >
               انصراف
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="btn"
-              style={{ background: "var(--red)", color: "#fff", fontWeight: 900 }}
+              variant="danger"
+              style={{ fontWeight: 900 }}
               onClick={handleConfirmDelete}
-              disabled={saving}
+              loading={saving}
+              loadingText="در حال حذف…"
             >
-              {saving ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : "بله، حذف کن"}
-            </button>
+              بله، حذف کن
+            </Button>
           </div>
         </div>
       </Drawer>
