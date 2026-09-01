@@ -57,11 +57,13 @@ class RecordRequest(BaseModel):
     event_type: str
     at: str | None = None
     date: str | None = None
+    note: str | None = None
     allow_holiday: bool = False
 
 class RecordResponse(BaseModel):
     ok: bool
     message: str
+    day_payload: dict[str, Any] | None = None
 
 class DayEditRequest(BaseModel):
     date: str
