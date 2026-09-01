@@ -1,32 +1,25 @@
-import { useEffect, useState } from "react";
-import { API } from "../../shared/lib/api";
+import { useState } from "react";
+import { useWeekReportQuery } from "../../shared/api/queries";
 import { CardSkeleton } from "../../shared/ui/Skeleton";
 import { DayDetailDrawer } from "../month/DayDetailDrawer";
 import { formatShamsiDateText, fmtHoursCompactFa } from "../../shared/lib/format";
 import { CalendarRange, Clock, Sparkles, ChevronLeft, Building2, Home } from "lucide-react";
 
 export function WeekSummary() {
-  const [data, setData] = useState<any>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const { data, error, isLoading } = useWeekReportQuery();
   const [selectedDay, setSelectedDay] = useState<any | null>(null);
 
-  useEffect(() => {
-    API.reportWeek()
-      .then(setData)
-      .catch((e) => setErr(String(e.message || e)));
-  }, []);
-
-  if (err)
+  if (error)
     return (
       <div className="card">
-        <p style={{ color: "var(--red)", fontWeight: 800 }}>❌ {err}</p>
+        <p style={{ color: "var(--red)", fontWeight: 800 }}>❌ {String((error as any)?.message || error)}</p>
       </div>
     );
-  if (!data) return <CardSkeleton rows={3} />;
+  if (isLoading || !data) return <CardSkeleton rows={3} />;
 
   const fmtHM = (h: any) => (h == null || Number(h) === 0 ? "—" : `${Number(h).toFixed(2)} ساعت`);
 
-  if (!data.days.length)
+  if (!data.days || !data.days.length)
     return (
       <div className="card" style={{ textAlign: "center", padding: "24px 14px" }}>
         <p style={{ color: "var(--muted)", margin: 0, fontWeight: 700 }}>
@@ -35,10 +28,10 @@ export function WeekSummary() {
       </div>
     );
 
-  const netTotal = data.totals.net || 0;
-  const deficitTotal = data.totals.deficit || 0;
-  const overtimeTotal = data.totals.overtime || 0;
-  const remoteDays = data.totals.remote_days || 0;
+  const netTotal = data.totals?.net || 0;
+  const deficitTotal = data.totals?.deficit || 0;
+  const overtimeTotal = data.totals?.overtime || 0;
+  const remoteDays = data.totals?.remote_days || 0;
 
   return (
     <div className="card" style={{ display: "grid", gap: 14 }}>
@@ -70,133 +63,159 @@ export function WeekSummary() {
             gap: 4,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--amber-2)", fontSize: 11, fontWeight: 800 }}>
-            <Clock size={13} />
-            <span>مجموع کارکرد خالص</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Clock size={15} style={{ color: "var(--amber)" }} />
+            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>کارکرد مفید</span>
           </div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 4, whiteSpace: "nowrap" }}>
-            <b className="mono" style={{ fontSize: 18, color: "var(--text)" }}>
+            <b className="mono" style={{ fontSize: 18, color: "var(--amber-2)" }}>
               {fmtHoursCompactFa(netTotal)}
             </b>
             <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>
           </div>
         </div>
 
-        {/* Balance Status KPI */}
+        {/* Overtime KPI */}
         <div
           className="row"
           style={{
             padding: "10px 12px",
-            background: deficitTotal > 0 ? "rgba(239, 68, 68, 0.08)" : "rgba(34, 197, 94, 0.08)",
-            borderColor: deficitTotal > 0 ? "var(--red)" : "var(--green)",
+            background: "rgba(34, 197, 94, 0.08)",
+            borderColor: "var(--green)",
             borderWidth: 2,
             flexDirection: "column",
             alignItems: "flex-start",
             gap: 4,
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              color: deficitTotal > 0 ? "var(--red)" : "var(--green)",
-              fontSize: 11,
-              fontWeight: 800,
-            }}
-          >
-            <Sparkles size={13} />
-            <span>{deficitTotal > 0 ? "کسری هفته" : overtimeTotal > 0 ? "اضافه‌کاری هفته" : "وضعیت موظفی"}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Sparkles size={15} style={{ color: "var(--green)" }} />
+            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>اضافه‌کاری</span>
           </div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 4, whiteSpace: "nowrap" }}>
-            <b className="mono" style={{ fontSize: 18, color: deficitTotal > 0 ? "var(--red)" : "var(--green)" }}>
-              {deficitTotal > 0
-                ? `${fmtHoursCompactFa(deficitTotal)} -`
-                : overtimeTotal > 0
-                ? `+ ${fmtHoursCompactFa(overtimeTotal)}`
-                : "تکمیل ✔"}
+            <b className="mono" style={{ fontSize: 18, color: "var(--green)" }}>
+              {fmtHoursCompactFa(overtimeTotal)}
             </b>
-            {(deficitTotal > 0 || overtimeTotal > 0) && (
-              <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>
-            )}
+            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>
           </div>
         </div>
       </div>
 
+      {deficitTotal > 0 && (
+        <div
+          className="row"
+          style={{
+            padding: "8px 12px",
+            background: "rgba(239, 68, 68, 0.08)",
+            borderColor: "var(--red)",
+            borderWidth: 2,
+            gap: 6,
+          }}
+        >
+          <span style={{ fontSize: 11, color: "var(--red)", fontWeight: 700 }}>⚠️ کسری کار هفته:</span>
+          <b className="mono" style={{ fontSize: 12, color: "var(--red)" }}>
+            {fmtHoursCompactFa(deficitTotal)} ساعت
+          </b>
+        </div>
+      )}
+
       {/* ── Days Breakdown List ── */}
       <div style={{ display: "grid", gap: 6 }}>
-        <div style={{ fontSize: 12, fontWeight: 800, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
-          <CalendarRange size={13} />
-          <span>ریز روزهای هفته:</span>
-        </div>
+        {data.days.map((d: any) => {
+          const isRemote = d.work_mode === "remote";
+          const isHoliday = !!d.is_holiday;
+          const hasEvents = !!(d.has_events || (d.net != null && Number(d.net) > 0) || d.in);
 
-        {data.days.map((r: any) => {
-          const isRemote = r.work_mode === "remote";
           return (
             <div
-              key={r.date}
+              key={d.date}
               className="row"
-              onClick={() =>
-                setSelectedDay({
-                  ...r,
-                  label: `${r.weekday || ""}، ${formatShamsiDateText(r.date)}`,
-                })
-              }
               style={{
-                cursor: "pointer",
                 padding: "10px 12px",
-                background: isRemote ? "rgba(124,58,237,.06)" : "var(--surface-2)",
-                borderColor: isRemote ? "var(--violet)" : "var(--border-strong)",
-                borderStyle: isRemote ? "dashed" : "solid",
-                transition: "all 0.15s ease",
+                background: isRemote
+                  ? "rgba(124, 58, 237, 0.04)"
+                  : isHoliday
+                  ? "rgba(239, 68, 68, 0.04)"
+                  : "var(--surface-2)",
+                borderColor: isRemote
+                  ? "rgba(124, 58, 237, 0.3)"
+                  : isHoliday
+                  ? "rgba(239, 68, 68, 0.3)"
+                  : "var(--border-strong)",
+                borderWidth: 2,
+                cursor: "pointer",
+                transition: "transform 0.12s ease, border-color 0.12s ease",
+              }}
+              onClick={() => {
+                setSelectedDay({
+                  ...d,
+                  label: `${d.weekday || ""}، ${formatShamsiDateText(d.date)}`,
+                });
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {/* Day & Mode */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div
                   style={{
                     width: 32,
                     height: 32,
                     borderRadius: 10,
-                    border: "1.5px solid #000",
-                    background: isRemote ? "#DDD6FE" : "#FDE68A",
-                    color: "#0F172A",
+                    border: "1.5px solid var(--border-strong)",
+                    background: isRemote
+                      ? "rgba(124, 58, 237, 0.12)"
+                      : isHoliday
+                      ? "rgba(239, 68, 68, 0.12)"
+                      : "var(--card)",
                     display: "grid",
                     placeItems: "center",
-                    boxShadow: "1.5px 1.5px 0 #000",
                     flexShrink: 0,
                   }}
                 >
-                  {isRemote ? <Home size={15} /> : <Building2 size={15} />}
+                  {isRemote ? (
+                    <Home size={15} style={{ color: "var(--violet)" }} />
+                  ) : isHoliday ? (
+                    <CalendarRange size={15} style={{ color: "var(--red)" }} />
+                  ) : (
+                    <Building2 size={15} style={{ color: "var(--amber)" }} />
+                  )}
                 </div>
 
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <b style={{ fontSize: 13 }}>{r.label}</b>
-                    {r.is_holiday && (
-                      <span className="badge badge-warn" style={{ fontSize: 9, padding: "2px 6px" }}>
-                        {r.holiday_name || "تعطیل"}
+                  <div style={{ fontWeight: 800, fontSize: 13, color: "var(--text)" }}>
+                    {d.weekday} <small style={{ fontWeight: 600, color: "var(--muted)", fontSize: 11 }}>{formatShamsiDateText(d.date)}</small>
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
+                    {isHoliday ? (
+                      <span style={{ color: "var(--red)", fontWeight: 700 }}>
+                        {d.holiday_name || "تعطیل"} {hasEvents ? "(کارکرد در تعطیلی)" : ""}
                       </span>
+                    ) : (
+                      <span>{d.work_mode_label || (isRemote ? "دورکاری" : "حضور در شرکت")}</span>
                     )}
                   </div>
-                  <small className="mono" style={{ color: "var(--muted)", fontSize: 11, marginTop: 2, display: "block" }}>
-                    {r.in || "—"} تا {r.out || "—"}
-                    {r.leave_intervals?.length ? ` · مرخصی ${fmtHM(r.leave)}` : ""}
-                  </small>
                 </div>
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span className="badge badge-muted mono" style={{ fontSize: 11, fontWeight: 800 }}>
-                  {r.net > 0 ? fmtHoursCompactFa(r.net) : "—"}
-                </span>
-                <ChevronLeft size={14} style={{ color: "var(--muted)", opacity: 0.7 }} />
+              {/* Metrics & Chevron */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ textAlign: "left" }}>
+                  <div className="mono" style={{ fontWeight: 800, fontSize: 13, color: "var(--text)" }}>
+                    {fmtHM(d.net)}
+                  </div>
+                  {d.in && d.out && (
+                    <small className="mono" style={{ fontSize: 10, color: "var(--muted)" }}>
+                      {d.in} تا {d.out}
+                    </small>
+                  )}
+                </div>
+                <ChevronLeft size={16} style={{ color: "var(--muted)" }} />
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* ── Day Detail Modal ── */}
+      {/* Day Details Dialog */}
       <DayDetailDrawer open={Boolean(selectedDay)} onClose={() => setSelectedDay(null)} day={selectedDay} />
     </div>
   );
