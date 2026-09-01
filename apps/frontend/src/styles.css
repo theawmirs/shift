@@ -286,6 +286,36 @@ button{font:inherit; font-family:inherit}
 .field .input{
   width:100% !important; text-align:right !important;
 }
+
+/* Time & Number Input Centering Cross-Browser */
+input[type="time"],
+input[type="number"],
+.field input[type="time"],
+.field input[type="number"] {
+  text-align: center !important;
+  direction: ltr !important;
+}
+input[type="time"]::-webkit-datetime-edit {
+  display: inline-flex !important;
+  justify-content: center !important;
+  text-align: center !important;
+  width: 100% !important;
+  padding: 0 !important;
+  margin: 0 auto !important;
+}
+input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+  display: inline-flex !important;
+  justify-content: center !important;
+  text-align: center !important;
+  margin: 0 auto !important;
+}
+input[type="time"]::-webkit-datetime-edit-hour-field,
+input[type="time"]::-webkit-datetime-edit-minute-field,
+input[type="time"]::-webkit-datetime-edit-ampm-field,
+input[type="time"]::-webkit-datetime-edit-text {
+  text-align: center !important;
+}
+
 .btn{
   width:100%; padding:12px 14px; border-radius:16px; border:3px solid #000; font-weight:800; cursor:pointer;
   box-shadow: 5px 5px 0 #000; transition: transform .12s ease, box-shadow .12s ease; color:#0F172A; font-family:"YekanBakh", sans-serif;

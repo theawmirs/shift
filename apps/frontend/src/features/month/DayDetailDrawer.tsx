@@ -152,8 +152,8 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                       type="time"
                       value={inTime}
                       onChange={(e) => setInTime(e.target.value)}
-                      className="mono"
-                      style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center" }}
+                      className="mono input"
+                      style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center", direction: "ltr" }}
                     />
                   </label>
 
@@ -163,8 +163,8 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                       type="time"
                       value={outTime}
                       onChange={(e) => setOutTime(e.target.value)}
-                      className="mono"
-                      style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center" }}
+                      className="mono input"
+                      style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center", direction: "ltr" }}
                     />
                   </label>
                 </div>
