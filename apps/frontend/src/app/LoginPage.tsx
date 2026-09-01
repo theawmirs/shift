@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Send, Copy, Clock3, RefreshCw, XCircle, ExternalLink, ShieldCheck } from "lucide-react";
+import { Send, Copy, Clock3, RefreshCw, XCircle, ExternalLink } from "lucide-react";
 import QRCode from "qrcode";
 import { API } from "../shared/lib/api";
 import { useToast } from "../shared/ui/Toast";
@@ -54,6 +54,7 @@ export function LoginPage({ onLogin }: { onLogin: (tokens: any, user: any) => vo
   const [remaining, setRemaining] = useState(180);
   const pollRef = useRef<any>(null);
   const timerRef = useRef<any>(null);
+  const verifiedHandledRef = useRef(false);
 
   const botName = initData?.bot_username || "attloginbot";
   const loginToken = initData?.token || initData?.login_token || "";
@@ -74,6 +75,8 @@ export function LoginPage({ onLogin }: { onLogin: (tokens: any, user: any) => vo
   useEffect(() => () => clearTimers(), [clearTimers]);
 
   const handleInit = async () => {
+    clearTimers();
+    verifiedHandledRef.current = false;
     setErr("");
     setPhase("loading");
     try {
@@ -100,11 +103,14 @@ export function LoginPage({ onLogin }: { onLogin: (tokens: any, user: any) => vo
           tick();
           timerRef.current = setInterval(tick, 1000);
           pollRef.current = setInterval(async () => {
+            if (verifiedHandledRef.current) return;
             try {
               const res = await API.authPoll(tok);
               const status =
                 res.status || res.state || (res.verified ? "verified" : res.token ? "verified" : "pending");
               if (status === "verified" || res.verified || res.token) {
+                if (verifiedHandledRef.current) return;
+                verifiedHandledRef.current = true;
                 if (pollRef.current) clearInterval(pollRef.current);
                 if (timerRef.current) clearInterval(timerRef.current);
                 pollRef.current = null;
@@ -159,6 +165,7 @@ export function LoginPage({ onLogin }: { onLogin: (tokens: any, user: any) => vo
 
   const reset = () => {
     clearTimers();
+    verifiedHandledRef.current = false;
     setPhase("idle");
     setInitData(null);
     setErr("");
@@ -202,22 +209,6 @@ export function LoginPage({ onLogin }: { onLogin: (tokens: any, user: any) => vo
         {/* ── State 1: Idle (Ready to Generate Link) ── */}
         {phase === "idle" || phase === "loading" ? (
           <div style={{ display: "grid", gap: 14 }}>
-            <div
-              className="row"
-              style={{
-                padding: "12px 14px",
-                background: "var(--surface-2)",
-                borderColor: "var(--border-strong)",
-                gap: 10,
-                alignItems: "center",
-              }}
-            >
-              <ShieldCheck size={20} style={{ color: "#22C55E", flexShrink: 0 }} />
-              <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.5, fontWeight: 700 }}>
-                احراز هویت بدون رمز عبور از طریق ربات رسمی تلگرام <b>@{botName}</b>
-              </div>
-            </div>
-
             {err && (
               <div
                 style={{
@@ -258,7 +249,7 @@ export function LoginPage({ onLogin }: { onLogin: (tokens: any, user: any) => vo
               ) : (
                 <>
                   <Send size={18} />
-                  <span>دریافت لینک ورود امن با تلگرام</span>
+                  <span>ورود با تلگرام</span>
                 </>
               )}
             </button>
@@ -290,7 +281,7 @@ export function LoginPage({ onLogin }: { onLogin: (tokens: any, user: any) => vo
               <span>{err || "زمان اعتبار لینک ورود به پایان رسید."}</span>
             </div>
 
-            <button onClick={reset} className="btn btn-primary" style={{ padding: "12px", fontWeight: 800 }}>
+            <button onClick={handleInit} className="btn btn-primary" style={{ padding: "12px", fontWeight: 800 }}>
               <RefreshCw size={16} />
               <span>ایجاد لینک جدید</span>
             </button>
@@ -378,15 +369,28 @@ export function LoginPage({ onLogin }: { onLogin: (tokens: any, user: any) => vo
                 <ExternalLink size={14} />
               </a>
 
-              <button
-                type="button"
-                onClick={copyLink}
-                className="btn btn-ghost mono"
-                style={{ padding: "10px", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-              >
-                <Copy size={13} />
-                <span>کپی لینک یک‌بارمصرف</span>
-              </button>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={copyLink}
+                  className="btn btn-ghost mono"
+                  style={{ padding: "9px 6px", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+                >
+                  <Copy size={13} />
+                  <span>کپی لینک</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleInit}
+                  className="btn btn-ghost mono"
+                  style={{ padding: "9px 6px", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+                  title="ایجاد لینک و QR کد جدید"
+                >
+                  <RefreshCw size={13} />
+                  <span>لینک جدید</span>
+                </button>
+              </div>
             </div>
 
             <button
