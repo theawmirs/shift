@@ -287,23 +287,33 @@ button{font:inherit; font-family:inherit}
   width:100% !important; text-align:right !important;
 }
 
-/* Time Input Centering Cross-Browser */
-input[type="time"] {
+/* Time & Number Input Centering Cross-Browser */
+input[type="time"],
+input[type="number"],
+.field input[type="time"],
+.field input[type="number"] {
   text-align: center !important;
-  justify-content: center !important;
+  direction: ltr !important;
 }
 input[type="time"]::-webkit-datetime-edit {
-  display: flex !important;
+  display: inline-flex !important;
   justify-content: center !important;
   text-align: center !important;
-  margin: 0 auto !important;
   width: 100% !important;
+  padding: 0 !important;
+  margin: 0 auto !important;
 }
 input[type="time"]::-webkit-datetime-edit-fields-wrapper {
-  display: flex !important;
+  display: inline-flex !important;
   justify-content: center !important;
   text-align: center !important;
   margin: 0 auto !important;
+}
+input[type="time"]::-webkit-datetime-edit-hour-field,
+input[type="time"]::-webkit-datetime-edit-minute-field,
+input[type="time"]::-webkit-datetime-edit-ampm-field,
+input[type="time"]::-webkit-datetime-edit-text {
+  text-align: center !important;
 }
 
 .btn{
