@@ -1,91 +1,108 @@
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useToast } from "../../shared/ui/Toast";
+import { Drawer } from "../../shared/ui/Drawer";
+import {
+  useTasksQuery,
+  useAddTaskMutation,
+  usePatchTaskMutation,
+  useDeleteTaskMutation,
+} from "../../shared/api/queries";
 import {
   ListChecks,
-  Check,
-  Trash2,
-  Search,
   Plus,
-  Edit3,
+  Trash2,
+  Edit2,
   Calendar,
-  AlertTriangle,
-  CalendarDays,
-  X,
-  Flame,
-  Zap,
-  Leaf,
   CheckCircle2,
-  CircleDashed,
-  Sparkles,
+  Circle,
+  Flame,
+  AlertCircle,
+  Leaf,
+  Search,
   ChevronLeft,
   ChevronRight,
-  SunMedium,
-  Clock,
+  Sun,
+  X,
 } from "lucide-react";
-import { API } from "../../shared/lib/api";
-import { useToast } from "../../shared/ui/Toast";
-import { CardSkeleton } from "../../shared/ui/Skeleton";
-import { Drawer } from "../../shared/ui/Drawer";
-import { ShamsiCalendar, jalaliStr } from "../../shared/ui/ShamsiCalendar";
-import { formatShamsiDateText } from "../../shared/lib/format";
 
 export interface TaskType {
-  id: number;
+  id: number | string;
   title: string;
   description?: string | null;
-  priority?: "low" | "medium" | "high";
+  priority?: "low" | "medium" | "high" | string;
   due_date?: string | null;
   done: boolean;
-  day_num?: number;
+  day_num?: number | null;
   shamsi_date?: string;
+}
+
+// ── Jalali Helper Functions ──
+const JALALI_MONTH_NAMES = [
+  "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور",
+  "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"
+];
+
+function getTodayJalaliString(): string {
+  const g = new Date();
+  let gy = g.getFullYear();
+  let gm = g.getMonth() + 1;
+  let gd = g.getDate();
+
+  let g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+  let gy2 = gm > 2 ? gy + 1 : gy;
+  let days =
+    355666 +
+    (365 * gy) +
+    Math.floor((gy2 + 3) / 4) -
+    Math.floor((gy2 + 99) / 100) +
+    Math.floor((gy2 + 399) / 400) +
+    gd +
+    g_d_m[gm - 1];
+  let jy = -1595 + 33 * Math.floor(days / 12053);
+  days %= 12053;
+  jy += 4 * Math.floor(days / 1461);
+  days %= 1461;
+  if (days > 365) {
+    jy += Math.floor((days - 1) / 365);
+    days = (days - 1) % 365;
+  }
+  let jm = days < 186 ? 1 + Math.floor(days / 31) : 7 + Math.floor((days - 186) / 30);
+  let jd = 1 + (days < 186 ? days % 31 : (days - 186) % 30);
+
+  const p2 = (n: number) => String(n).padStart(2, "0");
+  return `${jy}-${p2(jm)}-${p2(jd)}`;
+}
+
+function formatJalaliReadable(dateStr?: string | null): string {
+  if (!dateStr) return "";
+  try {
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    const y = parts[0];
+    const mIdx = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    const mName = JALALI_MONTH_NAMES[mIdx] || parts[1];
+    return `${d} ${mName} ${y}`;
+  } catch {
+    return dateStr;
+  }
 }
 
 const PAGE_SIZE = 6;
 
-// Pure Jalali helper for Today detection
-function getTodayJalaliString(): string {
-  const d = new Date();
-  const gy = d.getFullYear(),
-    gm = d.getMonth() + 1,
-    gd = d.getDate();
-  let _gy = gy - 1600,
-    _gm = gm - 1,
-    _gd = gd - 1;
-  const _GD = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  const _JD = [31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29];
-  let gDayNo =
-    365 * _gy + Math.floor((_gy + 3) / 4) - Math.floor((_gy + 99) / 100) + Math.floor((_gy + 399) / 400);
-  for (let i = 0; i < _gm; i++) gDayNo += _GD[i];
-  if (_gm > 1 && ((_gy % 4 === 0 && _gy % 100 !== 0) || _gy % 400 === 0)) gDayNo += 1;
-  gDayNo += _gd;
-  let jDayNo = gDayNo - 79;
-  let jNp = Math.floor(jDayNo / 12053);
-  jDayNo %= 12053;
-  let jy = 979 + 33 * jNp + 4 * Math.floor(jDayNo / 1461);
-  jDayNo %= 1461;
-  if (jDayNo >= 366) {
-    jy += Math.floor((jDayNo - 1) / 365);
-    jDayNo = (jDayNo - 1) % 365;
-  }
-  let i = 0;
-  for (let k = 0; k < 11; k++) {
-    if (jDayNo < _JD[k]) {
-      i = k;
-      break;
-    }
-    jDayNo -= _JD[k];
-    i = k + 1;
-  }
-  return jalaliStr(jy, i + 1, jDayNo + 1);
-}
-
 export function TasksList() {
   const { push } = useToast();
-  const [tasks, setTasks] = useState<TaskType[]>([]);
+  const { data: tasksData, error: queryError, isLoading } = useTasksQuery();
+  const addTaskMutation = useAddTaskMutation();
+  const patchTaskMutation = usePatchTaskMutation();
+  const deleteTaskMutation = useDeleteTaskMutation();
+
+  const tasks: TaskType[] = useMemo(() => tasksData?.tasks || [], [tasksData]);
+
+  // Filter & Search states
   const [filter, setFilter] = useState<"all" | "open" | "done">("all");
   const [priorityFilter, setPriorityFilter] = useState<"all" | "high" | "medium" | "low">("all");
   const [q, setQ] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
   // Drawer modal states
@@ -98,27 +115,9 @@ export function TasksList() {
   const [formDesc, setFormDesc] = useState("");
   const [formPriority, setFormPriority] = useState<"low" | "medium" | "high">("medium");
   const [formDueDate, setFormDueDate] = useState("");
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const todayStr = useMemo(() => getTodayJalaliString(), []);
-
-  const load = async () => {
-    setLoading(true);
-    setErr(null);
-    try {
-      const r = await API.tasks();
-      setTasks(r.tasks || []);
-    } catch (e: any) {
-      setErr(String(e.message || e));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    load();
-  }, []);
 
   // Reset to page 1 whenever filters change
   useEffect(() => {
@@ -159,45 +158,33 @@ export function TasksList() {
         const diffPrio = (prioWeight[b.priority || "medium"] || 2) - (prioWeight[a.priority || "medium"] || 2);
         if (diffPrio !== 0) return diffPrio;
 
-        // 4. Newest first
-        return b.id - a.id;
+        // 4. Creation Date / ID descending
+        return Number(b.id) - Number(a.id);
       });
   }, [tasks, filter, priorityFilter, q, todayStr]);
 
-  // Separate Today's open tasks from Other tasks (Strictly by due_date if exists, else created shamsi_date)
-  const { todayOpenTasks, regularTasks } = useMemo(() => {
-    const todayOpen: TaskType[] = [];
-    const regular: TaskType[] = [];
-
-    allFiltered.forEach((t) => {
-      // If task has an explicit due_date, strict match on due_date. Only fallback to shamsi_date if no due_date set.
-      const isDueToday = !t.done && (t.due_date ? t.due_date === todayStr : t.shamsi_date === todayStr);
-      if (isDueToday) {
-        todayOpen.push(t);
-      } else {
-        regular.push(t);
-      }
+  // Tasks explicitly due today (for hero spotlight)
+  const todayTasks = useMemo(() => {
+    return tasks.filter((t) => {
+      if (t.done) return false;
+      return t.due_date ? t.due_date === todayStr : t.shamsi_date === todayStr;
     });
+  }, [tasks, todayStr]);
 
-    return { todayOpenTasks: todayOpen, regularTasks: regular };
-  }, [allFiltered, todayStr]);
-
-  // Pagination on the regular tasks list
-  const totalRegular = regularTasks.length;
-  const totalPages = Math.max(1, Math.ceil(totalRegular / PAGE_SIZE));
+  // Pagination slicing
+  const totalPages = Math.max(1, Math.ceil(allFiltered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
-
-  const paginatedRegularTasks = useMemo(() => {
+  const paginatedTasks = useMemo(() => {
     const start = (currentPage - 1) * PAGE_SIZE;
-    return regularTasks.slice(start, start + PAGE_SIZE);
-  }, [regularTasks, currentPage]);
+    return allFiltered.slice(start, start + PAGE_SIZE);
+  }, [allFiltered, currentPage]);
 
   const openAddModal = () => {
+    setEditingTask(null);
     setFormTitle("");
     setFormDesc("");
     setFormPriority("medium");
-    setFormDueDate(todayStr); // Defaults to today for quick scheduling
-    setShowDatePicker(false);
+    setFormDueDate(todayStr);
     setActiveTaskModal("add");
   };
 
@@ -207,7 +194,6 @@ export function TasksList() {
     setFormDesc(t.description || "");
     setFormPriority((t.priority as any) || "medium");
     setFormDueDate(t.due_date || "");
-    setShowDatePicker(false);
     setActiveTaskModal("edit");
   };
 
@@ -220,22 +206,23 @@ export function TasksList() {
     setSaving(true);
     try {
       if (activeTaskModal === "add") {
-        const r = await API.addTask({
+        await addTaskMutation.mutateAsync({
           title: v,
-          description: formDesc.trim() || null,
+          description: formDesc.trim() || undefined,
           priority: formPriority,
-          due_date: formDueDate.trim() || null,
+          due_date: formDueDate.trim() || undefined,
         });
-        setTasks(r.tasks || []);
         push(`📝 تسک «${v}» اضافه شد`);
       } else if (activeTaskModal === "edit" && editingTask) {
-        const r = await API.patchTask(editingTask.id, {
-          title: v,
-          description: formDesc.trim() || null,
-          priority: formPriority,
-          due_date: formDueDate.trim() || null,
+        await patchTaskMutation.mutateAsync({
+          id: editingTask.id,
+          body: {
+            title: v,
+            description: formDesc.trim() || undefined,
+            priority: formPriority,
+            due_date: formDueDate.trim() || undefined,
+          },
         });
-        setTasks(r.tasks || []);
         push(`✅ تسک به‌روزرسانی شد`);
       }
       setActiveTaskModal(null);
@@ -250,8 +237,10 @@ export function TasksList() {
     const t = tasks.find((x) => x.id === id);
     if (!t) return;
     try {
-      const r = await API.patchTask(id, { done: !t.done });
-      setTasks(r.tasks || []);
+      await patchTaskMutation.mutateAsync({
+        id,
+        body: { done: !t.done },
+      });
       push(t.done ? `↩️ تسک بازگردانده شد` : `🎉 تسک انجام شد!`);
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
@@ -262,8 +251,7 @@ export function TasksList() {
     if (!deleteConfirmTask) return;
     setSaving(true);
     try {
-      const r = await API.delTask(deleteConfirmTask.id);
-      setTasks(r.tasks || []);
+      await deleteTaskMutation.mutateAsync(deleteConfirmTask.id);
       push(`🗑 «${deleteConfirmTask.title}» حذف شد`);
       setDeleteConfirmTask(null);
     } catch (e: any) {
@@ -329,251 +317,205 @@ export function TasksList() {
           padding: "2px 7px",
         }}
       >
-        <Zap size={11} /> متوسط
+        <AlertCircle size={11} /> مهم
       </span>
     );
   };
 
-  const renderTaskCard = (t: TaskType, isTodayHighlight = false) => {
-    // Strictly due today if due_date equals todayStr
-    const isDueToday = t.due_date ? t.due_date === todayStr : t.shamsi_date === todayStr;
-
-    return (
-      <div
-        key={t.id}
-        className="card"
-        style={{
-          padding: "12px 14px",
-          display: "flex",
-          alignItems: "flex-start",
-          gap: 12,
-          background: t.done
-            ? "var(--surface-2)"
-            : isTodayHighlight
-            ? "rgba(245, 158, 11, 0.08)"
-            : "linear-gradient(180deg, var(--card) 0%, var(--card2) 100%)",
-          borderColor: isTodayHighlight ? "var(--amber)" : t.done ? "var(--border)" : "var(--border-strong)",
-          borderWidth: isTodayHighlight ? 2.5 : 2,
-          opacity: t.done ? 0.6 : 1,
-          transition: "all 0.18s ease",
-          boxShadow: isTodayHighlight ? "4px 4px 0 var(--amber)" : "3px 3px 0 #000",
-        }}
-      >
-        {/* Checkbox (Right Side RTL) */}
-        <button
-          type="button"
-          aria-label={t.done ? "علامت‌گذاری باز" : "علامت‌گذاری انجام‌شده"}
-          style={{
-            width: 26,
-            height: 26,
-            minWidth: 26,
-            borderRadius: 8,
-            border: "2.5px solid #000",
-            background: t.done ? "var(--green)" : "#fff",
-            display: "grid",
-            placeItems: "center",
-            boxShadow: "2px 2px 0 #000",
-            cursor: "pointer",
-            marginTop: 2,
-            padding: 0,
-            transition: "transform 0.1s ease",
-          }}
-          onClick={() => handleToggle(t.id)}
-        >
-          {t.done && <Check size={16} strokeWidth={3.5} color="#052e0b" />}
-        </button>
-
-        {/* Task Details (Middle) */}
-        <div style={{ flex: 1, display: "grid", gap: 5, cursor: "pointer", minWidth: 0 }} onClick={() => openEditModal(t)}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-            <span
-              style={{
-                fontSize: 14,
-                fontWeight: 800,
-                color: "var(--text)",
-                textDecoration: t.done ? "line-through" : "none",
-                wordBreak: "break-word",
-              }}
-            >
-              {t.title}
-            </span>
-            {renderPriorityBadge(t.priority)}
-            {isDueToday && !t.done && (
-              <span
-                className="badge"
-                style={{
-                  background: "var(--amber)",
-                  color: "#0F172A",
-                  border: "1.5px solid #000",
-                  fontSize: 10,
-                  fontWeight: 900,
-                  padding: "1px 6px",
-                }}
-              >
-                امروز ⚡
-              </span>
-            )}
-          </div>
-
-          {t.description && (
-            <p
-              style={{
-                margin: 0,
-                fontSize: 12,
-                color: "var(--muted)",
-                lineHeight: 1.5,
-                textDecoration: t.done ? "line-through" : "none",
-                wordBreak: "break-word",
-              }}
-            >
-              {t.description}
-            </p>
-          )}
-
-          {t.due_date && (
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-                fontSize: 11,
-                color: isDueToday && !t.done ? "var(--amber-2)" : "var(--muted)",
-                fontWeight: isDueToday && !t.done ? 800 : 600,
-                marginTop: 2,
-              }}
-            >
-              <Calendar size={12} />
-              <span className="mono">
-                {isDueToday ? "سررسید: امروز" : `مهلت: ${formatShamsiDateText(t.due_date)}`}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Action Buttons (Left Side RTL) */}
-        <div style={{ display: "flex", gap: 5, alignItems: "center", flexShrink: 0 }}>
-          <button
-            className="icon-btn"
-            style={{ width: 32, height: 32, boxShadow: "2px 2px 0 #000" }}
-            onClick={() => openEditModal(t)}
-            title="ویرایش"
-          >
-            <Edit3 size={14} />
-          </button>
-          <button
-            className="icon-btn"
-            style={{ width: 32, height: 32, boxShadow: "2px 2px 0 #000", color: "var(--red)" }}
-            onClick={() => setDeleteConfirmTask(t)}
-            title="حذف"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  if (loading) return <CardSkeleton rows={4} />;
-  if (err)
-    return (
-      <div className="card">
-        <p style={{ color: "var(--red)", fontWeight: 800 }}>❌ {err}</p>
-        <button className="btn btn-ghost" style={{ marginTop: 10 }} onClick={load}>
-          تلاش دوباره
-        </button>
-      </div>
-    );
-
   return (
-    <div style={{ display: "grid", gap: 12 }}>
-      {/* ── 1. Hero & Progress Widget ── */}
-      <div className="card" style={{ display: "grid", gap: 14 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <div className="page-fade" style={{ display: "grid", gap: 14 }}>
+      {/* ── 1. Telemetry / Progress Header Card ── */}
+      <div className="card" style={{ display: "grid", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <div>
-            <div className="kicker">TASK MANAGER</div>
-            <h2 className="hero-title" style={{ fontSize: 22, marginTop: 4 }}>
-              مدیریت وظایف
+            <div className="kicker">TASKS & SPRINT MANAGER</div>
+            <h2 className="display" style={{ fontSize: 22, margin: "2px 0 0" }}>
+              مدیریت تسک‌ها و وظایف
             </h2>
           </div>
+
           <button
-            className="btn btn-primary"
+            type="button"
+            className="btn btn-primary mono"
+            onClick={openAddModal}
             style={{
               width: "auto",
               padding: "8px 14px",
               fontSize: 12,
+              fontWeight: 900,
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
               boxShadow: "3px 3px 0 #000",
             }}
-            onClick={openAddModal}
           >
-            <Plus size={16} /> تسک جدید
+            <Plus size={16} />
+            <span>تسک جدید</span>
           </button>
         </div>
 
-        {/* Progress Bar & Stats */}
-        <div
-          style={{
-            background: "var(--surface-2)",
-            border: "2px solid var(--border-strong)",
-            borderRadius: 14,
-            padding: "10px 12px",
-            display: "grid",
-            gap: 8,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700 }}>
-              <Sparkles size={14} style={{ color: "var(--amber)" }} />
-              <span>پیشرفت کل تسک‌ها:</span>
-            </span>
-            <b className="mono" style={{ fontSize: 12, color: progressPercent === 100 ? "var(--green)" : "var(--text)" }}>
+        {/* Progress Bar & Bento Stats */}
+        <div style={{ display: "grid", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12 }}>
+            <span style={{ fontWeight: 800, color: "var(--muted)" }}>پیشرفت تکمیل وظایف</span>
+            <span className="mono" style={{ fontWeight: 900, color: "var(--amber-2)" }}>
               {doneCount} از {totalCount} تسک ({progressPercent}٪)
-            </b>
+            </span>
           </div>
 
           <div className="progress" style={{ height: 10 }}>
-            <i
+            <i style={{ width: `${progressPercent}%`, transition: "width 0.3s ease" }} />
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginTop: 4 }}>
+            <div
+              className="row"
               style={{
-                width: `${progressPercent}%`,
-                transition: "width 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
-                background: progressPercent === 100 ? "var(--green)" : "linear-gradient(90deg, var(--amber), var(--violet))",
+                padding: "8px 6px",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 2,
+                background: "var(--surface-2)",
+                borderColor: "var(--border-strong)",
               }}
-            />
+            >
+              <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>کل تسک‌ها</span>
+              <b className="mono" style={{ fontSize: 14 }}>{totalCount}</b>
+            </div>
+
+            <div
+              className="row"
+              style={{
+                padding: "8px 6px",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 2,
+                background: "rgba(245, 158, 11, 0.08)",
+                borderColor: "var(--amber)",
+              }}
+            >
+              <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>در انتظار انجام</span>
+              <b className="mono" style={{ fontSize: 14, color: "var(--amber-2)" }}>{openCount}</b>
+            </div>
+
+            <div
+              className="row"
+              style={{
+                padding: "8px 6px",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 2,
+                background: "rgba(34, 197, 94, 0.08)",
+                borderColor: "var(--green)",
+              }}
+            >
+              <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>تکمیل‌شده</span>
+              <b className="mono" style={{ fontSize: 14, color: "var(--green)" }}>{doneCount}</b>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ── 2. Search & Segmented Filters ── */}
-      <div className="card" style={{ padding: "12px", display: "grid", gap: 10 }}>
-        {/* Search Input with quick clear */}
+      {/* ── 2. Today's Due Tasks Spotlight (If any exist) ── */}
+      {todayTasks.length > 0 && filter !== "done" && (
         <div
+          className="card"
           style={{
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            background: "var(--bg)",
-            border: "2px solid var(--border-strong)",
-            borderRadius: 12,
-            padding: "8px 12px",
-            boxShadow: "2px 2px 0 #000",
+            background: "linear-gradient(180deg, rgba(245, 158, 11, 0.12) 0%, rgba(245, 158, 11, 0.04) 100%)",
+            borderColor: "var(--amber)",
+            borderWidth: 2.5,
+            display: "grid",
+            gap: 10,
           }}
         >
-          <Search size={15} color="var(--muted)" style={{ flexShrink: 0 }} />
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <Sun size={16} style={{ color: "var(--amber-2)" }} />
+              <b style={{ fontSize: 13, color: "var(--text)" }}>تسک‌های اختصاصی امروز ☀️</b>
+            </div>
+            <span className="badge badge-warn mono" style={{ fontSize: 10 }}>
+              {todayTasks.length} وظیفه برای امروز
+            </span>
+          </div>
+
+          <div style={{ display: "grid", gap: 6 }}>
+            {todayTasks.map((t) => (
+              <div
+                key={t.id}
+                className="row"
+                style={{
+                  padding: "10px 12px",
+                  background: "#fff",
+                  borderColor: "#000",
+                  color: "#0F172A",
+                  boxShadow: "2.5px 2.5px 0 #000",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => handleToggle(t.id)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                    display: "grid",
+                    placeItems: "center",
+                    color: "#0F172A",
+                  }}
+                >
+                  <Circle size={18} />
+                </button>
+
+                <div style={{ flex: 1, minWidth: 0, textAlign: "right" }}>
+                  <div style={{ fontWeight: 800, fontSize: 13, color: "#0F172A" }}>{t.title}</div>
+                  {t.description && (
+                    <div style={{ fontSize: 11, color: "rgba(15,23,42,.7)", marginTop: 2 }}>{t.description}</div>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  {renderPriorityBadge(t.priority)}
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    style={{ width: 28, height: 28, boxShadow: "1.5px 1.5px 0 #000" }}
+                    onClick={() => openEditModal(t)}
+                  >
+                    <Edit2 size={12} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── 3. Filters & Search Control Bar ── */}
+      <div className="card" style={{ padding: "12px 14px", display: "grid", gap: 10 }}>
+        {/* Search Input */}
+        <div style={{ position: "relative" }}>
           <input
+            type="text"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="جستجو در عنوان یا متن تسک‌ها…"
+            placeholder="جستجو در عناوین و توضیحات تسک‌ها…"
+            className="input mono"
             style={{
-              flex: 1,
-              background: "transparent",
-              border: "none",
-              outline: "none",
-              color: "var(--text)",
-              fontFamily: "YekanBakh",
-              fontSize: 12,
-              fontWeight: 600,
+              paddingRight: 36,
+              fontSize: 12.5,
+              height: 38,
+            }}
+          />
+          <Search
+            size={16}
+            style={{
+              position: "absolute",
+              right: 12,
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "var(--muted)",
+              pointerEvents: "none",
             }}
           />
           {q && (
@@ -581,12 +523,13 @@ export function TasksList() {
               type="button"
               onClick={() => setQ("")}
               style={{
+                position: "absolute",
+                left: 10,
+                top: "50%",
+                transform: "translateY(-50%)",
                 background: "transparent",
                 border: "none",
-                padding: 0,
                 cursor: "pointer",
-                display: "grid",
-                placeItems: "center",
                 color: "var(--muted)",
               }}
             >
@@ -595,449 +538,445 @@ export function TasksList() {
           )}
         </div>
 
-        {/* Status Tabs (Segmented Control) */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
-            gap: 6,
-            background: "rgba(0,0,0,0.15)",
-            padding: 4,
-            borderRadius: 12,
-            border: "1.5px solid var(--border-strong)",
-          }}
-        >
-          {[
-            { k: "all", label: "همه", icon: ListChecks, count: totalCount },
-            { k: "open", label: "در جریان", icon: CircleDashed, count: openCount },
-            { k: "done", label: "انجام‌شده", icon: CheckCircle2, count: doneCount },
-          ].map((tab) => {
-            const active = filter === tab.k;
-            const Icon = tab.icon;
-            return (
+        {/* Tab Filters */}
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+          {/* Status Tabs */}
+          <div style={{ display: "flex", gap: 4 }}>
+            {[
+              { k: "all", label: "همه" },
+              { k: "open", label: "انجام‌نشده" },
+              { k: "done", label: "انجام‌شده" },
+            ].map((tb) => (
               <button
-                key={tab.k}
-                onClick={() => setFilter(tab.k as any)}
+                key={tb.k}
+                type="button"
+                className="btn mono"
                 style={{
-                  border: active ? "2px solid #000" : "2px solid transparent",
-                  borderRadius: 9,
-                  background: active ? "var(--amber)" : "transparent",
-                  color: active ? "#0F172A" : "var(--muted)",
+                  width: "auto",
+                  padding: "6px 12px",
+                  fontSize: 11,
                   fontWeight: 800,
-                  fontSize: 11,
-                  padding: "6px 4px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 5,
-                  cursor: "pointer",
-                  boxShadow: active ? "2px 2px 0 #000" : "none",
-                  transition: "all 0.15s ease",
+                  borderRadius: 12,
+                  borderWidth: 2,
+                  background: filter === tb.k ? "var(--amber)" : "transparent",
+                  color: filter === tb.k ? "#0F172A" : "var(--muted)",
+                  borderColor: filter === tb.k ? "#000" : "var(--border-strong)",
+                  boxShadow: filter === tb.k ? "2px 2px 0 #000" : "none",
                 }}
+                onClick={() => setFilter(tb.k as any)}
               >
-                <Icon size={12} />
-                <span>{tab.label}</span>
-                <span
-                  className="mono"
-                  style={{
-                    fontSize: 10,
-                    background: active ? "#000" : "rgba(255,255,255,0.08)",
-                    color: active ? "#fff" : "inherit",
-                    padding: "1px 5px",
-                    borderRadius: 999,
-                  }}
-                >
-                  {tab.count}
-                </span>
+                {tb.label}
               </button>
-            );
-          })}
-        </div>
+            ))}
+          </div>
 
-        {/* Priority Filter Chips */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
-          <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, flexShrink: 0 }}>اولویت:</span>
-          {[
-            { k: "all", label: "همه" },
-            { k: "high", label: "فوری 🔥" },
-            { k: "medium", label: "متوسط ⚡" },
-            { k: "low", label: "عادی 🌱" },
-          ].map((p) => {
-            const active = priorityFilter === p.k;
-            return (
+          {/* Priority Pill Filter */}
+          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            {[
+              { k: "all", label: "اولویت: همه" },
+              { k: "high", label: "فوری 🔥" },
+              { k: "medium", label: "مهم ⚠️" },
+              { k: "low", label: "عادی 🌿" },
+            ].map((pb) => (
               <button
-                key={p.k}
-                onClick={() => setPriorityFilter(p.k as any)}
-                className={`badge ${active ? "badge-ok" : "badge-muted"}`}
+                key={pb.k}
+                type="button"
+                className="btn mono"
                 style={{
-                  cursor: "pointer",
-                  fontSize: 11,
-                  padding: "4px 8px",
-                  flexShrink: 0,
-                  transition: "all 0.12s ease",
+                  width: "auto",
+                  padding: "6px 8px",
+                  fontSize: 10.5,
+                  fontWeight: 800,
+                  borderRadius: 10,
+                  borderWidth: 1.5,
+                  background: priorityFilter === pb.k ? "var(--surface-2)" : "transparent",
+                  color: priorityFilter === pb.k ? "var(--text)" : "var(--muted)",
+                  borderColor: priorityFilter === pb.k ? "var(--amber)" : "var(--border-strong)",
                 }}
+                onClick={() => setPriorityFilter(pb.k as any)}
               >
-                {p.label}
+                {pb.label}
               </button>
-            );
-          })}
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* ── 3. Task Items List ── */}
-      {allFiltered.length === 0 ? (
-        <div
-          className="card"
-          style={{
-            textAlign: "center",
-            padding: "32px 14px",
-            color: "var(--muted)",
-            display: "grid",
-            gap: 8,
-            justifyItems: "center",
-          }}
-        >
+      {/* ── 4. Main Tasks List Section ── */}
+      <div className="card" style={{ display: "grid", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <ListChecks size={18} style={{ color: "var(--amber)" }} />
+            <b style={{ fontSize: 13, color: "var(--text)" }}>فهرست تسک‌ها</b>
+          </div>
+          <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>
+            {allFiltered.length} مورد منطبق (صفحه {currentPage} از {totalPages})
+          </span>
+        </div>
+
+        {queryError ? (
+          <div style={{ textAlign: "center", padding: "20px 0", color: "var(--red)" }}>
+            خطا در دریافت تسک‌ها: {String((queryError as any)?.message || queryError)}
+          </div>
+        ) : isLoading ? (
+          <div style={{ textAlign: "center", padding: "30px 0" }}>
+            <span className="spinner" style={{ width: 24, height: 24, borderWidth: 3 }} />
+          </div>
+        ) : paginatedTasks.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "32px 14px", color: "var(--muted)" }}>
+            <ListChecks size={36} style={{ opacity: 0.3, margin: "0 auto 8px" }} />
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 13 }}>هیچ تسکی با این فیلترها پیدا نشد.</p>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: 8 }}>
+            {paginatedTasks.map((t) => {
+              const isDueToday = t.due_date ? t.due_date === todayStr : t.shamsi_date === todayStr;
+              return (
+                <div
+                  key={t.id}
+                  className="row"
+                  style={{
+                    padding: "12px 14px",
+                    background: t.done
+                      ? "rgba(255,255,255,0.02)"
+                      : isDueToday
+                      ? "rgba(245, 158, 11, 0.05)"
+                      : "var(--surface-2)",
+                    borderColor: t.done
+                      ? "rgba(255,255,255,0.06)"
+                      : isDueToday
+                      ? "var(--amber)"
+                      : "var(--border-strong)",
+                    opacity: t.done ? 0.65 : 1,
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  {/* Complete Toggle Checkbox */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggle(t.id)}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: 0,
+                      display: "grid",
+                      placeItems: "center",
+                      color: t.done ? "var(--green)" : "var(--muted)",
+                      flexShrink: 0,
+                    }}
+                    title={t.done ? "علامت به عنوان انجام‌نشده" : "علامت به عنوان انجام‌شده"}
+                  >
+                    {t.done ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+                  </button>
+
+                  {/* Task Content */}
+                  <div style={{ flex: 1, minWidth: 0, textAlign: "right" }}>
+                    <div
+                      style={{
+                        fontWeight: 800,
+                        fontSize: 13.5,
+                        color: "var(--text)",
+                        textDecoration: t.done ? "line-through" : "none",
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {t.title}
+                    </div>
+
+                    {t.description && (
+                      <div
+                        style={{
+                          fontSize: 11.5,
+                          color: "var(--muted)",
+                          marginTop: 3,
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {t.description}
+                      </div>
+                    )}
+
+                    {/* Metadata: Due date & Shamsi Date */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
+                      {t.due_date ? (
+                        <span
+                          className="mono"
+                          style={{
+                            fontSize: 10.5,
+                            color: isDueToday ? "var(--amber-2)" : "var(--muted)",
+                            fontWeight: 700,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 3,
+                          }}
+                        >
+                          <Calendar size={12} /> سررسید: {formatJalaliReadable(t.due_date)} {isDueToday ? "(امروز)" : ""}
+                        </span>
+                      ) : t.shamsi_date ? (
+                        <span
+                          className="mono"
+                          style={{
+                            fontSize: 10.5,
+                            color: "var(--muted2)",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 3,
+                          }}
+                        >
+                          <Calendar size={12} /> ایجاد: {formatJalaliReadable(t.shamsi_date)}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {/* Actions & Priority */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                    {renderPriorityBadge(t.priority)}
+
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      style={{ width: 30, height: 30, boxShadow: "2px 2px 0 #000" }}
+                      onClick={() => openEditModal(t)}
+                      title="ویرایش تسک"
+                    >
+                      <Edit2 size={13} />
+                    </button>
+
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      style={{
+                        width: 30,
+                        height: 30,
+                        boxShadow: "2px 2px 0 #000",
+                        color: "var(--red)",
+                      }}
+                      onClick={() => setDeleteConfirmTask(t)}
+                      title="حذف تسک"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── 5. Neo-Brutalist Pagination Controls ── */}
+        {totalPages > 1 && (
           <div
             style={{
-              width: 48,
-              height: 48,
-              borderRadius: 14,
-              border: "2px solid #000",
-              background: "var(--surface-2)",
-              display: "grid",
-              placeItems: "center",
-              boxShadow: "3px 3px 0 #000",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingTop: 10,
+              borderTop: "1px solid var(--border)",
+              marginTop: 6,
             }}
           >
-            <ListChecks size={24} style={{ opacity: 0.6 }} />
-          </div>
-          <b style={{ fontSize: 14, color: "var(--text)" }}>
-            {tasks.length === 0 ? "هیچ تسکی وجود ندارد" : "تسک منطبق با فیلتر یافت نشد"}
-          </b>
-          <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5, maxWidth: 260 }}>
-            {tasks.length === 0
-              ? "برای برنامه‌ریزی کارهای روزمره، از دکمه «تسک جدید» استفاده کنید."
-              : "عبارت جستجو یا فیلترهای وضعیت و اولویت را تغییر دهید."}
-          </p>
-        </div>
-      ) : (
-        <div style={{ display: "grid", gap: 12 }}>
-          {/* ── SEPARATOR: TODAY'S OPEN TASKS (PINNED FIRST) ── */}
-          {todayOpenTasks.length > 0 && (
-            <div style={{ display: "grid", gap: 8 }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "4px 6px",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <SunMedium size={16} style={{ color: "var(--amber)" }} />
-                  <span style={{ fontSize: 13, fontWeight: 900, color: "var(--text)" }}>
-                    تسک‌های سررسید امروز ({formatShamsiDateText(todayStr)})
-                  </span>
-                </div>
-                <span
-                  className="badge"
-                  style={{
-                    background: "var(--amber)",
-                    color: "#0F172A",
-                    border: "1.5px solid #000",
-                    fontWeight: 900,
-                    fontSize: 10,
-                  }}
-                >
-                  {todayOpenTasks.length} تسک
-                </span>
-              </div>
-
-              <div style={{ display: "grid", gap: 8 }}>
-                {todayOpenTasks.map((t) => renderTaskCard(t, true))}
-              </div>
-            </div>
-          )}
-
-          {/* ── REGULAR & OTHER TASKS LIST ── */}
-          {paginatedRegularTasks.length > 0 && (
-            <div style={{ display: "grid", gap: 8 }}>
-              {todayOpenTasks.length > 0 && (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "4px 6px",
-                    marginTop: 4,
-                  }}
-                >
-                  <Clock size={15} style={{ color: "var(--muted)" }} />
-                  <span style={{ fontSize: 12, fontWeight: 800, color: "var(--muted)" }}>
-                    سایر تسک‌ها ({totalRegular}):
-                  </span>
-                </div>
-              )}
-
-              <div style={{ display: "grid", gap: 8 }}>
-                {paginatedRegularTasks.map((t) => renderTaskCard(t, false))}
-              </div>
-            </div>
-          )}
-
-          {/* ── PAGINATION CONTROLS ── */}
-          {totalPages > 1 && (
-            <div
-              className="card"
-              style={{
-                padding: "8px 12px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                background: "var(--surface-2)",
-                borderColor: "var(--border-strong)",
-              }}
+            <button
+              type="button"
+              className="btn btn-ghost mono"
+              style={{ width: "auto", padding: "6px 12px", fontSize: 11, display: "inline-flex", alignItems: "center", gap: 4 }}
+              disabled={currentPage <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
-              <button
-                type="button"
-                className="btn btn-ghost mono"
-                style={{
-                  width: "auto",
-                  padding: "6px 12px",
-                  fontSize: 11,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                  opacity: currentPage >= totalPages ? 0.35 : 1,
-                  pointerEvents: currentPage >= totalPages ? "none" : "auto",
-                }}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              >
-                <span>صفحه بعد</span>
-                <ChevronLeft size={14} />
-              </button>
+              <ChevronRight size={14} /> قبلی
+            </button>
 
-              <div className="mono" style={{ fontSize: 12, fontWeight: 800, color: "var(--text)" }}>
-                صفحه {currentPage} از {totalPages}
-              </div>
-
-              <button
-                type="button"
-                className="btn btn-ghost mono"
-                style={{
-                  width: "auto",
-                  padding: "6px 12px",
-                  fontSize: 11,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                  opacity: currentPage <= 1 ? 0.35 : 1,
-                  pointerEvents: currentPage <= 1 ? "none" : "auto",
-                }}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                <ChevronRight size={14} />
-                <span>صفحه قبل</span>
-              </button>
+            <div style={{ display: "flex", gap: 4 }}>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pNum) => (
+                <button
+                  key={pNum}
+                  type="button"
+                  className="mono"
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: 8,
+                    border: "2px solid #000",
+                    fontWeight: 900,
+                    fontSize: 12,
+                    cursor: "pointer",
+                    background: pNum === currentPage ? "var(--amber)" : "#fff",
+                    color: "#0F172A",
+                    boxShadow: pNum === currentPage ? "1px 1px 0 #000" : "2px 2px 0 #000",
+                    transform: pNum === currentPage ? "translate(1px, 1px)" : "none",
+                  }}
+                  onClick={() => setPage(pNum)}
+                >
+                  {pNum}
+                </button>
+              ))}
             </div>
-          )}
-        </div>
-      )}
 
-      {/* ── CREATE / EDIT TASK DRAWER ── */}
+            <button
+              type="button"
+              className="btn btn-ghost mono"
+              style={{ width: "auto", padding: "6px 12px", fontSize: 11, display: "inline-flex", alignItems: "center", gap: 4 }}
+              disabled={currentPage >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              بعدی <ChevronLeft size={14} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── 6. Add / Edit Task Modal (Responsive Dialog) ── */}
       <Drawer
         open={activeTaskModal !== null}
         onClose={() => setActiveTaskModal(null)}
-        title={activeTaskModal === "add" ? "افزودن تسک جدید" : "ویرایش تسک"}
-        height="82vh"
+        title={activeTaskModal === "add" ? "📝 افزودن تسک کاری جدید" : "✏️ ویرایش تسک"}
       >
-        <div style={{ display: "grid", gap: 14, padding: "4px 0" }}>
-          <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 800 }}>عنوان تسک:</span>
+        <div style={{ display: "grid", gap: 14 }}>
+          {/* Title Input */}
+          <div style={{ display: "grid", gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 800, color: "var(--text)" }}>
+              عنوان تسک <span style={{ color: "var(--red)" }}>*</span>
+            </label>
             <input
+              type="text"
               value={formTitle}
               onChange={(e) => setFormTitle(e.target.value)}
-              placeholder="مثال: تکمیل گزارش عملکرد یا پیگیری پروژه…"
+              placeholder="مثلاً: طراحی صفحات فیگما یا گزارش کار…"
               className="input"
               autoFocus
             />
-          </label>
+          </div>
 
-          <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 800 }}>توضیحات و یادداشت (اختیاری):</span>
+          {/* Description Input */}
+          <div style={{ display: "grid", gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 800, color: "var(--text)" }}>توضیحات و جزئیات (اختیاری)</label>
             <textarea
               value={formDesc}
               onChange={(e) => setFormDesc(e.target.value)}
-              placeholder="جزئیات بیشتر، چک‌لیست یا نکات لازم…"
+              placeholder="توضیحات تکمیلی تسک را اینجا بنویسید…"
               rows={3}
-              className="input"
+              className="input mono"
               style={{ resize: "vertical" }}
             />
-          </label>
+          </div>
 
-          {/* Priority selector cards */}
-          <div className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
-            <span style={{ fontSize: 12, fontWeight: 800 }}>اولویت تسک:</span>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, width: "100%" }}>
+          {/* Priority Selector */}
+          <div style={{ display: "grid", gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 800, color: "var(--text)" }}>سطح اولویت</label>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
               {[
-                { k: "low", label: "عادی", icon: Leaf, bg: "#F3F4F6", color: "#374151" },
-                { k: "medium", label: "متوسط", icon: Zap, bg: "#FEF3C7", color: "#92400E" },
-                { k: "high", label: "فوری", icon: Flame, bg: "#FEE2E2", color: "#991B1B" },
-              ].map((p) => {
-                const selected = formPriority === p.k;
-                const Icon = p.icon;
-                return (
-                  <button
-                    key={p.k}
-                    type="button"
-                    style={{
-                      padding: "10px 6px",
-                      borderRadius: 12,
-                      border: selected ? "2.5px solid #000" : "1.5px solid var(--border-strong)",
-                      background: selected ? p.bg : "var(--bg)",
-                      color: selected ? p.color : "var(--text)",
-                      boxShadow: selected ? "3px 3px 0 #000" : "none",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: 4,
-                      cursor: "pointer",
-                      fontWeight: 800,
-                      fontSize: 12,
-                      transition: "all 0.12s ease",
-                    }}
-                    onClick={() => setFormPriority(p.k as any)}
-                  >
-                    <Icon size={16} />
-                    <span>{p.label}</span>
-                  </button>
-                );
-              })}
+                { k: "low", label: "عادی 🌿", bg: "#F3F4F6", color: "#4B5563" },
+                { k: "medium", label: "مهم ⚠️", bg: "#FEF3C7", color: "#92400E" },
+                { k: "high", label: "فوری 🔥", bg: "#FEE2E2", color: "#991B1B" },
+              ].map((pItem) => (
+                <button
+                  key={pItem.k}
+                  type="button"
+                  className="btn mono"
+                  style={{
+                    padding: "8px 4px",
+                    fontSize: 11,
+                    fontWeight: 900,
+                    borderRadius: 12,
+                    borderWidth: 2,
+                    background: formPriority === pItem.k ? pItem.bg : "transparent",
+                    color: formPriority === pItem.k ? pItem.color : "var(--muted)",
+                    borderColor: formPriority === pItem.k ? "#000" : "var(--border-strong)",
+                    boxShadow: formPriority === pItem.k ? "3px 3px 0 #000" : "none",
+                  }}
+                  onClick={() => setFormPriority(pItem.k as any)}
+                >
+                  {pItem.label}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Due date picker */}
-          <div className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
-            <span style={{ fontSize: 12, fontWeight: 800 }}>مهلت انجام (سررسید):</span>
-
-            <div style={{ display: "flex", gap: 8, width: "100%", alignItems: "center" }}>
+          {/* Due Date (Shamsi) */}
+          <div style={{ display: "grid", gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 800, color: "var(--text)" }}>تاریخ سررسید (شمسی)</label>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input
+                type="text"
+                value={formDueDate}
+                onChange={(e) => setFormDueDate(e.target.value)}
+                placeholder="YYYY-MM-DD (مثلاً: 1405-06-10)"
+                className="input mono"
+                style={{ direction: "ltr", textAlign: "center", flex: 1 }}
+              />
               <button
                 type="button"
                 className="btn btn-ghost mono"
-                style={{
-                  flex: 1,
-                  padding: "10px 12px",
-                  fontSize: 13,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  background: "#fff",
-                  color: "#0F172A",
-                }}
-                onClick={() => setShowDatePicker(!showDatePicker)}
+                style={{ width: "auto", padding: "8px 12px", fontSize: 11 }}
+                onClick={() => setFormDueDate(todayStr)}
               >
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <CalendarDays size={16} />
-                  <b>{formDueDate ? formatShamsiDateText(formDueDate) : "انتخاب تاریخ مهلت"}</b>
-                </span>
-                <span className="badge badge-muted mono" style={{ fontSize: 11 }}>
-                  {formDueDate ? formDueDate : "بدون مهلت"}
-                </span>
+                امروز
               </button>
-
-              {formDueDate && (
-                <button
-                  type="button"
-                  className="icon-btn"
-                  style={{ width: 38, height: 38, flexShrink: 0 }}
-                  onClick={() => setFormDueDate("")}
-                  title="پاک کردن مهلت"
-                >
-                  <X size={16} />
-                </button>
-              )}
             </div>
-
-            {/* Inline ShamsiCalendar Picker */}
-            {showDatePicker && (
-              <div style={{ width: "100%", marginTop: 4 }}>
-                <ShamsiCalendar
-                  value={formDueDate}
-                  onPick={(d) => {
-                    setFormDueDate(d);
-                    setShowDatePicker(false);
-                  }}
-                />
-              </div>
-            )}
           </div>
 
-          <button
-            className="btn btn-primary"
-            style={{ width: "100%", padding: "12px", fontSize: 14, fontWeight: 800, marginTop: 6 }}
-            onClick={handleSaveTask}
-            disabled={saving}
-          >
-            {saving ? "در حال ذخیره..." : activeTaskModal === "add" ? "افزودن تسک" : "ذخیره تغییرات"}
-          </button>
+          {/* Action Buttons */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setActiveTaskModal(null)}
+              disabled={saving}
+            >
+              انصراف
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleSaveTask}
+              disabled={saving}
+              style={{ fontWeight: 900 }}
+            >
+              {saving ? (
+                <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+              ) : activeTaskModal === "add" ? (
+                "ثبت تسک جدید"
+              ) : (
+                "ذخیره تغییرات"
+              )}
+            </button>
+          </div>
         </div>
       </Drawer>
 
-      {/* ── CUSTOM BRUTALIST CONFIRM DELETE DRAWER ── */}
+      {/* ── 7. Delete Confirmation Dialog ── */}
       <Drawer
-        open={Boolean(deleteConfirmTask)}
+        open={deleteConfirmTask !== null}
         onClose={() => setDeleteConfirmTask(null)}
-        title="تأیید حذف تسک"
-        height="auto"
+        title="🗑 حذف تسک"
       >
-        {deleteConfirmTask && (
-          <div style={{ display: "grid", gap: 14, padding: "8px 0" }}>
-            <div
-              className="row"
-              style={{
-                borderColor: "var(--red)",
-                background: "rgba(239,68,68,0.08)",
-                flexDirection: "column",
-                alignItems: "stretch",
-                gap: 8,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--red)" }}>
-                <AlertTriangle size={20} />
-                <b style={{ fontSize: 14 }}>آیا از حذف این تسک اطمینان دارید؟</b>
-              </div>
-              <p style={{ margin: 0, fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
-                تسک <b>«{deleteConfirmTask.title}»</b> به طور کامل پاک خواهد شد.
-              </p>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              <button
-                className="btn btn-ghost"
-                style={{ padding: "10px", fontSize: 12 }}
-                onClick={() => setDeleteConfirmTask(null)}
-                disabled={saving}
-              >
-                انصراف
-              </button>
-              <button
-                className="btn btn-primary"
-                style={{
-                  padding: "10px",
-                  fontSize: 12,
-                  fontWeight: 800,
-                  background: "#EF4444",
-                  borderColor: "#000",
-                  color: "#fff",
-                }}
-                onClick={handleConfirmDelete}
-                disabled={saving}
-              >
-                {saving ? "در حال حذف..." : "بله، حذف کن"}
-              </button>
-            </div>
+        <div style={{ display: "grid", gap: 14, textAlign: "center" }}>
+          <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>
+            آیا از حذف تسک «<b>{deleteConfirmTask?.title}</b>» اطمینان دارید؟ این عمل غیرقابل بازگشت است.
           </div>
-        )}
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 6 }}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setDeleteConfirmTask(null)}
+              disabled={saving}
+            >
+              انصراف
+            </button>
+            <button
+              type="button"
+              className="btn"
+              style={{ background: "var(--red)", color: "#fff", fontWeight: 900 }}
+              onClick={handleConfirmDelete}
+              disabled={saving}
+            >
+              {saving ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : "بله، حذف کن"}
+            </button>
+          </div>
+        </div>
       </Drawer>
     </div>
   );

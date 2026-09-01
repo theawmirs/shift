@@ -6,6 +6,7 @@ export const queryKeys = {
   week: ["week"] as const,
   month: (key: string) => ["month", key] as const,
   months: ["months"] as const,
+  tasks: (date?: string) => ["tasks", date ?? "all"] as const,
   leaves: ["leaves"] as const,
   settings: ["settings"] as const,
   holidays: (year?: number) => ["holidays", year ?? "all"] as const,
@@ -18,6 +19,49 @@ export function useTodayQuery() {
     queryFn: () => API.status(),
     refetchInterval: 30000,
     staleTime: 10000,
+  });
+}
+
+export function useTasksQuery(date?: string) {
+  return useQuery({
+    queryKey: queryKeys.tasks(date),
+    queryFn: () => API.tasks(date),
+    staleTime: 60000, // Cache for 1 minute
+  });
+}
+
+export function useAddTaskMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { title: string; description?: string; priority?: string; due_date?: string; date?: string }) =>
+      API.addTask(body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.today });
+    },
+  });
+}
+
+export function usePatchTaskMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number | string; body: { title?: string; description?: string; priority?: string; due_date?: string; done?: boolean } }) =>
+      API.patchTask(id, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.today });
+    },
+  });
+}
+
+export function useDeleteTaskMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number | string) => API.delTask(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.today });
+    },
   });
 }
 
@@ -92,6 +136,7 @@ export function useRecordMutation() {
       queryClient.invalidateQueries({ queryKey: queryKeys.today });
       queryClient.invalidateQueries({ queryKey: queryKeys.week });
       queryClient.invalidateQueries({ queryKey: ["month"] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
 }
