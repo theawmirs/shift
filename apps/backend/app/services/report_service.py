@@ -61,7 +61,9 @@ def compute_month(conn: DBAdapter, month_key: str, user_id: int | None = None) -
         dt = datetime.datetime.fromisoformat(r["ts_utc"])
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=datetime.timezone.utc)
-        events_by_date.setdefault(r["shamsi_date"], []).append((r["event_type"], dt, r["note"]))
+        # CRITICAL: Always convert UTC timestamp to Iran / Tehran local time for accurate display
+        dt_tehran = dt.astimezone(settings.tehran_tz)
+        events_by_date.setdefault(r["shamsi_date"], []).append((r["event_type"], dt_tehran, r["note"]))
 
     # Fetch daily leaves for user in this month
     if user_id is None:
@@ -263,10 +265,11 @@ def get_month_report(conn: DBAdapter, month_key: str | None = None, user_id: int
         dt = datetime.datetime.fromisoformat(r["ts_utc"])
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=datetime.timezone.utc)
+        dt_tehran = dt.astimezone(settings.tehran_tz)
         if et == "leave_start":
-            cur_ls = dt
+            cur_ls = dt_tehran
         elif et == "leave_end" and cur_ls is not None:
-            hourly_consumed += (record_service.company_clock(dt) - record_service.company_clock(cur_ls)).total_seconds() / 3600.0
+            hourly_consumed += (record_service.company_clock(dt_tehran) - record_service.company_clock(cur_ls)).total_seconds() / 3600.0
             cur_ls = None
 
     annual_daily = leave_service.daily_leave_annual_hours_in_year(conn, user_id, jy) if user_id is not None else 0.0
