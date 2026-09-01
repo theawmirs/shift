@@ -1,15 +1,22 @@
 import sqlite3
 import datetime
-from fastapi import APIRouter, Depends, HTTPException
-from app.api.deps import get_db, get_current_user_optional
+from fastapi import APIRouter, Depends, HTTPException, Query
+from app.api.deps import get_db, get_current_user_optional, get_current_user
 from app.schemas.attendance import (
-    StatusResponse, RecordRequest, RecordResponse,
-    OvertimeResponse, WorkModeRequest, WorkModeResponse,
-    TaskListResponse, TaskAddRequest, TaskPatchRequest, TaskActionResponse, TaskItem,
-    DayEditRequest, DayEditResponse,
+    RecordRequest,
+    RecordResponse,
+    StatusResponse,
+    OvertimeRequest,
+    WorkModeRequest,
+    WorkModeResponse,
+    DayEditRequest,
+    TaskItem,
+    TaskListResponse,
+    TaskAddRequest,
+    TaskPatchRequest,
+    TaskActionResponse,
 )
 from app.services import record_service
-from app.core.config import settings
 
 router = APIRouter(tags=["Attendance & Tasks"])
 
@@ -73,34 +80,42 @@ def api_record(body: RecordRequest, uid: int | None = Depends(get_current_user_o
         raise HTTPException(status_code=400, detail="event_type must be in|out|leave_start|leave_end")
 
     try:
-        msg = record_service.record_event(conn, et, at=body.at, date_str=body.date, user_id=uid, allow_holiday=bool(body.allow_holiday))
-        return RecordResponse(ok=True, message=msg)
+        msg = record_service.record_event(
+            conn=conn,
+            event_type=et,
+            at=body.at,
+            date_str=body.date,
+            note=body.note,
+            user_id=uid,
+            allow_holiday=bool(body.allow_holiday),
+        )
+        return RecordResponse(ok=True, message=msg, day_payload=record_service.day_payload(conn, body.date or record_service.today_str(), user_id=uid))
     except ValueError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/day/edit", response_model=DayEditResponse, summary="Edit or insert full workday records for a specific date")
+@router.post("/overtime", summary="Record overtime hours for today or date")
+def api_overtime(body: OvertimeRequest, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
+    try:
+        msg = record_service.record_overtime(conn, str(body.hours), body.date, user_id=uid)
+        return {"ok": True, "message": msg}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/edit-day", summary="Admin/User manual edit day record")
 def api_edit_day(body: DayEditRequest, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
     try:
-        updated_day = record_service.edit_or_create_day_record(
+        res = record_service.edit_or_create_day_record(
             conn=conn,
             sdate=body.date,
             in_time=body.in_time,
             out_time=body.out_time,
-            leave_hours=body.leave_hours,
-            overtime_hours=body.overtime_hours,
-            work_mode=body.work_mode,
+            leave_hours=body.leave_hours or 0.0,
+            overtime_hours=body.overtime_hours or 0.0,
+            work_mode=body.work_mode or "office",
             notes=body.notes,
             user_id=uid,
         )
-        return DayEditResponse(ok=True, message=f"ساعت کاری تاریخ {body.date} با موفقیت ویرایش/ثبت شد", day=updated_day)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.post("/ot", response_model=OvertimeResponse, summary="Declare overtime hours after clock out")
-def api_ot(hours: str, date: str | None = None, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
-    try:
-        msg = record_service.record_overtime(conn, hours, date_str=date, user_id=uid)
-        return OvertimeResponse(ok=True, message=msg)
+        return {"ok": True, "day": res}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -140,13 +155,23 @@ def _map_task_rows(rows) -> list[TaskItem]:
         for r in rows
     ]
 
-@router.get("/tasks", response_model=TaskListResponse, summary="List tasks for date")
-def list_tasks(date: str | None = None, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
-    sdate = date or record_service.today_str()
+def _get_all_user_tasks(conn: sqlite3.Connection, uid: int | None) -> list[sqlite3.Row]:
     if uid is None:
-        rows = conn.execute("SELECT * FROM tasks WHERE shamsi_date=? AND user_id IS NULL ORDER BY id", (sdate,)).fetchall()
-    else:
-        rows = conn.execute("SELECT * FROM tasks WHERE shamsi_date=? AND user_id=? ORDER BY id", (sdate, uid)).fetchall()
+        return conn.execute("SELECT * FROM tasks WHERE user_id IS NULL ORDER BY id DESC").fetchall()
+    return conn.execute("SELECT * FROM tasks WHERE user_id=? ORDER BY id DESC", (uid,)).fetchall()
+
+@router.get("/tasks", response_model=TaskListResponse, summary="List all tasks for user (or filtered by date)")
+def list_tasks(date: str | None = None, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
+    if date:
+        if uid is None:
+            rows = conn.execute("SELECT * FROM tasks WHERE shamsi_date=? AND user_id IS NULL ORDER BY id DESC", (date,)).fetchall()
+        else:
+            rows = conn.execute("SELECT * FROM tasks WHERE shamsi_date=? AND user_id=? ORDER BY id DESC", (date, uid)).fetchall()
+        return TaskListResponse(date=date, tasks=_map_task_rows(rows))
+
+    # By default, return all user tasks so frontend can handle complete task lifecycle & pagination
+    rows = _get_all_user_tasks(conn, uid)
+    sdate = record_service.today_str()
     return TaskListResponse(date=sdate, tasks=_map_task_rows(rows))
 
 @router.post("/tasks", response_model=TaskActionResponse, summary="Add task for date")
@@ -167,16 +192,15 @@ def add_task(body: TaskAddRequest, uid: int | None = Depends(get_current_user_op
             "INSERT INTO tasks(shamsi_date, title, description, priority, due_date, done, day_num, created_at, user_id) VALUES(?,?,?,?,?,0,?,?,NULL)",
             (sdate, title, body.description, prio, body.due_date, cnt + 1, now_iso),
         )
-        rows = conn.execute("SELECT * FROM tasks WHERE shamsi_date=? AND user_id IS NULL ORDER BY id", (sdate,)).fetchall()
     else:
         cnt = conn.execute("SELECT COUNT(*) FROM tasks WHERE shamsi_date=? AND user_id=?", (sdate, uid)).fetchone()[0]
         conn.execute(
             "INSERT INTO tasks(shamsi_date, title, description, priority, due_date, done, day_num, created_at, user_id) VALUES(?,?,?,?,?,0,?,?,?)",
             (sdate, title, body.description, prio, body.due_date, cnt + 1, now_iso, uid),
         )
-        rows = conn.execute("SELECT * FROM tasks WHERE shamsi_date=? AND user_id=? ORDER BY id", (sdate, uid)).fetchall()
     conn.commit()
 
+    rows = _get_all_user_tasks(conn, uid)
     return TaskActionResponse(
         ok=True,
         message="✅ تسک با موفقیت اضافه شد",
@@ -193,7 +217,6 @@ def patch_task(tid: int, body: TaskPatchRequest, uid: int | None = Depends(get_c
     if not row:
         raise HTTPException(status_code=404, detail="تسک پیدا نشد")
     
-    sdate = row["shamsi_date"]
     updates = []
     params = []
 
@@ -208,7 +231,7 @@ def patch_task(tid: int, body: TaskPatchRequest, uid: int | None = Depends(get_c
         params.append(t)
     if body.description is not None:
         updates.append("description=?")
-        params.append(body.description.strip() or None)
+        params.append(body.description.strip() if body.description else None)
     if body.priority is not None:
         prio = body.priority.lower()
         if prio in ("low", "medium", "high"):
@@ -216,20 +239,14 @@ def patch_task(tid: int, body: TaskPatchRequest, uid: int | None = Depends(get_c
             params.append(prio)
     if body.due_date is not None:
         updates.append("due_date=?")
-        params.append(body.due_date.strip() or None)
+        params.append(body.due_date.strip() if body.due_date else None)
 
-    if not updates:
-        raise HTTPException(status_code=400, detail="هیچ فیلدی برای به‌روزرسانی ارسال نشده")
+    if updates:
+        params.append(tid)
+        conn.execute(f"UPDATE tasks SET {', '.join(updates)} WHERE id=?", params)
+        conn.commit()
 
-    params.append(tid)
-    conn.execute(f"UPDATE tasks SET {', '.join(updates)} WHERE id=?", params)
-    conn.commit()
-
-    if uid is None:
-        rows = conn.execute("SELECT * FROM tasks WHERE shamsi_date=? AND user_id IS NULL ORDER BY id", (sdate,)).fetchall()
-    else:
-        rows = conn.execute("SELECT * FROM tasks WHERE shamsi_date=? AND user_id=? ORDER BY id", (sdate, uid)).fetchall()
-
+    rows = _get_all_user_tasks(conn, uid)
     return TaskActionResponse(
         ok=True,
         message="✅ تسک به‌روزرسانی شد",
@@ -239,39 +256,19 @@ def patch_task(tid: int, body: TaskPatchRequest, uid: int | None = Depends(get_c
 @router.delete("/tasks/{tid}", response_model=TaskActionResponse, summary="Delete task")
 def delete_task(tid: int, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
     if uid is None:
-        row = conn.execute("SELECT shamsi_date FROM tasks WHERE id=? AND user_id IS NULL", (tid,)).fetchone()
+        row = conn.execute("SELECT * FROM tasks WHERE id=? AND user_id IS NULL", (tid,)).fetchone()
     else:
-        row = conn.execute("SELECT shamsi_date FROM tasks WHERE id=? AND user_id=?", (tid, uid)).fetchone()
+        row = conn.execute("SELECT * FROM tasks WHERE id=? AND user_id=?", (tid, uid)).fetchone()
     
     if not row:
         raise HTTPException(status_code=404, detail="تسک پیدا نشد")
-    
-    sdate = row["shamsi_date"]
+
     conn.execute("DELETE FROM tasks WHERE id=?", (tid,))
     conn.commit()
 
-    if uid is None:
-        remain = conn.execute("SELECT * FROM tasks WHERE shamsi_date=? AND user_id IS NULL ORDER BY id", (sdate,)).fetchall()
-    else:
-        remain = conn.execute("SELECT * FROM tasks WHERE shamsi_date=? AND user_id=? ORDER BY id", (sdate, uid)).fetchall()
-
+    rows = _get_all_user_tasks(conn, uid)
     return TaskActionResponse(
         ok=True,
-        message="🗑 تسک با موفقیت حذف شد",
-        tasks=_map_task_rows(remain),
-    )
-    
-    for i, r in enumerate(remain, 1):
-        conn.execute("UPDATE tasks SET day_num=? WHERE id=?", (i, r["id"]))
-    conn.commit()
-
-    if uid is None:
-        rows = conn.execute("SELECT id, title, done, day_num FROM tasks WHERE shamsi_date=? AND user_id IS NULL ORDER BY id", (sdate,)).fetchall()
-    else:
-        rows = conn.execute("SELECT id, title, done, day_num FROM tasks WHERE shamsi_date=? AND user_id=? ORDER BY id", (sdate, uid)).fetchall()
-
-    return TaskActionResponse(
-        ok=True,
-        message="🗑 حذف شد",
-        tasks=[TaskItem(id=r["id"], title=r["title"], done=bool(r["done"]), day_num=r["day_num"]) for r in rows],
+        message="🗑 تسک حذف شد",
+        tasks=_map_task_rows(rows),
     )
