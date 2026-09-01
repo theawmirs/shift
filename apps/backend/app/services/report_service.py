@@ -3,6 +3,7 @@ import datetime
 import os
 from collections import Counter
 from openpyxl import Workbook
+from openpyxl.utils import get_column_letter
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from app.core.config import settings
 from app.core import jalali
@@ -449,7 +450,7 @@ def export_excel(conn: DBAdapter, month_key: str | None = None, user_id: int | N
     # Adjust widths
     col_widths = {1: 8, 2: 14, 3: 12, 4: 16, 5: 10, 6: 10, 7: 15, 8: 12, 9: 12, 10: 12}
     for c_idx, w in col_widths.items():
-        ws.column_dimensions[openpyxl.utils.get_column_letter(c_idx)].width = w
+        ws.column_dimensions[get_column_letter(c_idx)].width = w
 
     os.makedirs(settings.EXPORTS_DIR, exist_ok=True)
     fpath = os.path.join(settings.EXPORTS_DIR, f"report_{m['month_key']}_{user_id or 'anon'}.xlsx")
