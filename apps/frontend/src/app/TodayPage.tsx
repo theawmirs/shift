@@ -8,6 +8,7 @@ import { WeekSummary } from "../features/week/WeekSummary";
 import { useNavigate } from "react-router-dom";
 import { API } from "../shared/lib/api";
 import { HeroSkeleton, CardSkeleton } from "../shared/ui/Skeleton";
+import { Button } from "../shared/ui/Button";
 import { useTodayQuery, useRecordMutation } from "../shared/api/queries";
 import { AlertCircle, CheckCircle, Info, Sparkles } from "lucide-react";
 
@@ -80,9 +81,9 @@ export function TodayPage() {
     return (
       <div className="card">
         <p style={{ color: "var(--red)", fontWeight: 800 }}>❌ {String((error as any)?.message || error)}</p>
-        <button className="btn btn-ghost" onClick={() => refetch()}>
+        <Button variant="ghost" onClick={() => refetch()}>
           تلاش دوباره
-        </button>
+        </Button>
       </div>
     );
 
@@ -242,20 +243,20 @@ export function TodayPage() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 }}>
-              <button
-                className="btn btn-primary"
+              <Button
+                variant="primary"
                 style={{ padding: "10px", fontWeight: 800, fontSize: 12 }}
                 onClick={() => setHolidayOptIn(true)}
               >
                 بله، کار می‌کنم
-              </button>
-              <button
-                className="btn btn-ghost"
+              </Button>
+              <Button
+                variant="ghost"
                 style={{ padding: "10px", fontSize: 12 }}
                 onClick={() => setHolidayOptIn(false)}
               >
                 نه، روز تعطیله
-              </button>
+              </Button>
             </div>
           </div>
         </>
@@ -283,13 +284,14 @@ export function TodayPage() {
                   حالت کار در تعطیلی فعال شد — کارکرد شما محاسبه می‌شود.
                 </small>
               </div>
-              <button
-                className="btn btn-ghost mono"
+              <Button
+                variant="ghost"
+                className="mono"
                 style={{ width: "auto", padding: "4px 10px", fontSize: 11, borderRadius: 8, boxShadow: "1.5px 1.5px 0 #000" }}
                 onClick={() => setHolidayOptIn(false)}
               >
                 انصراف
-              </button>
+              </Button>
             </div>
           )}
 

@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Plane, Trash2, CalendarDays } from "lucide-react";
 import { useToast } from "../../shared/ui/Toast";
 import { Drawer } from "../../shared/ui/Drawer";
+import { Button } from "../../shared/ui/Button";
 import { ShamsiCalendar } from "../../shared/ui/ShamsiCalendar";
 import { useLeavesQuery, useDailyLeaveMutation, useDeleteLeaveMutation } from "../../shared/api/queries";
 import { formatShamsiDateText } from "../../shared/lib/format";
@@ -101,8 +102,8 @@ export function DailyLeaveCard({ onChanged }: { onChanged?: () => void }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button
-        className="btn btn-ghost"
+      <Button
+        variant="ghost"
         style={{
           width: "100%",
           display: "flex",
@@ -120,7 +121,7 @@ export function DailyLeaveCard({ onChanged }: { onChanged?: () => void }) {
         <span className="pill mono" style={{ fontSize: 10, background: "#0F172A", color: "#fff" }}>
           تقویم
         </span>
-      </button>
+      </Button>
       <DailyLeaveDrawer
         open={open}
         onClose={() => setOpen(false)}
@@ -281,8 +282,9 @@ export function DailyLeaveDrawer({
               }}
             />
             {picker === "to" && (
-              <button
-                className="btn btn-ghost mono"
+              <Button
+                variant="ghost"
+                className="mono"
                 style={{ width: "100%", marginTop: 8, fontSize: 12 }}
                 onClick={() => {
                   setEndDate("");
@@ -290,7 +292,7 @@ export function DailyLeaveDrawer({
                 }}
               >
                 تک‌روزه (حذف تا)
-              </button>
+              </Button>
             )}
           </div>
         )}
@@ -322,14 +324,15 @@ export function DailyLeaveDrawer({
           />
         </label>
 
-        <button
-          className="btn btn-primary"
+        <Button
+          variant="primary"
           onClick={submit}
-          disabled={createMutation.isPending}
-          style={{ opacity: createMutation.isPending ? 0.6 : 1, fontWeight: 800 }}
+          loading={createMutation.isPending}
+          loadingText="در حال ثبت…"
+          style={{ fontWeight: 800 }}
         >
-          {createMutation.isPending ? "در حال ثبت…" : "ثبت مرخصی روزانه"}
-        </button>
+          ثبت مرخصی روزانه
+        </Button>
         <small className="mono" style={{ color: "var(--muted)", fontSize: 11 }}>
           لغو فقط قبل از شروع · جمعه/تعطیل از محاسبه حذف می‌شود
         </small>
@@ -355,14 +358,17 @@ export function DailyLeaveDrawer({
                     {it.end_date !== it.start_date ? ` → ${it.end_date}` : ""} · {it.label} · {it.hours} ساعت
                     {it.reason ? ` · ${it.reason}` : ""}
                   </small>
-                  <button
-                    className="btn btn-ghost mono"
-                    style={{ fontSize: 11, padding: "4px 8px" }}
+                  <Button
+                    variant="ghost"
+                    className="mono"
+                    size="sm"
+                    style={{ fontSize: 11, padding: "4px 8px", width: "auto" }}
                     onClick={() => cancel(it.id)}
-                    disabled={deleteMutation.isPending}
+                    loading={deleteMutation.isPending && (deleteMutation.variables as any) === it.id}
+                    icon={<Trash2 size={12} />}
                   >
-                    <Trash2 size={12} /> لغو
-                  </button>
+                    لغو
+                  </Button>
                 </div>
               ))}
             </div>
@@ -401,14 +407,17 @@ export function DailyLeaveList({ month }: { month?: string }) {
             {it.end_date !== it.start_date ? ` → ${it.end_date}` : ""} · {it.label} · {it.hours} ساعت{" "}
             {it.reason ? `· ${it.reason}` : ""}
           </small>
-          <button
-            className="btn btn-ghost mono"
-            style={{ fontSize: 11, padding: "4px 8px" }}
+          <Button
+            variant="ghost"
+            className="mono"
+            size="sm"
+            style={{ fontSize: 11, padding: "4px 8px", width: "auto" }}
             onClick={() => del(it.id)}
-            disabled={deleteMutation.isPending}
+            loading={deleteMutation.isPending && (deleteMutation.variables as any) === it.id}
+            icon={<Trash2 size={12} />}
           >
-            <Trash2 size={12} /> لغو
-          </button>
+            لغو
+          </Button>
         </div>
       ))}
     </div>

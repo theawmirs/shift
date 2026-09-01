@@ -318,12 +318,46 @@ input[type="time"]::-webkit-datetime-edit-text {
 
 .btn{
   width:100%; padding:12px 14px; border-radius:16px; border:3px solid #000; font-weight:800; cursor:pointer;
-  box-shadow: 5px 5px 0 #000; transition: transform .12s ease, box-shadow .12s ease; color:#0F172A; font-family:"YekanBakh", sans-serif;
+  box-shadow: 5px 5px 0 #000; transition: transform .12s ease, box-shadow .12s ease, opacity .15s ease; color:#0F172A; font-family:"YekanBakh", sans-serif;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; position: relative;
 }
-.btn:active{transform: translate(2px,2px); box-shadow: 2px 2px 0 #000}
+.btn:active:not(:disabled){transform: translate(2px,2px); box-shadow: 2px 2px 0 #000}
+.btn:disabled{
+  cursor: not-allowed;
+  opacity: 0.62;
+  box-shadow: 2px 2px 0 #000;
+  transform: none;
+}
+.btn-loading{
+  cursor: wait !important;
+  opacity: 0.75 !important;
+  pointer-events: none !important;
+}
 .btn-primary{background: var(--amber); color:#0F172A}
 .btn-ghost{background:#fff; color:#0F172A}
 .btn-violet{background: var(--violet); color:#fff}
+.btn-danger{background: #EF4444; color:#fff}
+
+/* Spinner */
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-top-color: currentColor;
+  display: inline-block;
+  box-sizing: border-box;
+  animation: spin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+.spinner--sm { width: 13px; height: 13px; border-width: 2px; }
+.spinner--lg { width: 24px; height: 24px; border-width: 3px; }
+.spinner--white { border-color: rgba(255, 255, 255, 0.25); border-top-color: #fff; }
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 .task-input{ flex:1; padding:10px 12px; border-radius:14px; border:2px solid #000; box-shadow:3px 3px 0 #000; background:#fff; color:#0F172A; font-weight:700; font-family:"YekanBakh", sans-serif }
 
 /* Bottom Nav — brutalist */

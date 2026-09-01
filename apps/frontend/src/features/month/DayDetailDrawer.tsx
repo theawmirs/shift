@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Drawer } from "../../shared/ui/Drawer";
+import { Button } from "../../shared/ui/Button";
 import { fmtHoursFa, formatShamsiDateText } from "../../shared/lib/format";
 import { Edit3, Building2, Home, Trash2, AlertTriangle } from "lucide-react";
 import { API } from "../../shared/lib/api";
@@ -226,25 +227,27 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
 
                 {/* Action Buttons */}
                 <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-                  <button
-                    className="btn btn-primary"
+                  <Button
+                    variant="primary"
                     style={{ flex: 2, padding: "10px", fontWeight: 800, fontSize: 13 }}
                     onClick={handleSaveEdit}
-                    disabled={loading}
+                    loading={loading}
+                    loadingText="در حال ذخیره…"
                   >
-                    {loading ? "در حال ذخیره..." : "ذخیره ساعت کاری"}
-                  </button>
+                    ذخیره ساعت کاری
+                  </Button>
 
                   {hasWork && (
-                    <button
-                      className="btn btn-ghost"
+                    <Button
+                      variant="ghost"
                       style={{ flex: 1, padding: "10px", color: "var(--red)", borderColor: "var(--red)" }}
                       onClick={() => setShowConfirmDelete(true)}
                       disabled={loading}
                       title="حذف کامل ثبت کارکرد این روز"
+                      icon={<Trash2 size={15} />}
                     >
-                      <Trash2 size={15} /> پاک‌کردن
-                    </button>
+                      پاک‌کردن
+                    </Button>
                   )}
                 </div>
               </div>
@@ -444,29 +447,27 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <button
-              className="btn btn-ghost"
+            <Button
+              variant="ghost"
               style={{ padding: "10px", fontSize: 12 }}
               onClick={() => setShowConfirmDelete(false)}
               disabled={loading}
             >
               انصراف
-            </button>
-            <button
-              className="btn btn-primary"
+            </Button>
+            <Button
+              variant="danger"
               style={{
                 padding: "10px",
                 fontSize: 12,
                 fontWeight: 800,
-                background: "#EF4444",
-                borderColor: "#000",
-                color: "#fff",
               }}
               onClick={handleConfirmDelete}
-              disabled={loading}
+              loading={loading}
+              loadingText="در حال حذف…"
             >
-              {loading ? "در حال حذف..." : "بله، حذف کن"}
-            </button>
+              بله، حذف کن
+            </Button>
           </div>
         </div>
       </Drawer>

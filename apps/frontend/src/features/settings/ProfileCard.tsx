@@ -3,6 +3,7 @@ import { User as UserIcon, LogOut, Save, CheckCircle2, ShieldCheck } from "lucid
 import { API } from "../../shared/lib/api";
 import { useAuth } from "../../shared/lib/auth";
 import { useToast } from "../../shared/ui/Toast";
+import { Button } from "../../shared/ui/Button";
 
 function displayNameOf(u: any): string {
   if (!u) return "";
@@ -160,26 +161,19 @@ export function ProfileCard() {
             className="input"
             style={{ flex: 1 }}
           />
-          <button
+          <Button
             onClick={onSave}
-            disabled={saving}
-            className="btn btn-primary"
+            variant="primary"
+            loading={saving}
+            loadingText="ذخیره…"
             style={{
               width: "auto",
               padding: "10px 16px",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              opacity: saving ? 0.7 : 1,
             }}
+            icon={<Save size={15} />}
           >
-            {saving ? (
-              <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2, borderTopColor: "#0F172A" }} />
-            ) : (
-              <Save size={15} />
-            )}
             ذخیره
-          </button>
+          </Button>
         </div>
         <span style={{ fontSize: 11, color: "var(--muted)" }}>
           این نام در سربرگ گزارش‌ها و بالای پنل کاربری نمایش داده می‌شود.
@@ -187,30 +181,19 @@ export function ProfileCard() {
       </div>
 
       {/* ── Logout Action Button ── */}
-      <button
+      <Button
         onClick={onLogout}
-        disabled={loggingOut}
-        className="btn"
+        variant="danger"
+        loading={loggingOut}
+        loadingText="در حال خروج…"
         style={{
-          background: "#EF4444",
-          color: "#fff",
-          border: "3px solid #000",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-          opacity: loggingOut ? 0.7 : 1,
           padding: "12px",
           fontWeight: 800,
         }}
+        icon={<LogOut size={16} />}
       >
-        {loggingOut ? (
-          <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
-        ) : (
-          <LogOut size={16} />
-        )}
         خروج از حساب کاربری
-      </button>
+      </Button>
     </div>
   );
 }
