@@ -286,6 +286,26 @@ button{font:inherit; font-family:inherit}
 .field .input{
   width:100% !important; text-align:right !important;
 }
+
+/* Time Input Centering Cross-Browser */
+input[type="time"] {
+  text-align: center !important;
+  justify-content: center !important;
+}
+input[type="time"]::-webkit-datetime-edit {
+  display: flex !important;
+  justify-content: center !important;
+  text-align: center !important;
+  margin: 0 auto !important;
+  width: 100% !important;
+}
+input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+  display: flex !important;
+  justify-content: center !important;
+  text-align: center !important;
+  margin: 0 auto !important;
+}
+
 .btn{
   width:100%; padding:12px 14px; border-radius:16px; border:3px solid #000; font-weight:800; cursor:pointer;
   box-shadow: 5px 5px 0 #000; transition: transform .12s ease, box-shadow .12s ease; color:#0F172A; font-family:"YekanBakh", sans-serif;
