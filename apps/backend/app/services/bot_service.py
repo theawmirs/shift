@@ -2,9 +2,9 @@ import json
 import urllib.request
 import re
 import datetime
-import sqlite3
 from app.core.config import settings
 from app.services import auth_service
+from app.db.database import DBAdapter
 
 def send_telegram_message(chat_id: int | str, text: str) -> bool:
     token = settings.TELEGRAM_BOT_TOKEN
@@ -25,7 +25,7 @@ def send_telegram_message(chat_id: int | str, text: str) -> bool:
         print(f"[TELEGRAM sendMessage failed] {e}")
         return False
 
-def handle_telegram_update(conn: sqlite3.Connection, update: dict) -> dict:
+def handle_telegram_update(conn: DBAdapter, update: dict) -> dict:
     msg = update.get("message") or update.get("edited_message") or {}
     text = (msg.get("text") or "").strip()
     chat_id = (msg.get("chat") or {}).get("id")
@@ -66,20 +66,23 @@ def handle_telegram_update(conn: sqlite3.Connection, update: dict) -> dict:
         pass
 
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    try:
+    
+    # Upsert user cleanly across both SQLite & PostgreSQL
+    urow = conn.execute("SELECT id FROM users WHERE telegram_id=?", (telegram_id,)).fetchone()
+    if not urow:
         conn.execute(
             "INSERT INTO users(telegram_id, username, first_name, last_name, photo_url, created_at) VALUES(?,?,?,?,?,?)",
             (telegram_id, username, first_name, last_name, photo_url, now_iso),
         )
         conn.commit()
-    except sqlite3.IntegrityError:
+        urow = conn.execute("SELECT id FROM users WHERE telegram_id=?", (telegram_id,)).fetchone()
+    else:
         conn.execute(
             "UPDATE users SET username=?, first_name=?, last_name=?, photo_url=? WHERE telegram_id=?",
             (username, first_name, last_name, photo_url, telegram_id),
         )
         conn.commit()
 
-    urow = conn.execute("SELECT id FROM users WHERE telegram_id=?", (telegram_id,)).fetchone()
     uid = urow["id"]
 
     conn.execute("UPDATE login_tokens SET status='verified', user_id=? WHERE token=?", (uid, token))
