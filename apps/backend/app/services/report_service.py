@@ -31,7 +31,7 @@ def compute_month(conn: DBAdapter, month_key: str, user_id: int | None = None) -
     m_name = jalali.MONTHS_FA[jm - 1]
     days = month_days(jy, jm)
 
-    # 1. BATCH FETCH ALL DATA FOR THE MONTH IN 4 QUERIES INSTEAD OF 300+ ROUND-TRIPS
+    # Batch fetch all data for the month in 4 queries instead of 300+ round-trips
     from app.db.schema import get_user_settings
     u_settings = get_user_settings(conn, user_id=user_id)
     standard = float(u_settings.get("standard_hours", "8"))
@@ -317,26 +317,40 @@ def get_week_report(conn: DBAdapter, user_id: int | None = None) -> dict:
     
     days = []
     total_net = total_ot = total_def = total_leave = 0.0
+    work_days = 0
+    remote_days = 0
 
     for i in range(7):
         cur_d = start_date + datetime.timedelta(days=i)
         cy, cm, cd = jalali.gregorian_to_jalali(cur_d.year, cur_d.month, cur_d.day)
         sdate = jalali.jalali_date_str(cy, cm, cd)
-        d = record_service.compute_day(conn, sdate, user_id=user_id)
-        days.append(d)
-        total_net += d["net"]
-        total_ot += d["overtime"]
-        total_def += d["deficit"]
-        total_leave += d["leave"]
+        d = record_service.day_payload(conn, sdate, user_id=user_id)
+        if d.get("has_events") or (d.get("net") and d.get("net") > 0) or d.get("in"):
+            days.append(d)
+            total_net += d.get("net", 0.0)
+            total_ot += d.get("overtime", 0.0)
+            total_def += d.get("deficit", 0.0)
+            total_leave += d.get("leave", 0.0)
+            if not d.get("is_holiday"):
+                work_days += 1
+            if d.get("work_mode") == "remote":
+                remote_days += 1
+
+    totals = {
+        "net": round(total_net, 2),
+        "overtime": round(total_ot, 2),
+        "deficit": round(total_def, 2),
+        "leave": round(total_leave, 2),
+        "work_days": work_days,
+        "remote_days": remote_days,
+    }
+
+    report_text = f"گزارش هفته جاری\nکارکرد خالص: {totals['net']} ساعت\nکسری کار: {totals['deficit']} ساعت\nاضافه کار: {totals['overtime']} ساعت"
 
     return {
-        "start_date": days[0]["date"],
-        "end_date": days[-1]["date"],
         "days": days,
-        "total_net": round(total_net, 2),
-        "total_overtime": round(total_ot, 2),
-        "total_deficit": round(total_def, 2),
-        "total_leave": round(total_leave, 2),
+        "totals": totals,
+        "text": report_text,
     }
 
 def export_excel(conn: DBAdapter, month_key: str | None = None, user_id: int | None = None) -> str:
