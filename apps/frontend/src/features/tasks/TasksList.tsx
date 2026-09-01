@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useToast } from "../../shared/ui/Toast";
 import { Drawer } from "../../shared/ui/Drawer";
+import { TasksSkeleton } from "../../shared/ui/Skeleton";
 import {
   useTasksQuery,
   useAddTaskMutation,
@@ -321,6 +322,8 @@ export function TasksList() {
       </span>
     );
   };
+
+  if (isLoading && !tasksData) return <TasksSkeleton />;
 
   return (
     <div className="page-fade" style={{ display: "grid", gap: 14 }}>
