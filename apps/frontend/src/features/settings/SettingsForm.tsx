@@ -3,6 +3,7 @@ import { AlertTriangle, Download, ChevronDown, Sliders, FileSpreadsheet, Save, H
 import { API } from "../../shared/lib/api";
 import { useToast } from "../../shared/ui/Toast";
 import { CardSkeleton } from "../../shared/ui/Skeleton";
+import { Button } from "../../shared/ui/Button";
 import { useSettingsQuery, useMonthsQuery, useUpdateSettingsMutation } from "../../shared/api/queries";
 
 export function SettingsForm() {
@@ -121,53 +122,45 @@ export function SettingsForm() {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <button
+          <Button
             type="button"
-            className="btn"
+            variant="none"
             style={{
               padding: "10px",
               fontSize: 12,
               fontWeight: 800,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
               background: currentDefaultMode === "office" ? "#FEF3C7" : "transparent",
               color: currentDefaultMode === "office" ? "#92400E" : "var(--muted)",
               borderColor: currentDefaultMode === "office" ? "#000" : "var(--border-strong)",
               boxShadow: currentDefaultMode === "office" ? "3px 3px 0 #000" : "none",
-              cursor: "pointer",
             }}
             onClick={() => onSave("default_work_mode", "office")}
-            disabled={saving === "default_work_mode"}
+            loading={saving === "default_work_mode" && values.default_work_mode === "office"}
+            loadingText="در حال ذخیره…"
+            icon={<Building2 size={16} />}
           >
-            <Building2 size={16} />
-            <span>حضوری در شرکت</span>
-          </button>
+            حضوری در شرکت
+          </Button>
 
-          <button
+          <Button
             type="button"
-            className="btn"
+            variant="none"
             style={{
               padding: "10px",
               fontSize: 12,
               fontWeight: 800,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
               background: currentDefaultMode === "remote" ? "#DDD6FE" : "transparent",
               color: currentDefaultMode === "remote" ? "#4C1D95" : "var(--muted)",
               borderColor: currentDefaultMode === "remote" ? "#000" : "var(--border-strong)",
               boxShadow: currentDefaultMode === "remote" ? "3px 3px 0 #000" : "none",
-              cursor: "pointer",
             }}
             onClick={() => onSave("default_work_mode", "remote")}
-            disabled={saving === "default_work_mode"}
+            loading={saving === "default_work_mode" && values.default_work_mode === "remote"}
+            loadingText="در حال ذخیره…"
+            icon={<Home size={16} />}
           >
-            <Home size={16} />
-            <span>کاملاً دورکار (ریموت)</span>
-          </button>
+            کاملاً دورکار (ریموت)
+          </Button>
         </div>
       </div>
 
@@ -209,29 +202,24 @@ export function SettingsForm() {
                   textAlign: "center",
                 }}
               />
-              <button
-                className="btn btn-primary mono"
+              <Button
+                variant="primary"
+                className="mono"
+                size="sm"
                 style={{
                   width: "auto",
                   padding: "8px 12px",
                   fontSize: 11,
                   boxShadow: "2px 2px 0 #000",
-                  opacity: saving === f.k ? 0.6 : 1,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
                 }}
-                disabled={saving === f.k}
+                loading={saving === f.k}
+                loadingText="ذخیره…"
                 onClick={() => onSave(f.k)}
                 title="ذخیره این تنظیم"
+                icon={<Save size={13} />}
               >
-                {saving === f.k ? (
-                  <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
-                ) : (
-                  <Save size={13} />
-                )}
-                <span>ذخیره</span>
-              </button>
+                ذخیره
+              </Button>
             </div>
           </div>
         ))}
@@ -294,28 +282,23 @@ export function SettingsForm() {
               />
             </div>
 
-            <button
-              className="btn btn-ghost mono"
+            <Button
+              variant="ghost"
+              className="mono"
               onClick={downloadExcel}
-              disabled={dlLoading || !selMonth}
+              loading={dlLoading}
+              loadingText="در حال دانلود…"
+              disabled={!selMonth}
               style={{
                 width: "auto",
                 flex: "0 0 auto",
                 padding: "8px 14px",
                 fontSize: 12,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                opacity: dlLoading ? 0.6 : 1,
               }}
+              icon={<Download size={14} />}
             >
-              {dlLoading ? (
-                <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
-              ) : (
-                <Download size={14} />
-              )}
-              <span>دانلود اکسل</span>
-            </button>
+              دانلود اکسل
+            </Button>
           </div>
         )}
       </div>

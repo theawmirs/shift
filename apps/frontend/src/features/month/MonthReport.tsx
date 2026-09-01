@@ -13,6 +13,7 @@ import {
   PieChart,
 } from "lucide-react";
 import { CardSkeleton } from "../../shared/ui/Skeleton";
+import { Button } from "../../shared/ui/Button";
 import { useMonthReport } from "./useMonthReport";
 import { DayDetailDrawer } from "./DayDetailDrawer";
 import { fmtHoursFa, fmtHoursCompactFa, formatShamsiDateText } from "../../shared/lib/format";
@@ -408,21 +409,18 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
       </div>
 
       {/* ── Export Excel Action ── */}
-      <button
-        className="btn btn-primary"
+      <Button
+        variant="primary"
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 6,
           padding: "10px",
           fontSize: 13,
           fontWeight: 800,
         }}
         onClick={downloadExcel}
+        icon={<Download size={15} />}
       >
-        <Download size={15} /> دریافت فایل خروجی اکسل ({m.month_name})
-      </button>
+        دریافت فایل خروجی اکسل ({m.month_name})
+      </Button>
 
       {/* ── Day Detail Drawer ── */}
       <DayDetailDrawer open={Boolean(selectedDay)} onClose={() => setSelectedDay(null)} day={selectedDay} />

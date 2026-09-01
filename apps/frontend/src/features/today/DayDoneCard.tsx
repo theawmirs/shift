@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { fmtHoursFa, fmtHoursCompactFa } from "../../shared/lib/format";
+import { Button } from "../../shared/ui/Button";
 
 export interface DayDoneCardProps {
   day: any;
@@ -279,20 +280,24 @@ export function DayDoneCard({ day, weekday, shamsi }: DayDoneCardProps) {
 
       {/* ── Quick Action Navigation Buttons ── */}
       <div style={{ display: "flex", gap: 8 }}>
-        <button
-          className="btn btn-ghost mono"
-          style={{ flex: 1, padding: "10px 12px", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+        <Button
+          variant="ghost"
+          className="mono"
+          style={{ flex: 1, padding: "10px 12px", fontSize: 12 }}
           onClick={() => navigate("/reports")}
+          icon={<BarChart3 size={15} />}
         >
-          <BarChart3 size={15} /> مشاهده گزارش‌ها
-        </button>
-        <button
-          className="btn btn-primary mono"
-          style={{ flex: 1, padding: "10px 12px", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+          مشاهده گزارش‌ها
+        </Button>
+        <Button
+          variant="primary"
+          className="mono"
+          style={{ flex: 1, padding: "10px 12px", fontSize: 12 }}
           onClick={() => navigate("/tasks")}
+          icon={<ListChecks size={15} />}
         >
-          <ListChecks size={15} /> تسک‌های من
-        </button>
+          تسک‌های من
+        </Button>
       </div>
     </div>
   );

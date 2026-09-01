@@ -3,6 +3,7 @@ import { Send, Copy, Clock3, RefreshCw, XCircle, ExternalLink } from "lucide-rea
 import QRCode from "qrcode";
 import { API } from "../shared/lib/api";
 import { useToast } from "../shared/ui/Toast";
+import { Button } from "../shared/ui/Button";
 
 function QrCanvas({ data, size = 170 }: { data: string; size?: number }) {
   const ref = useRef<HTMLCanvasElement | null>(null);
@@ -227,32 +228,23 @@ export function LoginPage({ onLogin }: { onLogin: (tokens: any, user: any) => vo
               </div>
             )}
 
-            <button
+            <Button
               onClick={handleInit}
-              disabled={phase === "loading"}
-              className="btn btn-primary"
+              loading={phase === "loading"}
+              loadingText="در حال ارتباط با سرور…"
+              variant="none"
               style={{
                 padding: "14px",
                 fontSize: 14,
                 fontWeight: 900,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
                 background: "linear-gradient(135deg, #38BDF8, #0284C7)",
                 color: "#fff",
                 borderColor: "#000",
               }}
+              icon={<Send size={18} />}
             >
-              {phase === "loading" ? (
-                <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
-              ) : (
-                <>
-                  <Send size={18} />
-                  <span>ورود با تلگرام</span>
-                </>
-              )}
-            </button>
+              ورود با تلگرام
+            </Button>
 
             <span style={{ fontSize: 11, color: "var(--muted)", textAlign: "center", lineHeight: 1.6 }}>
               با زدن دکمه فوق، لینک یک‌بارمصرف با اعتبار ۳ دقیقه برای شما ایجاد خواهد شد.
@@ -281,10 +273,14 @@ export function LoginPage({ onLogin }: { onLogin: (tokens: any, user: any) => vo
               <span>{err || "زمان اعتبار لینک ورود به پایان رسید."}</span>
             </div>
 
-            <button onClick={handleInit} className="btn btn-primary" style={{ padding: "12px", fontWeight: 800 }}>
-              <RefreshCw size={16} />
-              <span>ایجاد لینک جدید</span>
-            </button>
+            <Button
+              onClick={handleInit}
+              variant="primary"
+              style={{ padding: "12px", fontWeight: 800 }}
+              icon={<RefreshCw size={16} />}
+            >
+              ایجاد لینک جدید
+            </Button>
           </div>
         ) : (
           /* ── State 3: Polling (QR + Telegram Link) ── */

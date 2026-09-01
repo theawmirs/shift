@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { LogIn, LogOut, Coffee, Undo2, Home, Building2, Clock, Sparkles } from "lucide-react";
 import { Drawer } from "../../shared/ui/Drawer";
+import { Button } from "../../shared/ui/Button";
 import { fmtHoursFa } from "../../shared/lib/format";
 
 export interface ActionGridProps {
@@ -150,7 +151,7 @@ export function ActionGrid({
             >
               <span className="ico">
                 {isThisLoading ? (
-                  <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                  <span className="spinner" />
                 ) : (
                   <it.Icon size={18} />
                 )}
@@ -165,38 +166,34 @@ export function ActionGrid({
       {/* ── Separate Manual Time Overrides ── */}
       {(day_status === "idle" || day_status === "working" || (day_status === "holiday" && holidayOptIn)) && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
-          <button
-            className="btn btn-ghost mono"
+          <Button
+            variant="ghost"
+            className="mono"
             style={{
               padding: "8px 10px",
               fontSize: 11,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
               opacity: day_status !== "idle" && !(day_status === "holiday" && holidayOptIn) ? 0.4 : 1,
               pointerEvents: day_status !== "idle" && !(day_status === "holiday" && holidayOptIn) ? "none" : "auto",
             }}
             onClick={() => setOverrideModal("in")}
+            icon={<Clock size={13} />}
           >
-            <Clock size={13} /> ورود دستی (ساعت دلخواه)
-          </button>
-          <button
-            className="btn btn-ghost mono"
+            ورود دستی (ساعت دلخواه)
+          </Button>
+          <Button
+            variant="ghost"
+            className="mono"
             style={{
               padding: "8px 10px",
               fontSize: 11,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
               opacity: day_status !== "working" ? 0.4 : 1,
               pointerEvents: day_status !== "working" ? "none" : "auto",
             }}
             onClick={() => setOverrideModal("out")}
+            icon={<Clock size={13} />}
           >
-            <Clock size={13} /> خروج دستی (ساعت دلخواه)
-          </button>
+            خروج دستی (ساعت دلخواه)
+          </Button>
         </div>
       )}
 
@@ -267,8 +264,8 @@ export function ActionGrid({
             </div>
 
             <div style={{ display: "grid", gap: 8 }}>
-              <button
-                className="btn btn-primary"
+              <Button
+                variant="primary"
                 style={{ padding: "12px", fontWeight: 800, fontSize: 13 }}
                 onClick={() => {
                   onAction("out", otModal.at, otModal.extraHours);
@@ -276,10 +273,10 @@ export function ActionGrid({
                 }}
               >
                 ✅ بله، {fmtHoursFa(otModal.extraHours)} اضافه‌کاری ثبت شود
-              </button>
+              </Button>
 
-              <button
-                className="btn btn-ghost"
+              <Button
+                variant="ghost"
                 style={{ padding: "10px", fontSize: 12 }}
                 onClick={() => {
                   onAction("out", otModal.at);
@@ -287,7 +284,7 @@ export function ActionGrid({
                 }}
               >
                 خیر، فقط خروج ثبت شود (بدون اضافه‌کار)
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -331,13 +328,13 @@ export function ActionGrid({
               }}
             />
           </div>
-          <button
-            className="btn btn-primary"
+          <Button
+            variant="primary"
             style={{ fontWeight: 800, padding: "12px", marginTop: 4 }}
             onClick={handleManualSubmit}
           >
             ثبت {overrideModal === "in" ? "ورود" : "خروج"} در ساعت {customTime}
-          </button>
+          </Button>
         </div>
       </Drawer>
     </div>
