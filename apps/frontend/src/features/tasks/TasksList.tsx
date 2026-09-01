@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect } from "react";
 import { useToast } from "../../shared/ui/Toast";
 import { Drawer } from "../../shared/ui/Drawer";
 import { TasksSkeleton, Skeleton } from "../../shared/ui/Skeleton";
+import { ShamsiCalendar } from "../../shared/ui/ShamsiCalendar";
+import { formatShamsiDateText } from "../../shared/lib/format";
 import {
   useTasksQuery,
   useAddTaskMutation,
@@ -14,6 +16,7 @@ import {
   Trash2,
   Edit2,
   Calendar,
+  CalendarDays,
   CheckCircle2,
   Circle,
   Flame,
@@ -119,6 +122,7 @@ export function TasksList() {
   const [formDesc, setFormDesc] = useState("");
   const [formPriority, setFormPriority] = useState<"low" | "medium" | "high">("medium");
   const [formDueDate, setFormDueDate] = useState("");
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const todayStr = useMemo(() => getTodayJalaliString(), []);
@@ -189,6 +193,7 @@ export function TasksList() {
     setFormDesc("");
     setFormPriority("medium");
     setFormDueDate(todayStr);
+    setShowDatePicker(false);
     setActiveTaskModal("add");
   };
 
@@ -198,6 +203,7 @@ export function TasksList() {
     setFormDesc(t.description || "");
     setFormPriority((t.priority as any) || "medium");
     setFormDueDate(t.due_date || "");
+    setShowDatePicker(false);
     setActiveTaskModal("edit");
   };
 
@@ -959,23 +965,85 @@ export function TasksList() {
           <div style={{ display: "grid", gap: 6 }}>
             <label style={{ fontSize: 12, fontWeight: 800, color: "var(--text)" }}>تاریخ سررسید (شمسی)</label>
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <input
-                type="text"
-                value={formDueDate}
-                onChange={(e) => setFormDueDate(e.target.value)}
-                placeholder="YYYY-MM-DD (مثلاً: 1405-06-10)"
-                className="input mono"
-                style={{ direction: "ltr", textAlign: "center", flex: 1 }}
-              />
+              <button
+                type="button"
+                className="btn mono"
+                style={{
+                  flex: 1,
+                  padding: "9px 12px",
+                  fontSize: 12,
+                  fontWeight: 800,
+                  borderRadius: 12,
+                  borderWidth: 2,
+                  borderColor: showDatePicker ? "#000" : "var(--border-strong)",
+                  background: showDatePicker ? "var(--amber)" : "#fff",
+                  color: "#0F172A",
+                  boxShadow: showDatePicker ? "3px 3px 0 #000" : "none",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 8,
+                }}
+                onClick={() => setShowDatePicker((prev) => !prev)}
+              >
+                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <CalendarDays size={15} style={{ color: "var(--amber-2)", flexShrink: 0 }} />
+                  <span>{formDueDate ? formatShamsiDateText(formDueDate) : "بدون تاریخ سررسید"}</span>
+                </span>
+                <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>
+                  {showDatePicker ? "بستن تقویم ▲" : "انتخاب تقویم ▼"}
+                </span>
+              </button>
+
               <button
                 type="button"
                 className="btn btn-ghost mono"
-                style={{ width: "auto", padding: "8px 12px", fontSize: 11 }}
-                onClick={() => setFormDueDate(todayStr)}
+                style={{
+                  width: "auto",
+                  padding: "9px 12px",
+                  fontSize: 11,
+                  fontWeight: 800,
+                  borderRadius: 12,
+                  borderWidth: 2,
+                  borderColor: formDueDate === todayStr ? "#000" : "var(--border-strong)",
+                  background: formDueDate === todayStr ? "var(--amber)" : "transparent",
+                  color: formDueDate === todayStr ? "#0F172A" : "var(--text)",
+                }}
+                onClick={() => {
+                  setFormDueDate(todayStr);
+                  setShowDatePicker(false);
+                }}
               >
                 امروز
               </button>
+
+              {formDueDate && (
+                <button
+                  type="button"
+                  className="btn btn-ghost mono"
+                  style={{ width: "auto", padding: "9px 10px", fontSize: 11, color: "var(--red)" }}
+                  title="حذف تاریخ سررسید"
+                  onClick={() => {
+                    setFormDueDate("");
+                    setShowDatePicker(false);
+                  }}
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
+
+            {showDatePicker && (
+              <div style={{ marginTop: 6, animation: "popIn 0.2s ease" }}>
+                <ShamsiCalendar
+                  value={formDueDate || todayStr}
+                  onPick={(picked) => {
+                    setFormDueDate(picked);
+                    setShowDatePicker(false);
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}

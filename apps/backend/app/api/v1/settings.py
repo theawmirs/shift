@@ -81,6 +81,7 @@ def post_settings(
 # ── CSV Import / Export Endpoints ──
 
 @router.get("/csv/export", summary="Export full attendance events to CSV")
+@router.get("/data/export/csv", summary="Export full attendance events to CSV (alias)")
 def export_csv(
     uid: int | None = Depends(get_current_user_optional),
     conn: sqlite3.Connection = Depends(get_db),
@@ -93,6 +94,7 @@ def export_csv(
     )
 
 @router.get("/csv/sample", summary="Download sample CSV template for import")
+@router.get("/data/sample/csv", summary="Download sample CSV template for import (alias)")
 def sample_csv():
     sample_text = csv_service.generate_sample_csv()
     return Response(
@@ -102,6 +104,7 @@ def sample_csv():
     )
 
 @router.post("/csv/import", summary="Import attendance events from CSV file")
+@router.post("/data/import/csv", summary="Import attendance events from CSV file (alias)")
 async def import_csv(
     file: UploadFile = File(...),
     mode: str = Form("upsert"),
