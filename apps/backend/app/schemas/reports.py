@@ -18,8 +18,8 @@ class LeaveBalanceInfo(BaseModel):
     quota: float
     consumed: float
     remaining: float
-    hourly: float | None = None
-    daily_annual: float | None = None
+    hourly: float
+    daily_annual: float
 
 class MonthReportResponse(BaseModel):
     month_key: str
@@ -62,4 +62,3 @@ class HolidayItem(BaseModel):
 
 class HolidayListResponse(BaseModel):
     holidays: list[HolidayItem]
-
