@@ -14,6 +14,7 @@ export interface ActionGridProps {
   holidayOptIn?: boolean;
   liveMinutes?: number;
   standardHours?: number;
+  loadingAction?: string | null;
 }
 
 export function ActionGrid({
@@ -27,6 +28,7 @@ export function ActionGrid({
   holidayOptIn = false,
   liveMinutes = 0,
   standardHours = 8,
+  loadingAction = null,
 }: ActionGridProps) {
   const isRemote = workMode === "remote";
   const effectiveReason = day_status_reason ?? disabledReason ?? null;
@@ -39,6 +41,7 @@ export function ActionGrid({
   });
 
   function isDisabled(k: string) {
+    if (loadingAction !== null) return true;
     if (day_status === "done") return true;
     if (day_status === "holiday" && !holidayOptIn) return true;
     if (day_status === "idle") return k !== "in";
@@ -125,6 +128,8 @@ export function ActionGrid({
         {items.map((it) => {
           const dis = isDisabled(it.k);
           const t = titleFor(it.k);
+          const isThisLoading = loadingAction === it.k;
+
           return (
             <button
               key={it.k}
@@ -132,17 +137,26 @@ export function ActionGrid({
               disabled={dis}
               title={t || undefined}
               aria-disabled={dis}
-              style={dis ? { opacity: 0.45, pointerEvents: "none", cursor: "not-allowed" } : undefined}
+              style={{
+                opacity: dis && !isThisLoading ? 0.45 : 1,
+                pointerEvents: dis ? "none" : "auto",
+                cursor: dis ? "not-allowed" : "pointer",
+                position: "relative",
+              }}
               onClick={() => {
                 if (dis) return;
                 handleActionClick(it.k);
               }}
             >
               <span className="ico">
-                <it.Icon size={18} />
+                {isThisLoading ? (
+                  <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                ) : (
+                  <it.Icon size={18} />
+                )}
               </span>
               <h3>{it.title}</h3>
-              <p>{it.desc}</p>
+              <p>{isThisLoading ? "در حال ثبت…" : it.desc}</p>
             </button>
           );
         })}

@@ -39,11 +39,13 @@ export function TodayPage() {
   const { data: status, error, refetch } = useTodayQuery();
   const recordMutation = useRecordMutation();
   const [holidayOptIn, setHolidayOptIn] = useState(false);
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
   const onAction = async (k: string, at?: string, otHours?: number) => {
     const map: Record<string, string> = { in: "in", out: "out", leave: "leave_start", back: "leave_end" };
     const et = map[k] || k;
     const allowHoliday = day_status === "holiday" && holidayOptIn;
+    setLoadingAction(k);
     try {
       const r = await recordMutation.mutateAsync({ event_type: et, at, allow_holiday: allowHoliday });
       if (k === "out" && otHours && otHours > 0) {
@@ -59,6 +61,8 @@ export function TodayPage() {
       if (k === "out") navigate("/reports");
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
+    } finally {
+      setLoadingAction(null);
     }
   };
 
@@ -300,6 +304,7 @@ export function TodayPage() {
             leave_open={!!status.day?.leave_open}
             liveMinutes={liveMinutes}
             standardHours={Number(status.settings?.standard_hours || 8)}
+            loadingAction={loadingAction}
           />
         </>
       )}

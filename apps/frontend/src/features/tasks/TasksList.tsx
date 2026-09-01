@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useToast } from "../../shared/ui/Toast";
 import { Drawer } from "../../shared/ui/Drawer";
-import { TasksSkeleton } from "../../shared/ui/Skeleton";
+import { TasksSkeleton, Skeleton } from "../../shared/ui/Skeleton";
 import {
   useTasksQuery,
   useAddTaskMutation,
@@ -99,6 +99,9 @@ export function TasksList() {
   const deleteTaskMutation = useDeleteTaskMutation();
 
   const tasks: TaskType[] = useMemo(() => tasksData?.tasks || [], [tasksData]);
+
+  // Loading state tracker for individual task toggle
+  const [togglingId, setTogglingId] = useState<number | string | null>(null);
 
   // Filter & Search states
   const [filter, setFilter] = useState<"all" | "open" | "done">("all");
@@ -236,7 +239,8 @@ export function TasksList() {
 
   const handleToggle = async (id: number | string) => {
     const t = tasks.find((x) => x.id === id);
-    if (!t) return;
+    if (!t || togglingId !== null) return;
+    setTogglingId(id);
     try {
       await patchTaskMutation.mutateAsync({
         id,
@@ -245,6 +249,8 @@ export function TasksList() {
       push(t.done ? `↩️ تسک بازگردانده شد` : `🎉 تسک انجام شد!`);
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -442,54 +448,81 @@ export function TasksList() {
           </div>
 
           <div style={{ display: "grid", gap: 6 }}>
-            {todayTasks.map((t) => (
-              <div
-                key={t.id}
-                className="row"
-                style={{
-                  padding: "10px 12px",
-                  background: "#fff",
-                  borderColor: "#000",
-                  color: "#0F172A",
-                  boxShadow: "2.5px 2.5px 0 #000",
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => handleToggle(t.id)}
+            {todayTasks.map((t) => {
+              const isItemToggling = togglingId === t.id;
+              if (isItemToggling) {
+                return (
+                  <div
+                    key={t.id}
+                    className="row"
+                    style={{
+                      padding: "12px 14px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      borderStyle: "dashed",
+                      borderColor: "var(--amber)",
+                    }}
+                  >
+                    <Skeleton w={20} h={20} r={999} />
+                    <div style={{ flex: 1, display: "grid", gap: 6 }}>
+                      <Skeleton w="65%" h={14} r={8} />
+                      <Skeleton w="40%" h={11} r={6} />
+                    </div>
+                    <Skeleton w={50} h={24} r={8} />
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={t.id}
+                  className="row"
                   style={{
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: 0,
-                    display: "grid",
-                    placeItems: "center",
+                    padding: "10px 12px",
+                    background: "#fff",
+                    borderColor: "#000",
                     color: "#0F172A",
+                    boxShadow: "2.5px 2.5px 0 #000",
                   }}
                 >
-                  <Circle size={18} />
-                </button>
-
-                <div style={{ flex: 1, minWidth: 0, textAlign: "right" }}>
-                  <div style={{ fontWeight: 800, fontSize: 13, color: "#0F172A" }}>{t.title}</div>
-                  {t.description && (
-                    <div style={{ fontSize: 11, color: "rgba(15,23,42,.7)", marginTop: 2 }}>{t.description}</div>
-                  )}
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  {renderPriorityBadge(t.priority)}
                   <button
                     type="button"
-                    className="icon-btn"
-                    style={{ width: 28, height: 28, boxShadow: "1.5px 1.5px 0 #000" }}
-                    onClick={() => openEditModal(t)}
+                    onClick={() => handleToggle(t.id)}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: 0,
+                      display: "grid",
+                      placeItems: "center",
+                      color: "#0F172A",
+                    }}
                   >
-                    <Edit2 size={12} />
+                    <Circle size={18} />
                   </button>
+
+                  <div style={{ flex: 1, minWidth: 0, textAlign: "right" }}>
+                    <div style={{ fontWeight: 800, fontSize: 13, color: "#0F172A" }}>{t.title}</div>
+                    {t.description && (
+                      <div style={{ fontSize: 11, color: "rgba(15,23,42,.7)", marginTop: 2 }}>{t.description}</div>
+                    )}
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    {renderPriorityBadge(t.priority)}
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      style={{ width: 28, height: 28, boxShadow: "1.5px 1.5px 0 #000" }}
+                      onClick={() => openEditModal(t)}
+                    >
+                      <Edit2 size={12} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -634,6 +667,32 @@ export function TasksList() {
           <div style={{ display: "grid", gap: 8 }}>
             {paginatedTasks.map((t) => {
               const isDueToday = t.due_date ? t.due_date === todayStr : t.shamsi_date === todayStr;
+              const isItemToggling = togglingId === t.id;
+
+              if (isItemToggling) {
+                return (
+                  <div
+                    key={t.id}
+                    className="row"
+                    style={{
+                      padding: "12px 14px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      borderStyle: "dashed",
+                    }}
+                  >
+                    <Skeleton w={20} h={20} r={999} />
+                    <div style={{ flex: 1, display: "grid", gap: 6 }}>
+                      <Skeleton w="65%" h={14} r={8} />
+                      <Skeleton w="40%" h={11} r={6} />
+                    </div>
+                    <Skeleton w={50} h={24} r={8} />
+                    <Skeleton w={30} h={30} r={8} />
+                  </div>
+                );
+              }
+
               return (
                 <div
                   key={t.id}
