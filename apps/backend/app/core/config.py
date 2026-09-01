@@ -4,13 +4,14 @@ from zoneinfo import ZoneInfo
 import os
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(case_sensitive=True, env_file=".env")
+    model_config = SettingsConfigDict(case_sensitive=True, env_file=".env", extra="ignore")
 
     PROJECT_NAME: str = "SHIFT API"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api"
     
-    # Storage and DB
+    # Database
+    DATABASE_URL: str | None = Field(default_factory=lambda: os.getenv("DATABASE_URL"))
     DB_PATH: str = Field(default_factory=lambda: os.getenv("WORKTIME_DB_PATH", "/root/hermes/projects/work-time/data/work_hours.db"))
     EXPORTS_DIR: str = Field(default_factory=lambda: os.getenv("WORKTIME_EXPORTS_DIR", "/root/hermes/projects/work-time/exports"))
     

@@ -1,4 +1,6 @@
 import sqlite3
+import psycopg2
+from app.db.database import DBAdapter
 
 DEFAULT_SETTINGS = {
     "standard_hours": "8",
@@ -41,147 +43,263 @@ HOLIDAYS_1405 = [
     ("1405-12-29", "ملی‌شدن صنعت نفت"),
 ]
 
-def init_db(conn: sqlite3.Connection) -> None:
-    conn.executescript("""
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      telegram_id INTEGER UNIQUE,
-      username TEXT,
-      first_name TEXT,
-      last_name TEXT,
-      photo_url TEXT,
-      display_name TEXT,
-      created_at TEXT NOT NULL
-    );
+def init_db(conn: DBAdapter) -> None:
+    if getattr(conn, "is_postgres", False):
+        conn.executescript("""
+        CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          telegram_id BIGINT UNIQUE,
+          username TEXT,
+          first_name TEXT,
+          last_name TEXT,
+          photo_url TEXT,
+          display_name TEXT,
+          created_at TEXT NOT NULL
+        );
 
-    CREATE TABLE IF NOT EXISTS login_tokens (
-      token TEXT PRIMARY KEY,
-      status TEXT NOT NULL CHECK(status IN ('pending','verified','expired')),
-      user_id INTEGER REFERENCES users(id),
-      created_at TEXT NOT NULL,
-      expires_at TEXT NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS idx_login_tokens_status ON login_tokens(status, expires_at);
+        CREATE TABLE IF NOT EXISTS login_tokens (
+          token TEXT PRIMARY KEY,
+          status TEXT NOT NULL CHECK(status IN ('pending','verified','expired')),
+          user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+          created_at TEXT NOT NULL,
+          expires_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_login_tokens_status ON login_tokens(status, expires_at);
 
-    CREATE TABLE IF NOT EXISTS sessions (
-      id TEXT PRIMARY KEY,
-      user_id INTEGER NOT NULL REFERENCES users(id),
-      jwt_hash TEXT,
-      expires_at TEXT NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
-    CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+        CREATE TABLE IF NOT EXISTS sessions (
+          id TEXT PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          jwt_hash TEXT,
+          expires_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+        CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 
-    CREATE TABLE IF NOT EXISTS refresh_sessions (
-      id TEXT PRIMARY KEY,
-      user_id INTEGER NOT NULL REFERENCES users(id),
-      refresh_hash TEXT UNIQUE NOT NULL,
-      expires_at TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      revoked_at TEXT
-    );
-    CREATE INDEX IF NOT EXISTS idx_refresh_user ON refresh_sessions(user_id);
-    CREATE INDEX IF NOT EXISTS idx_refresh_hash ON refresh_sessions(refresh_hash);
-    CREATE INDEX IF NOT EXISTS idx_refresh_expires ON refresh_sessions(expires_at);
+        CREATE TABLE IF NOT EXISTS refresh_sessions (
+          id TEXT PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          refresh_hash TEXT UNIQUE NOT NULL,
+          expires_at TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          revoked_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_refresh_user ON refresh_sessions(user_id);
+        CREATE INDEX IF NOT EXISTS idx_refresh_hash ON refresh_sessions(refresh_hash);
+        CREATE INDEX IF NOT EXISTS idx_refresh_expires ON refresh_sessions(expires_at);
 
-    CREATE TABLE IF NOT EXISTS daily_leaves (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL REFERENCES users(id),
-      start_date TEXT NOT NULL,
-      end_date TEXT NOT NULL,
-      hours REAL NOT NULL DEFAULT 8.0,
-      label TEXT NOT NULL,
-      reason TEXT,
-      created_at TEXT NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS idx_daily_leaves_user ON daily_leaves(user_id, start_date, end_date);
+        CREATE TABLE IF NOT EXISTS daily_leaves (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          start_date TEXT NOT NULL,
+          end_date TEXT NOT NULL,
+          type TEXT NOT NULL DEFAULT 'annual',
+          hours DOUBLE PRECISION NOT NULL DEFAULT 8.0,
+          label TEXT,
+          reason TEXT,
+          created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_daily_leaves_user ON daily_leaves(user_id, start_date, end_date);
 
-    CREATE TABLE IF NOT EXISTS events (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER REFERENCES users(id),
-      event_type TEXT NOT NULL,
-      ts_utc TEXT NOT NULL,
-      shamsi_date TEXT NOT NULL,
-      weekday TEXT NOT NULL,
-      note TEXT
-    );
-    CREATE INDEX IF NOT EXISTS idx_events_date ON events(shamsi_date);
-    CREATE INDEX IF NOT EXISTS idx_events_user_date ON events(user_id, shamsi_date);
+        CREATE TABLE IF NOT EXISTS events (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+          event_type TEXT NOT NULL,
+          ts_utc TEXT NOT NULL,
+          shamsi_date TEXT NOT NULL,
+          weekday TEXT NOT NULL,
+          note TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_events_date ON events(shamsi_date);
+        CREATE INDEX IF NOT EXISTS idx_events_user_date ON events(user_id, shamsi_date);
 
-    CREATE TABLE IF NOT EXISTS tasks (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER REFERENCES users(id),
-      shamsi_date TEXT NOT NULL,
-      title TEXT NOT NULL,
-      description TEXT,
-      priority TEXT NOT NULL DEFAULT 'medium',
-      due_date TEXT,
-      done INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT
-    );
-    CREATE INDEX IF NOT EXISTS idx_tasks_date ON tasks(shamsi_date);
-    CREATE INDEX IF NOT EXISTS idx_tasks_user ON tasks(user_id, done);
+        CREATE TABLE IF NOT EXISTS tasks (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+          shamsi_date TEXT NOT NULL,
+          title TEXT NOT NULL,
+          description TEXT,
+          priority TEXT NOT NULL DEFAULT 'medium',
+          due_date TEXT,
+          done INTEGER NOT NULL DEFAULT 0,
+          day_num INTEGER,
+          created_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_tasks_date ON tasks(shamsi_date);
+        CREATE INDEX IF NOT EXISTS idx_tasks_user ON tasks(user_id, done);
 
-    CREATE TABLE IF NOT EXISTS day_work_mode (
-      shamsi_date TEXT,
-      user_id INTEGER,
-      mode TEXT NOT NULL CHECK(mode IN ('office','remote')),
-      PRIMARY KEY(shamsi_date, user_id)
-    );
-    CREATE INDEX IF NOT EXISTS idx_day_mode_user_date ON day_work_mode(user_id, shamsi_date);
+        CREATE TABLE IF NOT EXISTS day_work_mode (
+          shamsi_date TEXT,
+          user_id INTEGER,
+          mode TEXT NOT NULL CHECK(mode IN ('office','remote')),
+          PRIMARY KEY(shamsi_date, user_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_day_mode_user_date ON day_work_mode(user_id, shamsi_date);
 
-    CREATE TABLE IF NOT EXISTS monthly_summaries (
-      user_id INTEGER,
-      month_key TEXT,
-      net REAL,
-      gross REAL,
-      leave REAL,
-      overtime REAL,
-      deficit REAL,
-      late_total REAL,
-      PRIMARY KEY(user_id, month_key)
-    );
-    CREATE INDEX IF NOT EXISTS idx_summaries_user ON monthly_summaries(user_id);
+        CREATE TABLE IF NOT EXISTS monthly_summaries (
+          user_id INTEGER,
+          month_key TEXT,
+          net DOUBLE PRECISION,
+          gross DOUBLE PRECISION,
+          leave DOUBLE PRECISION,
+          overtime DOUBLE PRECISION,
+          deficit DOUBLE PRECISION,
+          late_total DOUBLE PRECISION,
+          PRIMARY KEY(user_id, month_key)
+        );
+        CREATE INDEX IF NOT EXISTS idx_summaries_user ON monthly_summaries(user_id);
 
-    CREATE TABLE IF NOT EXISTS user_settings (
-      user_id INTEGER NOT NULL REFERENCES users(id),
-      key TEXT NOT NULL,
-      value TEXT NOT NULL,
-      PRIMARY KEY(user_id, key)
-    );
-    CREATE INDEX IF NOT EXISTS idx_user_settings ON user_settings(user_id, key);
+        CREATE TABLE IF NOT EXISTS user_settings (
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          key TEXT NOT NULL,
+          value TEXT NOT NULL,
+          PRIMARY KEY(user_id, key)
+        );
+        CREATE INDEX IF NOT EXISTS idx_user_settings ON user_settings(user_id, key);
 
-    CREATE TABLE IF NOT EXISTS holidays (
-      date TEXT PRIMARY KEY,
-      name TEXT
-    );
+        CREATE TABLE IF NOT EXISTS holidays (
+          date TEXT PRIMARY KEY,
+          name TEXT
+        );
 
-    CREATE TABLE IF NOT EXISTS settings (
-      key TEXT PRIMARY KEY,
-      value TEXT
-    );
-    """)
+        CREATE TABLE IF NOT EXISTS settings (
+          key TEXT PRIMARY KEY,
+          value TEXT
+        );
+        """)
+        for k, v in DEFAULT_SETTINGS.items():
+            conn.execute("INSERT INTO settings(key, value) VALUES(?, ?) ON CONFLICT (key) DO NOTHING", (k, v))
+        for d, n in HOLIDAYS_1405:
+            conn.execute("INSERT INTO holidays(date, name) VALUES(?, ?) ON CONFLICT (date) DO NOTHING", (d, n))
+        conn.commit()
+    else:
+        conn.executescript("""
+        CREATE TABLE IF NOT EXISTS users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          telegram_id INTEGER UNIQUE,
+          username TEXT,
+          first_name TEXT,
+          last_name TEXT,
+          photo_url TEXT,
+          display_name TEXT,
+          created_at TEXT NOT NULL
+        );
 
-    # Seed default settings
-    for k, v in DEFAULT_SETTINGS.items():
-        conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES(?, ?)", (k, v))
-    
-    # Seed default holidays
-    for d, n in HOLIDAYS_1405:
-        conn.execute("INSERT OR IGNORE INTO holidays(date, name) VALUES(?, ?)", (d, n))
+        CREATE TABLE IF NOT EXISTS login_tokens (
+          token TEXT PRIMARY KEY,
+          status TEXT NOT NULL CHECK(status IN ('pending','verified','expired')),
+          user_id INTEGER REFERENCES users(id),
+          created_at TEXT NOT NULL,
+          expires_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_login_tokens_status ON login_tokens(status, expires_at);
 
-    # Migration for new task columns if existing db
-    task_cols = [r[1] for r in conn.execute("PRAGMA table_info(tasks)").fetchall()]
-    if "description" not in task_cols:
-        conn.execute("ALTER TABLE tasks ADD COLUMN description TEXT")
-    if "priority" not in task_cols:
-        conn.execute("ALTER TABLE tasks ADD COLUMN priority TEXT NOT NULL DEFAULT 'medium'")
-    if "due_date" not in task_cols:
-        conn.execute("ALTER TABLE tasks ADD COLUMN due_date TEXT")
+        CREATE TABLE IF NOT EXISTS sessions (
+          id TEXT PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id),
+          jwt_hash TEXT,
+          expires_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+        CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 
-    conn.commit()
+        CREATE TABLE IF NOT EXISTS refresh_sessions (
+          id TEXT PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id),
+          refresh_hash TEXT UNIQUE NOT NULL,
+          expires_at TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          revoked_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_refresh_user ON refresh_sessions(user_id);
+        CREATE INDEX IF NOT EXISTS idx_refresh_hash ON refresh_sessions(refresh_hash);
+        CREATE INDEX IF NOT EXISTS idx_refresh_expires ON refresh_sessions(expires_at);
 
-def get_user_settings(conn: sqlite3.Connection, user_id: int | None = None) -> dict[str, str]:
+        CREATE TABLE IF NOT EXISTS daily_leaves (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL REFERENCES users(id),
+          start_date TEXT NOT NULL,
+          end_date TEXT NOT NULL,
+          type TEXT NOT NULL DEFAULT 'annual',
+          hours REAL NOT NULL DEFAULT 8.0,
+          label TEXT,
+          reason TEXT,
+          created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_daily_leaves_user ON daily_leaves(user_id, start_date, end_date);
+
+        CREATE TABLE IF NOT EXISTS events (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER REFERENCES users(id),
+          event_type TEXT NOT NULL,
+          ts_utc TEXT NOT NULL,
+          shamsi_date TEXT NOT NULL,
+          weekday TEXT NOT NULL,
+          note TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_events_date ON events(shamsi_date);
+        CREATE INDEX IF NOT EXISTS idx_events_user_date ON events(user_id, shamsi_date);
+
+        CREATE TABLE IF NOT EXISTS tasks (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER REFERENCES users(id),
+          shamsi_date TEXT NOT NULL,
+          title TEXT NOT NULL,
+          description TEXT,
+          priority TEXT NOT NULL DEFAULT 'medium',
+          due_date TEXT,
+          done INTEGER NOT NULL DEFAULT 0,
+          day_num INTEGER,
+          created_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_tasks_date ON tasks(shamsi_date);
+        CREATE INDEX IF NOT EXISTS idx_tasks_user ON tasks(user_id, done);
+
+        CREATE TABLE IF NOT EXISTS day_work_mode (
+          shamsi_date TEXT,
+          user_id INTEGER,
+          mode TEXT NOT NULL CHECK(mode IN ('office','remote')),
+          PRIMARY KEY(shamsi_date, user_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_day_mode_user_date ON day_work_mode(user_id, shamsi_date);
+
+        CREATE TABLE IF NOT EXISTS monthly_summaries (
+          user_id INTEGER,
+          month_key TEXT,
+          net REAL,
+          gross REAL,
+          leave REAL,
+          overtime REAL,
+          deficit REAL,
+          late_total REAL,
+          PRIMARY KEY(user_id, month_key)
+        );
+        CREATE INDEX IF NOT EXISTS idx_summaries_user ON monthly_summaries(user_id);
+
+        CREATE TABLE IF NOT EXISTS user_settings (
+          user_id INTEGER NOT NULL REFERENCES users(id),
+          key TEXT NOT NULL,
+          value TEXT NOT NULL,
+          PRIMARY KEY(user_id, key)
+        );
+        CREATE INDEX IF NOT EXISTS idx_user_settings ON user_settings(user_id, key);
+
+        CREATE TABLE IF NOT EXISTS holidays (
+          date TEXT PRIMARY KEY,
+          name TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS settings (
+          key TEXT PRIMARY KEY,
+          value TEXT
+        );
+        """)
+        for k, v in DEFAULT_SETTINGS.items():
+            conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES(?, ?)", (k, v))
+        for d, n in HOLIDAYS_1405:
+            conn.execute("INSERT OR IGNORE INTO holidays(date, name) VALUES(?, ?) ON CONFLICT (date) DO NOTHING", (d, n))
+        conn.commit()
+
+def get_user_settings(conn: DBAdapter, user_id: int | None = None) -> dict[str, str]:
     """Get settings for user with fallback to DEFAULT_SETTINGS."""
     res = dict(DEFAULT_SETTINGS)
     if user_id is not None:
@@ -190,7 +308,7 @@ def get_user_settings(conn: sqlite3.Connection, user_id: int | None = None) -> d
             res[r["key"]] = r["value"]
     return res
 
-def set_user_setting(conn: sqlite3.Connection, user_id: int, key: str, value: str) -> None:
+def set_user_setting(conn: DBAdapter, user_id: int, key: str, value: str) -> None:
     """Set or update setting for specific user."""
     conn.execute(
         "INSERT INTO user_settings(user_id, key, value) VALUES(?, ?, ?) "
