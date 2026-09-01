@@ -4,6 +4,7 @@ import { useToast } from "../../shared/ui/Toast";
 import { Drawer } from "../../shared/ui/Drawer";
 import { ShamsiCalendar } from "../../shared/ui/ShamsiCalendar";
 import { useLeavesQuery, useDailyLeaveMutation, useDeleteLeaveMutation } from "../../shared/api/queries";
+import { formatShamsiDateText } from "../../shared/lib/format";
 
 const TYPES = [
   { v: "annual", label: "استحقاقی" },
@@ -198,14 +199,14 @@ export function DailyLeaveDrawer({
     }
   };
 
-  const fromLabel = date || "انتخاب تاریخ";
-  const toLabel = endDate || "— (تک‌روزه)";
+  const fromLabel = date ? formatShamsiDateText(date) : "انتخاب تاریخ";
+  const toLabel = endDate ? formatShamsiDateText(endDate) : "— (تک‌روزه)";
 
   return (
     <Drawer open={open} onClose={onClose} title="مرخصی روزانه" height="82vh"> {/* uses reusable Drawer — same anim as all sheets */}
       <div style={{ display: "grid", gap: 12 }}>
         <p style={{ color: "var(--muted)", fontSize: 12, margin: 0 }}>
-          تمام‌روز · بازه مجاز <b className="mono">{todayStr}</b> تا <b className="mono">{maxStr}</b> · هر روز کاری
+          تمام‌روز · بازه مجاز <b className="mono">{formatShamsiDateText(todayStr)}</b> تا <b className="mono">{formatShamsiDateText(maxStr)}</b> · هر روز کاری
           8 ساعت · استحقاقی از 208 ساعت کم می‌شود.
         </p>
 
@@ -215,48 +216,52 @@ export function DailyLeaveDrawer({
             className="btn btn-ghost"
             style={{
               flexDirection: "column",
-              alignItems: "stretch",
-              gap: 6,
-              padding: "10px 12px",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 4,
+              padding: "10px 8px",
               background: picker === "from" ? "#0F172A" : "#fff",
               color: picker === "from" ? "#fff" : "#0F172A",
               border: "2px solid #000",
               borderRadius: 12,
               boxShadow: "3px 3px 0 #000",
+              textAlign: "center",
             }}
             onClick={() => setPicker((p) => (p === "from" ? null : "from"))}
           >
-            <span style={{ fontSize: 10, opacity: 0.75, textAlign: "right" }}>از تاریخ</span>
+            <span style={{ fontSize: 11, opacity: 0.75, textAlign: "center", fontWeight: 700 }}>از تاریخ</span>
             <span
               className="mono"
-              style={{ fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}
+              style={{ fontWeight: 800, fontSize: 12.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, textAlign: "center" }}
             >
-              <CalendarDays size={14} />
-              {fromLabel}
+              <CalendarDays size={14} style={{ flexShrink: 0 }} />
+              <span>{fromLabel}</span>
             </span>
           </button>
           <button
             className="btn btn-ghost"
             style={{
               flexDirection: "column",
-              alignItems: "stretch",
-              gap: 6,
-              padding: "10px 12px",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 4,
+              padding: "10px 8px",
               background: picker === "to" ? "#0F172A" : "#fff",
               color: picker === "to" ? "#fff" : "#0F172A",
               border: "2px solid #000",
               borderRadius: 12,
               boxShadow: "3px 3px 0 #000",
+              textAlign: "center",
             }}
             onClick={() => setPicker((p) => (p === "to" ? null : "to"))}
           >
-            <span style={{ fontSize: 10, opacity: 0.75, textAlign: "right" }}>تا تاریخ</span>
+            <span style={{ fontSize: 11, opacity: 0.75, textAlign: "center", fontWeight: 700 }}>تا تاریخ</span>
             <span
               className="mono"
-              style={{ fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}
+              style={{ fontWeight: 800, fontSize: 12.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, textAlign: "center" }}
             >
-              <CalendarDays size={14} />
-              {toLabel}
+              <CalendarDays size={14} style={{ flexShrink: 0 }} />
+              <span>{toLabel}</span>
             </span>
           </button>
         </div>
