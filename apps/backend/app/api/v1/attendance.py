@@ -101,7 +101,8 @@ def api_overtime(body: OvertimeRequest, uid: int | None = Depends(get_current_us
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/edit-day", summary="Admin/User manual edit day record")
+@router.post("/day/edit", summary="Admin/User manual edit day record")
+@router.post("/edit-day", summary="Legacy alias for manual edit day record")
 def api_edit_day(body: DayEditRequest, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
     try:
         res = record_service.edit_or_create_day_record(
