@@ -57,6 +57,10 @@ class PatchMeResponse(BaseModel):
     ok: bool
     user: UserResponse
 
+class DeleteAccountResponse(BaseModel):
+    ok: bool = True
+    message: str = "حساب کاربری و کلیه اطلاعات مربوطه با موفقیت حذف شد"
+
 class AuthCheckResponse(BaseModel):
     ok: bool
     deprecated: bool = True

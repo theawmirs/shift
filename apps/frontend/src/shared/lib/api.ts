@@ -213,6 +213,9 @@ export const API = {
   authUpdateMe(display_name: string): Promise<any> {
     return this.jpatch("/api/auth/me", { display_name });
   },
+  authDeleteMe(): Promise<{ ok: boolean; message?: string }> {
+    return this.jdel("/api/auth/me");
+  },
   authLogout(): Promise<any> {
     const rt = this.getRefreshToken();
     const body = rt ? { refresh_token: rt } : {};

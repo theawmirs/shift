@@ -8,7 +8,8 @@ from app.schemas.auth import (
     UserResponse, LoginInitResponse, PollResponse,
     RefreshRequest, RefreshResponse, LogoutRequest,
     LegacyLoginRequest, LegacyLoginResponse,
-    PatchMeRequest, PatchMeResponse, AuthCheckResponse
+    PatchMeRequest, PatchMeResponse, AuthCheckResponse,
+    DeleteAccountResponse
 )
 from app.services import auth_service, bot_service
 from app.core import security
@@ -127,6 +128,11 @@ def patch_me(body: PatchMeRequest, uid: int = Depends(get_current_user), conn: s
     conn.commit()
     user = auth_service.get_user_by_id(conn, uid)
     return PatchMeResponse(ok=True, user=UserResponse(**user))
+
+@router.delete("/auth/me", response_model=DeleteAccountResponse, summary="Permanently delete user account and all data")
+def delete_me(uid: int = Depends(get_current_user), conn: sqlite3.Connection = Depends(get_db)):
+    auth_service.hard_delete_user(conn, uid)
+    return DeleteAccountResponse(ok=True, message="حساب کاربری و کلیه اطلاعات مربوطه با موفقیت حذف شد")
 
 @router.post("/auth/refresh", response_model=RefreshResponse, summary="Refresh access token")
 async def auth_refresh(request: Request, body: RefreshRequest | None = None, conn: sqlite3.Connection = Depends(get_db)):
