@@ -120,3 +120,22 @@ def issue_token_pair(conn: sqlite3.Connection, user_id: int, telegram_id: int) -
     )
     conn.commit()
     return access_token, raw_refresh
+
+def hard_delete_user(conn: sqlite3.Connection, user_id: int) -> None:
+    """Cascade hard-delete user and all associated records in a single atomic transaction."""
+    tables_by_user_id = [
+        "events",
+        "tasks",
+        "daily_leaves",
+        "day_work_mode",
+        "monthly_summaries",
+        "user_settings",
+        "login_tokens",
+        "sessions",
+        "refresh_sessions",
+    ]
+    for table in tables_by_user_id:
+        conn.execute(f"DELETE FROM {table} WHERE user_id=?", (user_id,))
+    conn.execute("DELETE FROM users WHERE id=?", (user_id,))
+    conn.commit()
+

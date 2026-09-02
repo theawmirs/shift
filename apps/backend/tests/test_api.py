@@ -306,7 +306,41 @@ def test_csv_import_and_export(test_env):
     assert "1405-06-10" in export_res.text
     assert "1405-06-11" in export_res.text
 
-def test_day_edit_and_create(test_env):
+def test_user_hard_delete_account(test_env):
+    client = test_env["client"]
+
+    # 1. Login user
+    init_res = client.post("/api/auth/telegram/init")
+    token = init_res.json()["token"]
+
+    wh_res = client.post(
+        "/api/auth/telegram/webhook",
+        json={
+            "message": {
+                "text": f"/start {token}",
+                "chat": {"id": 11223344},
+                "from": {"id": 11223344, "username": "delete_me_user", "first_name": "Del"},
+            }
+        },
+    )
+    assert wh_res.status_code == 200
+
+    poll_res = client.get(f"/api/auth/poll?token={token}")
+    access_token = poll_res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    # 2. Add some user data (settings, events)
+    client.post("/api/settings", json={"standard_hours": "6"}, headers=headers)
+
+    # 3. Call DELETE /api/auth/me
+    del_res = client.delete("/api/auth/me", headers=headers)
+    assert del_res.status_code == 200
+    assert del_res.json()["ok"] is True
+
+    # 4. Verifying token is now invalid / user no longer exists
+    me_after = client.get("/api/auth/me", headers=headers)
+    assert me_after.status_code == 401
+
     client = test_env["client"]
 
     # Edit past date 1405-05-15
