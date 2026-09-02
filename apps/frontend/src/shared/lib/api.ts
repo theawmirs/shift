@@ -53,26 +53,30 @@ export const API = {
     // single flight: concurrent 401s share one promise
     if (this._refreshPromise) return this._refreshPromise;
     this._refreshPromise = (async () => {
-      const r = await fetch("/api/auth/refresh", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ refresh_token: rt }),
-      });
-      if (!r.ok) {
-        const t = await r.text();
-        let msg = t;
-        try {
-          const j = JSON.parse(t);
-          msg = j.detail || j.message || t;
-        } catch {}
-        throw new Error(msg || r.statusText);
+      try {
+        const r = await fetch("/api/auth/refresh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ refresh_token: rt }),
+        });
+        if (!r.ok) {
+          const t = await r.text();
+          let msg = t;
+          try {
+            const j = JSON.parse(t);
+            msg = j.detail || j.message || t;
+          } catch {}
+          throw new Error(msg || r.statusText);
+        }
+        const j = await r.json();
+        const access = j.access_token || j.jwt || j.accessToken;
+        const refresh = j.refresh_token || j.refreshToken;
+        if (!access) throw new Error("refresh: no access_token");
+        this.setTokens(access, refresh || undefined);
+        return { access, refresh };
+      } catch (err) {
+        throw err;
       }
-      const j = await r.json();
-      const access = j.access_token || j.jwt || j.accessToken;
-      const refresh = j.refresh_token || j.refreshToken;
-      if (!access) throw new Error("refresh: no access_token");
-      this.setTokens(access, refresh || undefined);
-      return { access, refresh };
     })();
     try {
       return await this._refreshPromise;
@@ -82,7 +86,8 @@ export const API = {
   },
   _headers(json = false): Record<string, string> {
     const h: Record<string, string> = {};
-    if (this._token) h["Authorization"] = `Bearer ${this._token}`;
+    const t = this.getToken();
+    if (t) h["Authorization"] = `Bearer ${t}`;
     if (json) h["Content-Type"] = "application/json";
     h["Accept"] = "application/json";
     return h;
@@ -93,19 +98,22 @@ export const API = {
     if (r.status === 401 && retry) {
       try {
         const { access } = await this._doRefresh();
-        const h2 = { ...(init.headers || {}), Authorization: `Bearer ${access}` };
+        const existingHeaders = (init.headers as Record<string, string>) || {};
+        const h2 = { ...existingHeaders, Authorization: `Bearer ${access}` };
         r = await fetch(url, { ...init, headers: h2 });
       } catch (e: any) {
-        // refresh failed → clear and propagate original 401
+        const msg = String(e?.message || "");
+        // ONLY clear tokens if the refresh token itself was explicitly rejected as permanently invalid/revoked/expired
         if (
-          String(e?.message || "").includes("refresh") ||
-          String(e?.message || "").includes("401") ||
-          String(e?.message || "").includes("باطل") ||
-          String(e?.message || "").includes("منقضی")
+          msg.includes("باطل") ||
+          msg.includes("منقضی") ||
+          msg.includes("invalid") ||
+          msg.includes("revoked") ||
+          msg.includes("not found")
         ) {
           this.clearTokens();
         }
-        // fall through to throw below with original r
+        // If it's a network glitch or 429 or temporary 5xx, do NOT clear tokens!
       }
     }
     return r;
