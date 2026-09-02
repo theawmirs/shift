@@ -58,11 +58,22 @@ function Shell() {
           const u2 = data2.user || data2;
           const nt = API.getToken();
           if (nt) { setToken(nt); setUser(u2); setChecking(false); return; }
-        } catch {}
-        setToken(null);
-        setUser(null);
-        try { localStorage.removeItem("wt-token"); localStorage.removeItem("wt-refresh-token"); } catch {}
-        API.clearTokens();
+        } catch (refreshErr: any) {
+          const msg = String(refreshErr?.message || "");
+          // Only force logout if refresh explicitly fails as invalid/expired
+          if (
+            msg.includes("باطل") ||
+            msg.includes("منقضی") ||
+            msg.includes("invalid") ||
+            msg.includes("revoked") ||
+            msg.includes("not found")
+          ) {
+            setToken(null);
+            setUser(null);
+            try { localStorage.removeItem("wt-token"); localStorage.removeItem("wt-refresh-token"); } catch {}
+            API.clearTokens();
+          }
+        }
       })
       .finally(() => setChecking(false));
   }, []);

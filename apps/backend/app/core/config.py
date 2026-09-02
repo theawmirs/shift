@@ -19,9 +19,10 @@ class Settings(BaseSettings):
     TIMEZONE: str = "Asia/Tehran"
     JWT_SECRET: str | None = None  # Loaded dynamically from DB settings or ENV
     JWT_ALG: str = "HS256"
-    JWT_EXP_MINUTES: int = 15
-    JWT_REFRESH_DAYS: int = 7
-    JWT_EXP_DAYS_LEGACY: int = 30
+    JWT_EXP_MINUTES: int = 60 * 24 * 30  # 30 days access token
+    JWT_REFRESH_DAYS: int = 90  # 90 days refresh token
+    REFRESH_GRACE_SECONDS: int = 60  # Grace period for concurrent refreshes
+    JWT_EXP_DAYS_LEGACY: int = 60
     LOGIN_TOKEN_EXP_MIN: int = 3
     
     # Telegram Bot
