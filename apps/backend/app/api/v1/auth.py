@@ -131,7 +131,7 @@ def patch_me(body: PatchMeRequest, uid: int = Depends(get_current_user), conn: s
 @router.post("/auth/refresh", response_model=RefreshResponse, summary="Refresh access token")
 async def auth_refresh(request: Request, body: RefreshRequest | None = None, conn: sqlite3.Connection = Depends(get_db)):
     ip = _client_ip(request)
-    _check_rate_limit(ip, limit=10, key_prefix="refresh")
+    _check_rate_limit(ip, limit=60, key_prefix="refresh")
 
     refresh_token = None
     if body:
@@ -153,14 +153,28 @@ async def auth_refresh(request: Request, body: RefreshRequest | None = None, con
     row = conn.execute("SELECT id, user_id, expires_at, revoked_at FROM refresh_sessions WHERE refresh_hash=?", (h,)).fetchone()
     if not row:
         raise HTTPException(status_code=401, detail="refresh_token نامعتبر")
+    
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    
     if row["revoked_at"] is not None:
-        raise HTTPException(status_code=401, detail="refresh_token باطل شده — دوباره وارد شو")
+        # Check grace period for concurrent requests
+        try:
+            rev_at = datetime.datetime.fromisoformat(row["revoked_at"])
+            if rev_at.tzinfo is None:
+                rev_at = rev_at.replace(tzinfo=datetime.timezone.utc)
+            grace_sec = getattr(settings, "REFRESH_GRACE_SECONDS", 60)
+            if (now_utc - rev_at).total_seconds() > grace_sec:
+                raise HTTPException(status_code=401, detail="refresh_token باطل شده — دوباره وارد شو")
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=401, detail="refresh_token باطل شده — دوباره وارد شو")
     
     try:
         exp = datetime.datetime.fromisoformat(row["expires_at"])
         if exp.tzinfo is None:
             exp = exp.replace(tzinfo=datetime.timezone.utc)
-        if exp < datetime.datetime.now(datetime.timezone.utc):
+        if now_utc > exp:
             raise HTTPException(status_code=401, detail="refresh_token منقضی شده")
     except HTTPException:
         raise
@@ -168,9 +182,10 @@ async def auth_refresh(request: Request, body: RefreshRequest | None = None, con
         pass
 
     uid = row["user_id"]
-    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    conn.execute("UPDATE refresh_sessions SET revoked_at=? WHERE id=?", (now_iso, row["id"]))
-    conn.commit()
+    now_iso = now_utc.isoformat()
+    if row["revoked_at"] is None:
+        conn.execute("UPDATE refresh_sessions SET revoked_at=? WHERE id=?", (now_iso, row["id"]))
+        conn.commit()
 
     urow = conn.execute("SELECT telegram_id FROM users WHERE id=?", (uid,)).fetchone()
     if not urow:
