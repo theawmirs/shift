@@ -7,6 +7,26 @@ export const API = {
   _refreshToken: null as string | null,
   _refreshPromise: null as Promise<{ access: string; refresh?: string }> | null,
 
+  _onUnauthorized: null as (() => void) | null,
+
+  setOnUnauthorized(cb: (() => void) | null) {
+    this._onUnauthorized = cb;
+  },
+
+  triggerUnauthorized() {
+    this.clearTokens();
+    if (typeof window !== "undefined") {
+      try {
+        window.dispatchEvent(new CustomEvent("wt:unauthorized"));
+      } catch {}
+    }
+    if (this._onUnauthorized) {
+      try {
+        this._onUnauthorized();
+      } catch {}
+    }
+  },
+
   setToken(t: string | null) {
     this._token = t;
   },
@@ -103,17 +123,19 @@ export const API = {
         r = await fetch(url, { ...init, headers: h2 });
       } catch (e: any) {
         const msg = String(e?.message || "");
-        // ONLY clear tokens if the refresh token itself was explicitly rejected as permanently invalid/revoked/expired
+        // If refresh failed because refresh token was rejected/invalid/expired/not found:
         if (
           msg.includes("باطل") ||
           msg.includes("منقضی") ||
           msg.includes("invalid") ||
           msg.includes("revoked") ||
-          msg.includes("not found")
+          msg.includes("not found") ||
+          msg.includes("no refresh token") ||
+          msg.includes("401")
         ) {
-          this.clearTokens();
+          this.triggerUnauthorized();
         }
-        // If it's a network glitch or 429 or temporary 5xx, do NOT clear tokens!
+        // If it's a temporary network glitch, do NOT force logout immediately
       }
     }
     return r;
@@ -121,6 +143,9 @@ export const API = {
   async jget<T = any>(path: string): Promise<T> {
     const r = await this._fetchWithRefresh(path, { headers: this._headers() });
     if (!r.ok) {
+      if (r.status === 401) {
+        this.triggerUnauthorized();
+      }
       const t = await r.text();
       throw new Error(t || r.statusText);
     }
@@ -134,6 +159,9 @@ export const API = {
       body: JSON.stringify(body),
     });
     if (!r.ok) {
+      if (r.status === 401 && !path.includes("/api/auth/telegram") && !path.includes("/api/auth/poll")) {
+        this.triggerUnauthorized();
+      }
       const t = await r.text();
       let msg = t;
       try {
@@ -151,6 +179,9 @@ export const API = {
       body: JSON.stringify(body),
     });
     if (!r.ok) {
+      if (r.status === 401) {
+        this.triggerUnauthorized();
+      }
       const t = await r.text();
       let msg = t;
       try {
@@ -168,6 +199,9 @@ export const API = {
       body: JSON.stringify(body),
     });
     if (!r.ok) {
+      if (r.status === 401) {
+        this.triggerUnauthorized();
+      }
       const t = await r.text();
       let msg = t;
       try {
@@ -181,6 +215,9 @@ export const API = {
   async jdel<T = any>(path: string): Promise<T> {
     const r = await this._fetchWithRefresh(path, { method: "DELETE", headers: this._headers() });
     if (!r.ok) {
+      if (r.status === 401) {
+        this.triggerUnauthorized();
+      }
       const t = await r.text();
       let msg = t;
       try {
