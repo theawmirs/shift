@@ -45,17 +45,27 @@ export function fmtHoursFa(val: number | string | null | undefined): string {
 }
 
 /**
- * Compact duration formatter for tight cards/chips (e.g., "۴۹:۰۷ ساعت" or "۴۹س ۷د")
- * Avoids awkward multi-word line-wrapping in small mobile cards.
+ * Compact duration formatter for tight cards/chips.
+ * Human-readable Persian: "۳ دقیقه", "۲ ساعت", "۲ ساعت و ۱۵ دقیقه".
+ * Avoids ambiguous H:MM output like "0:03 ساعت".
  */
+const FA_DIGITS = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
+
+function toFaDigits(n: number | string): string {
+  return String(n).replace(/[0-9]/g, (d) => FA_DIGITS[Number(d)]);
+}
+
 export function fmtHoursCompactFa(val: number | string | null | undefined): string {
-  if (val == null) return "۰:۰۰";
+  if (val == null) return "۰ دقیقه";
   const num = typeof val === "string" ? parseFloat(val) : val;
-  if (isNaN(num) || num === 0) return "۰:۰۰";
+  if (isNaN(num) || num === 0) return "۰ دقیقه";
 
   const totalMinutes = Math.round(Math.abs(num) * 60);
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
 
-  return `${hours}:${String(minutes).padStart(2, "0")}`;
+  if (hours === 0 && minutes === 0) return "۰ دقیقه";
+  if (hours === 0) return `${toFaDigits(minutes)} دقیقه`;
+  if (minutes === 0) return `${toFaDigits(hours)} ساعت`;
+  return `${toFaDigits(hours)} ساعت و ${toFaDigits(minutes)} دقیقه`;
 }

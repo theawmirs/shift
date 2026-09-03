@@ -155,11 +155,10 @@ export function DayDoneCard({ day, weekday, shamsi }: DayDoneCardProps) {
             <Clock size={13} />
             <span>کارکرد خالص</span>
           </div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 3, whiteSpace: "nowrap" }}>
-            <b className="mono" style={{ fontSize: 18, color: "var(--text)" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
+            <b className="mono" style={{ fontSize: 16, color: "var(--text)" }}>
               {fmtHoursCompactFa(netHours)}
             </b>
-            <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>
           </div>
         </div>
 
@@ -189,7 +188,7 @@ export function DayDoneCard({ day, weekday, shamsi }: DayDoneCardProps) {
             <Sparkles size={13} />
             <span>{deficit > 0 ? "کسری موظفی" : overtime > 0 ? "اضافه‌کاری" : "وضعیت شیفت"}</span>
           </div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 3, whiteSpace: "nowrap" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
             <b className="mono" style={{ fontSize: 16, color: deficit > 0 ? "var(--red)" : "var(--green)" }}>
               {deficit > 0
                 ? `${fmtHoursCompactFa(deficit)} -`
@@ -197,9 +196,6 @@ export function DayDoneCard({ day, weekday, shamsi }: DayDoneCardProps) {
                 ? `+ ${fmtHoursCompactFa(overtime)}`
                 : "تکمیل ۱۰۰٪ ✔"}
             </b>
-            {(deficit > 0 || overtime > 0) && (
-              <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>
-            )}
           </div>
         </div>
       </div>
