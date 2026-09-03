@@ -266,11 +266,10 @@ export function CalendarPage() {
             }}
           >
             <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>کارکرد کل</span>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 2, whiteSpace: "nowrap" }}>
-              <b className="mono" style={{ fontSize: 14, color: "var(--amber-2)" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 2 }}>
+              <b className="mono" style={{ fontSize: 13, color: "var(--amber-2)" }}>
                 {fmtHoursCompactFa(monthNetHours)}
               </b>
-              <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>
             </div>
           </div>
 

@@ -67,11 +67,10 @@ export function WeekSummary() {
             <Clock size={15} style={{ color: "var(--amber)" }} />
             <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>کارکرد مفید</span>
           </div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 4, whiteSpace: "nowrap" }}>
-            <b className="mono" style={{ fontSize: 18, color: "var(--amber-2)" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+            <b className="mono" style={{ fontSize: 16, color: "var(--amber-2)" }}>
               {fmtHoursCompactFa(netTotal)}
             </b>
-            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>
           </div>
         </div>
 
@@ -92,11 +91,10 @@ export function WeekSummary() {
             <Sparkles size={15} style={{ color: "var(--green)" }} />
             <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>اضافه‌کاری</span>
           </div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 4, whiteSpace: "nowrap" }}>
-            <b className="mono" style={{ fontSize: 18, color: "var(--green)" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+            <b className="mono" style={{ fontSize: 16, color: "var(--green)" }}>
               {fmtHoursCompactFa(overtimeTotal)}
             </b>
-            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>
           </div>
         </div>
       </div>
@@ -114,7 +112,7 @@ export function WeekSummary() {
         >
           <span style={{ fontSize: 11, color: "var(--red)", fontWeight: 700 }}>⚠️ کسری کار هفته:</span>
           <b className="mono" style={{ fontSize: 12, color: "var(--red)" }}>
-            {fmtHoursCompactFa(deficitTotal)} ساعت
+            {fmtHoursCompactFa(deficitTotal)}
           </b>
         </div>
       )}

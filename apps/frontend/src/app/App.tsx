@@ -40,6 +40,27 @@ function Shell() {
   }, [theme]);
 
   useEffect(() => {
+    const handleUnauthorized = () => {
+      setToken(null);
+      setUser(null);
+      try {
+        localStorage.removeItem("wt-token");
+        localStorage.removeItem("wt-refresh-token");
+      } catch {}
+      API.clearTokens();
+      queryClient.clear();
+    };
+
+    API.setOnUnauthorized(handleUnauthorized);
+    window.addEventListener("wt:unauthorized", handleUnauthorized);
+
+    return () => {
+      API.setOnUnauthorized(null);
+      window.removeEventListener("wt:unauthorized", handleUnauthorized);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!token) { setChecking(false); return; }
     API.setToken(token);
     try {
@@ -59,20 +80,15 @@ function Shell() {
           const nt = API.getToken();
           if (nt) { setToken(nt); setUser(u2); setChecking(false); return; }
         } catch (refreshErr: any) {
-          const msg = String(refreshErr?.message || "");
-          // Only force logout if refresh explicitly fails as invalid/expired
-          if (
-            msg.includes("باطل") ||
-            msg.includes("منقضی") ||
-            msg.includes("invalid") ||
-            msg.includes("revoked") ||
-            msg.includes("not found")
-          ) {
-            setToken(null);
-            setUser(null);
-            try { localStorage.removeItem("wt-token"); localStorage.removeItem("wt-refresh-token"); } catch {}
-            API.clearTokens();
-          }
+          // If refresh failed during initial check, log user out immediately
+          setToken(null);
+          setUser(null);
+          try {
+            localStorage.removeItem("wt-token");
+            localStorage.removeItem("wt-refresh-token");
+          } catch {}
+          API.clearTokens();
+          queryClient.clear();
         }
       })
       .finally(() => setChecking(false));

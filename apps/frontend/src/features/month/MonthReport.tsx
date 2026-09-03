@@ -203,11 +203,10 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
             <Clock size={13} />
             <span>خالص کارکرد</span>
           </div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 4, whiteSpace: "nowrap" }}>
-            <b className="mono" style={{ fontSize: 18, color: "var(--text)" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+            <b className="mono" style={{ fontSize: 16, color: "var(--text)" }}>
               {fmtHoursCompactFa(netHours)}
             </b>
-            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>
           </div>
         </div>
 
@@ -228,11 +227,10 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
             <TrendingUp size={13} />
             <span>اضافه‌کاری</span>
           </div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 4, whiteSpace: "nowrap" }}>
-            <b className="mono" style={{ fontSize: 18, color: overtimeHours > 0 ? "var(--green)" : "var(--muted)" }}>
-              {overtimeHours > 0 ? fmtHoursCompactFa(overtimeHours) : "۰:۰۰"}
+          <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+            <b className="mono" style={{ fontSize: 16, color: overtimeHours > 0 ? "var(--green)" : "var(--muted)" }}>
+              {overtimeHours > 0 ? fmtHoursCompactFa(overtimeHours) : "۰ دقیقه"}
             </b>
-            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>
           </div>
         </div>
 
@@ -253,11 +251,10 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
             <TrendingDown size={13} />
             <span>کسری موظفی</span>
           </div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 4, whiteSpace: "nowrap" }}>
-            <b className="mono" style={{ fontSize: 18, color: deficitHours > 0 ? "var(--red)" : "var(--green)" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+            <b className="mono" style={{ fontSize: 16, color: deficitHours > 0 ? "var(--red)" : "var(--green)" }}>
               {deficitHours > 0 ? `${fmtHoursCompactFa(deficitHours)} -` : "بدون کسری 🎉"}
             </b>
-            {deficitHours > 0 && <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>ساعت</span>}
           </div>
         </div>
 
