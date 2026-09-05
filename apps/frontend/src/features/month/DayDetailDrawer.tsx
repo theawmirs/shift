@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
-import { Drawer } from "../../shared/ui/Drawer";
-import { Button } from "../../shared/ui/Button";
-import { fmtHoursFa, formatShamsiDateText } from "../../shared/lib/format";
-import { Edit3, Building2, Home, Trash2, AlertTriangle } from "lucide-react";
-import { attendanceApi } from "../../shared/api/endpoints/attendance";
-import { useToast } from "../../shared/ui/Toast";
-import { useQueryClient } from "@tanstack/react-query";
+import { Drawer } from "@/shared/ui/Drawer";
+import { Button } from "@/shared/ui/Button";
+import { formatShamsiDateText } from "@/shared/lib/format";
+import { AlertTriangle } from "lucide-react";
+import { useDayDetail } from "./hooks/useDayDetail";
+import { DayEventsTimeline } from "./DayEventsTimeline";
+import { DayWorklogDrawerContent } from "./DayWorklogDrawerContent";
 
 export interface DayDetailDrawerProps {
   open: boolean;
@@ -15,405 +14,64 @@ export interface DayDetailDrawerProps {
 }
 
 export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDrawerProps) {
-  const { push } = useToast();
-  const queryClient = useQueryClient();
+  const {
+    currentDay,
+    dateFormatted,
+    isEditing,
+    setIsEditing,
+    showConfirmDelete,
+    setShowConfirmDelete,
+    loading,
+    inTime,
+    setInTime,
+    outTime,
+    setOutTime,
+    leaveHours,
+    setLeaveHours,
+    overtimeHours,
+    setOvertimeHours,
+    workMode,
+    setWorkMode,
+    handleSaveEdit,
+    handleConfirmDelete,
+  } = useDayDetail(day, onUpdated, onClose);
 
-  const [activeDay, setActiveDay] = useState<any | null>(day);
-  const [isEditing, setIsEditing] = useState(false);
-  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  // Form states
-  const [inTime, setInTime] = useState("");
-  const [outTime, setOutTime] = useState("");
-  const [leaveHours, setLeaveHours] = useState("0");
-  const [overtimeHours, setOvertimeHours] = useState("0");
-  const [workMode, setWorkMode] = useState<"office" | "remote">("office");
-  const [notes, setNotes] = useState("");
-
-  useEffect(() => {
-    if (day) {
-      setActiveDay(day);
-      setIsEditing(false);
-      setShowConfirmDelete(false);
-      setInTime(day.in || "");
-      setOutTime(day.out || "");
-      setLeaveHours(String(day.leave || 0));
-      setOvertimeHours(String(day.overtime || 0));
-      setWorkMode(day.work_mode === "remote" ? "remote" : "office");
-      setNotes(day.note || "");
-    }
-  }, [day]);
-
-  const currentDay = day || activeDay;
-
-  const dateFormatted = currentDay?.date ? formatShamsiDateText(currentDay.date) : "";
-  const title = currentDay?.label || (currentDay?.date ? `جزئیات ${dateFormatted}` : "جزئیات روز");
-
-  // Format helpers
-  const fmtH = (val: any) => {
-    if (val == null || Number(val) === 0) return null;
-    return fmtHoursFa(val);
-  };
+  const title = currentDay?.label || (currentDay?.date ? `جزئیات ${formatShamsiDateText(currentDay.date)}` : "جزئیات روز");
 
   const hasIn = Boolean(currentDay?.in);
   const hasOut = Boolean(currentDay?.out);
-  const hasLeaveIntervals = Array.isArray(currentDay?.leave_intervals) && currentDay.leave_intervals.length > 0;
   const hasGross = currentDay?.gross != null && Number(currentDay.gross) > 0;
   const hasNet = currentDay?.net != null && Number(currentDay.net) > 0;
-  const hasOvertime = currentDay?.overtime != null && Number(currentDay.overtime) > 0;
-  const hasDeficit = currentDay?.deficit != null && Number(currentDay.deficit) > 0;
-  const hasLate = currentDay?.late != null && Number(currentDay.late) > 0;
   const hasWork = hasIn || hasOut || hasNet || hasGross || Boolean(currentDay?.has_events);
-  const standardHours = 8;
-
-  const handleSaveEdit = async () => {
-    if (!currentDay) return;
-    setLoading(true);
-    try {
-      const res = await attendanceApi.editDay({
-        date: currentDay.date,
-        in_time: inTime.trim() || null,
-        out_time: outTime.trim() || null,
-        leave_hours: parseFloat(leaveHours) || 0,
-        overtime_hours: parseFloat(overtimeHours) || 0,
-        work_mode: workMode,
-        notes: notes.trim() || null,
-      });
-      push(`✅ ساعت کاری تاریخ ${dateFormatted} ذخیره شد`);
-      queryClient.invalidateQueries();
-      setIsEditing(false);
-      onUpdated?.(res.day);
-      onClose();
-    } catch (e: any) {
-      push(`❌ خطا در ذخیره: ${e.message}`, "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!currentDay) return;
-    setLoading(true);
-    try {
-      const res = await attendanceApi.editDay({
-        date: currentDay.date,
-        in_time: null,
-        out_time: null,
-        leave_hours: 0,
-        overtime_hours: 0,
-        work_mode: "office",
-        notes: null,
-      });
-      push(`🗑 ساعات کاری تاریخ ${dateFormatted} پاک شد`);
-      queryClient.invalidateQueries();
-      setIsEditing(false);
-      setShowConfirmDelete(false);
-      onUpdated?.(res.day);
-      onClose();
-    } catch (e: any) {
-      push(`❌ خطا: ${e.message}`, "error");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <>
       <Drawer open={open} onClose={onClose} title={title}>
         {currentDay && (
           <div style={{ display: "grid", gap: 10 }}>
-            {/* ── EDIT FORM VIEW ── */}
             {isEditing ? (
-              <div style={{ display: "grid", gap: 12, padding: "4px 0" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                  <b style={{ fontSize: 13 }}>ویرایش مشخصات روز</b>
-                  <button
-                    type="button"
-                    className="btn btn-ghost mono"
-                    style={{
-                      width: "auto",
-                      padding: "4px 12px",
-                      fontSize: 11,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                    onClick={() => setIsEditing(false)}
-                  >
-                    انصراف
-                  </button>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800 }}>ساعت ورود:</span>
-                    <input
-                      type="time"
-                      value={inTime}
-                      onChange={(e) => setInTime(e.target.value)}
-                      className="mono input"
-                      style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center", direction: "ltr" }}
-                    />
-                  </label>
-
-                  <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800 }}>ساعت خروج:</span>
-                    <input
-                      type="time"
-                      value={outTime}
-                      onChange={(e) => setOutTime(e.target.value)}
-                      className="mono input"
-                      style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center", direction: "ltr" }}
-                    />
-                  </label>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800 }}>مرخصی ساعتی (ساعت):</span>
-                    <input
-                      type="number"
-                      step="0.25"
-                      min="0"
-                      max="12"
-                      value={leaveHours}
-                      onChange={(e) => setLeaveHours(e.target.value)}
-                      className="mono"
-                      placeholder="0"
-                      style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center" }}
-                    />
-                  </label>
-
-                  <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800 }}>اضافه‌کاری (ساعت):</span>
-                    <input
-                      type="number"
-                      step="0.25"
-                      min="0"
-                      max="12"
-                      value={overtimeHours}
-                      onChange={(e) => setOvertimeHours(e.target.value)}
-                      className="mono"
-                      placeholder="0"
-                      style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center" }}
-                    />
-                  </label>
-                </div>
-
-                {/* Work Mode Selector */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 2px" }}>
-                  <span style={{ fontSize: 12, fontWeight: 800 }}>نحوه حضور:</span>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button
-                      type="button"
-                      className={`btn ${workMode === "office" ? "btn-primary" : "btn-ghost"}`}
-                      style={{ padding: "6px 12px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
-                      onClick={() => setWorkMode("office")}
-                    >
-                      <Building2 size={13} /> حضوری
-                    </button>
-                    <button
-                      type="button"
-                      className={`btn ${workMode === "remote" ? "btn-primary" : "btn-ghost"}`}
-                      style={{ padding: "6px 12px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
-                      onClick={() => setWorkMode("remote")}
-                    >
-                      <Home size={13} /> دورکار
-                    </button>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-                  <Button
-                    variant="primary"
-                    style={{ flex: 2, padding: "10px", fontWeight: 800, fontSize: 13 }}
-                    onClick={handleSaveEdit}
-                    loading={loading}
-                    loadingText="در حال ذخیره…"
-                  >
-                    ذخیره ساعت کاری
-                  </Button>
-
-                  {hasWork && (
-                    <Button
-                      variant="ghost"
-                      style={{ flex: 1, padding: "10px", color: "var(--red)", borderColor: "var(--red)" }}
-                      onClick={() => setShowConfirmDelete(true)}
-                      disabled={loading}
-                      title="حذف کامل ثبت کارکرد این روز"
-                      icon={<Trash2 size={15} />}
-                    >
-                      پاک‌کردن
-                    </Button>
-                  )}
-                </div>
-              </div>
+              <DayWorklogDrawerContent
+                inTime={inTime}
+                setInTime={setInTime}
+                outTime={outTime}
+                setOutTime={setOutTime}
+                leaveHours={leaveHours}
+                setLeaveHours={setLeaveHours}
+                overtimeHours={overtimeHours}
+                setOvertimeHours={setOvertimeHours}
+                workMode={workMode}
+                setWorkMode={setWorkMode}
+                loading={loading}
+                hasWork={hasWork}
+                onCancel={() => setIsEditing(false)}
+                onSave={handleSaveEdit}
+                onDeleteRequest={() => setShowConfirmDelete(true)}
+              />
             ) : (
-              /* ── READ-ONLY SUMMARY VIEW ── */
-              <>
-                {/* Status and Action Header */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span className="badge badge-muted mono" style={{ fontSize: 12 }}>
-                      {currentDay.day_status_label || (currentDay.is_holiday ? "تعطیل (کاری)" : "کاری")}
-                    </span>
-                    {currentDay.work_mode === "remote" && (
-                      <span className="badge" style={{ background: "#DDD6FE", color: "#4C1D95", borderColor: "#000" }}>
-                        🏠 دورکار
-                      </span>
-                    )}
-                    {currentDay.is_holiday && hasWork && (
-                      <span className="badge badge-warn">
-                        ⚡ کار در تعطیلی
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Polished Edit Button with Auto Width */}
-                  <button
-                    className="btn btn-ghost mono"
-                    style={{
-                      width: "auto",
-                      padding: "5px 10px",
-                      fontSize: 11,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 5,
-                      borderRadius: 10,
-                      boxShadow: "2px 2px 0 #000",
-                    }}
-                    onClick={() => setIsEditing(true)}
-                  >
-                    <Edit3 size={12} />
-                    <span>{hasWork ? "ویرایش" : "ثبت کارکرد"}</span>
-                  </button>
-                </div>
-
-                {/* Holiday Banner if holiday */}
-                {currentDay.is_holiday && (
-                  <div className="row" style={{ borderColor: "#ef4444", background: "rgba(239,68,68,0.08)" }}>
-                    <b>مناسبت تعطیلی</b>
-                    <span className="mono" style={{ fontWeight: 800, color: "#dc2626" }}>
-                      {currentDay.holiday_name || "تعطیلی رسمی / جمعه"}
-                    </span>
-                  </div>
-                )}
-
-                {/* No work recorded message */}
-                {!hasWork && !currentDay.daily_leave && (
-                  <div style={{ color: "var(--muted)", fontSize: 13, textAlign: "center", padding: "14px 0" }}>
-                    {currentDay.is_holiday ? "در این روز تعطیل کارکردی ثبت نشده است." : "ثبت کاری برای این روز وجود ندارد."}
-                  </div>
-                )}
-
-                {/* Check-in (ورود) */}
-                {hasIn && (
-                  <div className="row">
-                    <b>ورود</b>
-                    <span className="mono" style={{ fontWeight: 800 }}>
-                      {currentDay.in}
-                    </span>
-                  </div>
-                )}
-
-                {/* Check-out (خروج) */}
-                {hasOut && (
-                  <div className="row">
-                    <b>خروج</b>
-                    <span className="mono" style={{ fontWeight: 800 }}>
-                      {currentDay.out}
-                    </span>
-                  </div>
-                )}
-
-                {/* Hourly Leave Start/Return (مرخصی ساعتی) */}
-                {hasLeaveIntervals && (
-                  <div className="row" style={{ flexDirection: "column", alignItems: "stretch", gap: 6 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <b>مرخصی ساعتی</b>
-                      <span className="mono">{fmtH(currentDay.leave) || "—"}</span>
-                    </div>
-                    <div style={{ display: "grid", gap: 4 }}>
-                      {currentDay.leave_intervals.map((inv: [string, string], idx: number) => (
-                        <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--muted)" }}>
-                          <span>بازه {idx + 1}:</span>
-                          <span className="mono">{inv[0]} تا {inv[1]}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Total Duration (کارکرد کل / ناخالص) */}
-                {hasGross && (
-                  <div className="row">
-                    <b>کارکرد کل (ناخالص)</b>
-                    <span className="mono">{fmtH(currentDay.gross)}</span>
-                  </div>
-                )}
-
-                {/* Net Duration (کارکرد خالص) */}
-                {hasNet && (
-                  <div className="row">
-                    <b>کارکرد خالص</b>
-                    <span className="mono" style={{ fontWeight: 800 }}>
-                      {fmtH(currentDay.net)}
-                    </span>
-                  </div>
-                )}
-
-                {/* Regular Hours (ساعت موظفی) */}
-                {!currentDay.is_holiday && hasWork && (
-                  <div className="row">
-                    <b>ساعت موظفی</b>
-                    <span className="mono">{standardHours} ساعت</span>
-                  </div>
-                )}
-
-                {/* Overtime Hours (اضافه‌کاری) */}
-                {hasOvertime && (
-                  <div className="row" style={{ borderColor: "var(--green)", background: "rgba(16,185,129,0.06)" }}>
-                    <b>اضافه‌کاری</b>
-                    <span className="mono" style={{ fontWeight: 800, color: "var(--green)" }}>
-                      {fmtH(currentDay.overtime)}
-                    </span>
-                  </div>
-                )}
-
-                {/* Deficit Hours (کسری کار) */}
-                {hasDeficit && (
-                  <div className="row" style={{ borderColor: "var(--red)", background: "rgba(239,68,68,0.06)" }}>
-                    <b>کسری کار</b>
-                    <span className="mono" style={{ fontWeight: 800, color: "var(--red)" }}>
-                      {fmtH(currentDay.deficit)}
-                    </span>
-                  </div>
-                )}
-
-                {/* Late (تأخیر) */}
-                {hasLate && (
-                  <div className="row" style={{ borderColor: "var(--red)" }}>
-                    <b>تأخیر</b>
-                    <span className="mono" style={{ fontWeight: 800, color: "var(--red)" }}>
-                      {fmtH(currentDay.late)}
-                    </span>
-                  </div>
-                )}
-
-                {/* Daily Leave details if any */}
-                {currentDay.daily_leave && (
-                  <div className="row" style={{ background: "rgba(96,165,250,.08)", borderColor: "#60a5fa" }}>
-                    <b>مرخصی روزانه</b>
-                    <span className="mono" style={{ fontSize: 12 }}>
-                      {currentDay.daily_leave.label || currentDay.daily_leave.type} ({currentDay.daily_leave.hours || 8} ساعت)
-                      {currentDay.daily_leave.reason ? ` · ${currentDay.daily_leave.reason}` : ""}
-                    </span>
-                  </div>
-                )}
-              </>
+              <DayEventsTimeline
+                currentDay={currentDay}
+                onEditClick={() => setIsEditing(true)}
+              />
             )}
           </div>
         )}
