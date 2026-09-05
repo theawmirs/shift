@@ -3,7 +3,7 @@ import { Drawer } from "../../shared/ui/Drawer";
 import { Button } from "../../shared/ui/Button";
 import { fmtHoursFa, formatShamsiDateText } from "../../shared/lib/format";
 import { Edit3, Building2, Home, Trash2, AlertTriangle } from "lucide-react";
-import { API } from "../../shared/lib/api";
+import { attendanceApi } from "../../shared/api/endpoints/attendance";
 import { useToast } from "../../shared/ui/Toast";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -71,7 +71,7 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
     if (!currentDay) return;
     setLoading(true);
     try {
-      const res = await API.editDay({
+      const res = await attendanceApi.editDay({
         date: currentDay.date,
         in_time: inTime.trim() || null,
         out_time: outTime.trim() || null,
@@ -96,7 +96,7 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
     if (!currentDay) return;
     setLoading(true);
     try {
-      const res = await API.editDay({
+      const res = await attendanceApi.editDay({
         date: currentDay.date,
         in_time: null,
         out_time: null,

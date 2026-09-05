@@ -5,7 +5,8 @@ import { AuthContext } from "../shared/lib/auth";
 import { Topbar, BottomNav, DesktopSidebar } from "../shared/ui/Chrome";
 import { LoginPage } from "../pages/LoginPage";
 import { AppRoutes } from "./router";
-import { API } from "../shared/lib/api";
+import { apiClient } from "../shared/api/client";
+import { authApi } from "../shared/api/endpoints/auth";
 import { User } from "../shared/types";
 
 export function Shell() {
@@ -39,37 +40,37 @@ export function Shell() {
         localStorage.removeItem("wt-token");
         localStorage.removeItem("wt-refresh-token");
       } catch {}
-      API.clearTokens();
+      apiClient.clearTokens();
       queryClient.clear();
     };
 
-    API.setOnUnauthorized(handleUnauthorized);
+    apiClient.setOnUnauthorized(handleUnauthorized);
     window.addEventListener("wt:unauthorized", handleUnauthorized);
 
     return () => {
-      API.setOnUnauthorized(null);
+      apiClient.setOnUnauthorized(null);
       window.removeEventListener("wt:unauthorized", handleUnauthorized);
     };
   }, []);
 
   useEffect(() => {
     if (!token) { setChecking(false); return; }
-    API.setToken(token);
+    apiClient.setToken(token);
     try {
       const rt = localStorage.getItem("wt-refresh-token");
-      if (rt) API.setRefreshToken(rt);
+      if (rt) apiClient.setRefreshToken(rt);
     } catch {}
-    API.authMe()
+    authApi.authMe()
       .then((data: any) => {
         const u = data.user || data;
         setUser(u);
       })
       .catch(async () => {
         try {
-          await API._doRefresh();
-          const data2 = await API.authMe();
+          await apiClient._doRefresh();
+          const data2 = await authApi.authMe();
           const u2 = data2.user || data2;
-          const nt = API.getToken();
+          const nt = apiClient.getToken();
           if (nt) { setToken(nt); setUser(u2); setChecking(false); return; }
         } catch (refreshErr: any) {
           // If refresh failed during initial check, log user out immediately
@@ -79,7 +80,7 @@ export function Shell() {
             localStorage.removeItem("wt-token");
             localStorage.removeItem("wt-refresh-token");
           } catch {}
-          API.clearTokens();
+          apiClient.clearTokens();
           queryClient.clear();
         }
       })
@@ -102,19 +103,19 @@ export function Shell() {
         localStorage.setItem("wt-refresh-token", (u as any).refresh_token || (u as any).refreshToken);
       }
     } catch {}
-    API.setTokens(access, refresh || (u as any)?.refresh_token || (u as any)?.refreshToken || null);
+    apiClient.setTokens(access, refresh || (u as any)?.refresh_token || (u as any)?.refreshToken || null);
     if (u) setUser(u);
     else {
-      API.authMe().then((data: any) => setUser(data.user || data)).catch(() => {});
+      authApi.authMe().then((data: any) => setUser(data.user || data)).catch(() => {});
     }
   }, []);
 
   const handleLogout = useCallback(async () => {
-    try { await API.authLogout(); } catch {}
+    try { await authApi.authLogout(); } catch {}
     setToken(null);
     setUser(null);
     try { localStorage.removeItem("wt-token"); localStorage.removeItem("wt-refresh-token"); } catch {}
-    API.clearTokens();
+    apiClient.clearTokens();
   }, []);
 
   const location = useLocation();

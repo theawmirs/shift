@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AlertTriangle, Trash2 } from "lucide-react";
-import { API } from "../../shared/lib/api";
+import { apiClient } from "../../shared/api/client";
+import { authApi } from "../../shared/api/endpoints/auth";
 import { useAuth } from "../../shared/lib/auth";
 import { useToast } from "../../shared/ui/Toast";
 import { Button } from "../../shared/ui/Button";
@@ -15,11 +16,11 @@ export function DangerZoneCard() {
   const handleDeleteAccount = async () => {
     setDeleting(true);
     try {
-      await API.authDeleteMe();
+      await authApi.authDeleteMe();
       try {
         localStorage.removeItem("wt-token");
       } catch {}
-      API.setToken(null);
+      apiClient.setToken(null);
       setUser(null);
       await logout();
       push("حساب کاربری شما و کلیه اطلاعات با موفقیت و برای همیشه حذف شد", "success");

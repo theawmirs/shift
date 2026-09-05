@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { User as UserIcon, LogOut, Save, CheckCircle2, ShieldCheck } from "lucide-react";
-import { API } from "../../shared/lib/api";
+import { apiClient } from "../../shared/api/client";
+import { authApi } from "../../shared/api/endpoints/auth";
 import { useAuth } from "../../shared/lib/auth";
 import { useToast } from "../../shared/ui/Toast";
 import { Button } from "../../shared/ui/Button";
@@ -36,7 +37,7 @@ export function ProfileCard() {
     }
     setSaving(true);
     try {
-      const res = await API.authUpdateMe(v);
+      const res = await authApi.authUpdateMe(v);
       const updated = res.user || res;
       setUser((prev: any) => ({ ...(prev || {}), ...updated, display_name: updated.display_name || v }));
       push("✅ نام نمایشی ذخیره شد");
@@ -50,12 +51,12 @@ export function ProfileCard() {
   const onLogout = async () => {
     setLoggingOut(true);
     try {
-      await API.authLogout();
+      await authApi.authLogout();
     } catch {}
     try {
       localStorage.removeItem("wt-token");
     } catch {}
-    API.setToken(null);
+    apiClient.setToken(null);
     setUser(null);
     await logout();
     push("خارج شدید — دوباره وارد شوید");

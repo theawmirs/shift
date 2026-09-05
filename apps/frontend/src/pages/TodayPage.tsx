@@ -6,7 +6,7 @@ import { DayDoneCard } from "../features/today/DayDoneCard";
 import { DailyLeaveCard } from "../features/leave/DailyLeaveCard";
 import { WeekSummary } from "../features/week/WeekSummary";
 import { useNavigate } from "react-router-dom";
-import { API } from "../shared/lib/api";
+import { attendanceApi } from "../shared/api/endpoints/attendance";
 import { HeroSkeleton, CardSkeleton } from "../shared/ui/Skeleton";
 import { Button } from "../shared/ui/Button";
 import { useTodayQuery, useRecordMutation } from "../shared/api/queries";
@@ -51,7 +51,7 @@ export function TodayPage() {
       const r = await recordMutation.mutateAsync({ event_type: et, at, allow_holiday: allowHoliday });
       if (k === "out" && otHours && otHours > 0) {
         try {
-          await API.ot(otHours);
+          await attendanceApi.ot(otHours);
         } catch {}
       }
       push(
@@ -69,7 +69,7 @@ export function TodayPage() {
 
   const onRemoteToggle = async () => {
     try {
-      const j = await API.toggleWorkMode();
+      const j = await attendanceApi.toggleWorkMode();
       push(j.mode === "remote" ? "🏠 دورکار شد" : "🏢 حضوری شد");
       await refetch();
     } catch (e: any) {

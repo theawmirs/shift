@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Download, Upload, FileText, CheckCircle2, AlertCircle, ArrowUpRight, Database } from "lucide-react";
-import { API } from "../../shared/lib/api";
+import { settingsApi } from "../../shared/api/endpoints/settings";
 import { useToast } from "../../shared/ui/Toast";
 import { Drawer } from "../../shared/ui/Drawer";
 import { Button } from "../../shared/ui/Button";
@@ -15,7 +15,7 @@ export function DataTransferCard({ onImportSuccess }: { onImportSuccess?: () => 
   const handleExportCSV = async () => {
     setExportLoading(true);
     try {
-      const blob = await API.csvExportBlob();
+      const blob = await settingsApi.csvExportBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.download = `worktime-attendance-export-${new Date().toISOString().slice(0, 10)}.csv`;
@@ -33,7 +33,7 @@ export function DataTransferCard({ onImportSuccess }: { onImportSuccess?: () => 
   const handleDownloadSample = async () => {
     setSampleLoading(true);
     try {
-      const blob = await API.csvSampleBlob();
+      const blob = await settingsApi.csvSampleBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.download = "worktime-sample-template.csv";
@@ -59,7 +59,7 @@ export function DataTransferCard({ onImportSuccess }: { onImportSuccess?: () => 
 
     setImportLoading(true);
     try {
-      const res = await API.csvImport(file, "upsert");
+      const res = await settingsApi.csvImport(file, "upsert");
       setImportResult(res);
       push(`✅ واردسازی انجام شد: ${res.inserted || 0} ثبت جدید، ${res.updated || 0} ویرایش`);
       onImportSuccess?.();

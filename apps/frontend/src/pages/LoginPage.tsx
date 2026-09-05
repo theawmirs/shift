@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Send, Copy, Clock3, RefreshCw, XCircle, ExternalLink } from "lucide-react";
 import QRCode from "qrcode";
-import { API } from "../shared/lib/api";
+import { apiClient } from "../shared/api/client";
+import { authApi } from "../shared/api/endpoints/auth";
 import { useToast } from "../shared/ui/Toast";
 import { Button } from "../shared/ui/Button";
 
@@ -81,7 +82,7 @@ export function LoginPage({ onLogin }: { onLogin: (tokens: any, user: any) => vo
     setErr("");
     setPhase("loading");
     try {
-      const data = await API.authTelegramInit();
+      const data = await authApi.authTelegramInit();
       setInitData(data);
       setPhase("ready");
       setTimeout(() => {
@@ -106,7 +107,7 @@ export function LoginPage({ onLogin }: { onLogin: (tokens: any, user: any) => vo
           pollRef.current = setInterval(async () => {
             if (verifiedHandledRef.current) return;
             try {
-              const res = await API.authPoll(tok);
+              const res = await authApi.authPoll(tok);
               const status =
                 res.status || res.state || (res.verified ? "verified" : res.token ? "verified" : "pending");
               if (status === "verified" || res.verified || res.token) {
@@ -123,7 +124,7 @@ export function LoginPage({ onLogin }: { onLogin: (tokens: any, user: any) => vo
                   localStorage.setItem("wt-token", jwt);
                   if (refresh2) localStorage.setItem("wt-refresh-token", refresh2);
                 } catch {}
-                API.setTokens(jwt, refresh2 || null);
+                apiClient.setTokens(jwt, refresh2 || null);
                 push("✅ ورود با موفقیت انجام شد — خوش آمدید!");
                 onLogin({ access_token: jwt, refresh_token: refresh2, user: res.user || null }, res.user || null);
               } else if (status === "expired") {
