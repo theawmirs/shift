@@ -3,16 +3,15 @@ import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-ro
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "../shared/api/queryClient";
 import { ToastProvider } from "../shared/ui/Toast";
-import { AttendanceProvider } from "../shared/lib/attendance";
 import { AuthContext } from "../shared/lib/auth";
 import { Topbar, BottomNav, DesktopSidebar } from "../shared/ui/Chrome";
-import { TodayPage } from "./TodayPage";
-import { WeekPage } from "./WeekPage";
-import { TasksPage } from "./TasksPage";
-import { SettingsPage } from "./SettingsPage";
+import { TodayPage } from "../pages/TodayPage";
+import { WeekPage } from "../pages/WeekPage";
+import { TasksPage } from "../pages/TasksPage";
+import { SettingsPage } from "../pages/SettingsPage";
 import { CalendarPage } from "../pages/CalendarPage";
-import { LeavesPage } from "./LeavesPage";
-import { LoginPage } from "./LoginPage";
+import { LeavesPage } from "../pages/LeavesPage";
+import { LoginPage } from "../pages/LoginPage";
 import { API } from "../shared/lib/api";
 import { User } from "../shared/types";
 
@@ -173,11 +172,9 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
-        <AttendanceProvider>
-          <BrowserRouter>
-            <Shell />
-          </BrowserRouter>
-        </AttendanceProvider>
+        <BrowserRouter>
+          <Shell />
+        </BrowserRouter>
       </ToastProvider>
     </QueryClientProvider>
   );
