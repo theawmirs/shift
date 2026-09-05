@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { API } from "../../shared/lib/api";
+import { reportsApi } from "../../shared/api/endpoints/reports";
 import {
   useMonthsQuery,
   useMonthReportQuery,
@@ -36,7 +36,7 @@ export function useMonthReport({ onExcel }: { onExcel?: (msg: string, variant?: 
   const downloadExcel = useCallback(async () => {
     if (!selMonth) return;
     try {
-      const blob = await API.excelBlob(selMonth);
+      const blob = await reportsApi.excelBlob(selMonth);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.download = `گزارش-${selMonth}.xlsx`;
