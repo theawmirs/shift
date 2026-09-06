@@ -341,6 +341,7 @@ export function TodayPage() {
             loadingAction={loadingAction}
             inTime={status.day?.in || "—"}
             dateLabel={`${status.weekday || ""} — ${shamsi}`}
+            onEditInClick={() => setEditInOpen(true)}
           />
         </>
       )}

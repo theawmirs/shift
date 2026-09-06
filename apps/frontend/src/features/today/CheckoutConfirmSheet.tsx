@@ -29,16 +29,38 @@ export function CheckoutConfirmSheet({
   onCancel,
 }: CheckoutConfirmSheetProps) {
   const liveHours = liveMinutes / 60;
+  const diffMinutes = Math.round(standardHours * 60 - liveMinutes);
 
-  const rows: Array<{ label: string; value: string; ltr?: boolean }> = [
+  const rows: Array<{ label: string; value: string; ltr?: boolean; color?: string }> = [
     { label: "زمان ورود", value: inTime, ltr: true },
     { label: "کارکرد تا این لحظه", value: fmtHoursFa(liveHours) },
     { label: "سقف موظفی روزانه", value: fmtHoursFa(standardHours) },
-    { label: "تاریخ", value: dateLabel },
   ];
+
+  if (diffMinutes > 0) {
+    rows.push({
+      label: "کسری کارکرد فعلی",
+      value: fmtHoursFa(diffMinutes / 60),
+      color: "var(--amber)",
+    });
+  } else if (diffMinutes < 0) {
+    rows.push({
+      label: "اضافه‌کاری تا الان",
+      value: fmtHoursFa(Math.abs(diffMinutes) / 60),
+      color: "var(--green, #22c55e)",
+    });
+  } else {
+    rows.push({
+      label: "وضعیت موظفی",
+      value: "تکمیل سقف موظفی 🎉",
+      color: "var(--green, #22c55e)",
+    });
+  }
+
   if (exitTime) {
     rows.push({ label: "زمان خروج انتخابی", value: exitTime, ltr: true });
   }
+  rows.push({ label: "تاریخ", value: dateLabel });
 
   return (
     <Drawer open={open} onClose={onCancel} title="تأیید ثبت خروج" height="auto">
@@ -79,7 +101,14 @@ export function CheckoutConfirmSheet({
               }}
             >
               <span style={{ color: "var(--muted)", fontWeight: 700 }}>{r.label}</span>
-              <b className="mono" style={{ direction: r.ltr ? "ltr" : "rtl", unicodeBidi: "plaintext" }}>
+              <b
+                className="mono"
+                style={{
+                  direction: r.ltr ? "ltr" : "rtl",
+                  unicodeBidi: "plaintext",
+                  color: r.color || "inherit",
+                }}
+              >
                 {r.value}
               </b>
             </div>

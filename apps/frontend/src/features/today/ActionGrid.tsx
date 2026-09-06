@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LogIn, LogOut, Coffee, Undo2, Home, Building2, Clock, Sparkles } from "lucide-react";
+import { LogIn, LogOut, Coffee, Undo2, Home, Building2, Clock, Sparkles, Pencil } from "lucide-react";
 import { Drawer } from "../../shared/ui/Drawer";
 import { Button } from "../../shared/ui/Button";
 import { fmtHoursFa } from "../../shared/lib/format";
@@ -19,6 +19,7 @@ export interface ActionGridProps {
   loadingAction?: string | null;
   inTime?: string;
   dateLabel?: string;
+  onEditInClick?: () => void;
 }
 
 export function ActionGrid({
@@ -35,6 +36,7 @@ export function ActionGrid({
   loadingAction = null,
   inTime = "—",
   dateLabel = "",
+  onEditInClick,
 }: ActionGridProps) {
   const isRemote = workMode === "remote";
   const effectiveReason = day_status_reason ?? disabledReason ?? null;
@@ -184,20 +186,32 @@ export function ActionGrid({
       {/* ── Separate Manual Time Overrides ── */}
       {(day_status === "idle" || day_status === "working" || (day_status === "holiday" && holidayOptIn)) && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
-          <Button
-            variant="ghost"
-            className="mono"
-            style={{
-              padding: "8px 10px",
-              fontSize: 11,
-              opacity: day_status !== "idle" && !(day_status === "holiday" && holidayOptIn) ? 0.4 : 1,
-              pointerEvents: day_status !== "idle" && !(day_status === "holiday" && holidayOptIn) ? "none" : "auto",
-            }}
-            onClick={() => setOverrideModal("in")}
-            icon={<Clock size={13} />}
-          >
-            ورود دستی (ساعت دلخواه)
-          </Button>
+          {day_status === "working" ? (
+            <Button
+              variant="ghost"
+              className="mono"
+              style={{ padding: "8px 10px", fontSize: 11 }}
+              onClick={onEditInClick}
+              icon={<Pencil size={13} />}
+            >
+              ویرایش ساعت ورود
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              className="mono"
+              style={{
+                padding: "8px 10px",
+                fontSize: 11,
+                opacity: day_status !== "idle" && !(day_status === "holiday" && holidayOptIn) ? 0.4 : 1,
+                pointerEvents: day_status !== "idle" && !(day_status === "holiday" && holidayOptIn) ? "none" : "auto",
+              }}
+              onClick={() => setOverrideModal("in")}
+              icon={<Clock size={13} />}
+            >
+              ورود دستی (ساعت دلخواه)
+            </Button>
+          )}
           <Button
             variant="ghost"
             className="mono"

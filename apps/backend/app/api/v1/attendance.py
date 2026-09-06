@@ -99,7 +99,7 @@ def api_edit_checkin(body: CheckinEditRequest, uid: int | None = Depends(get_cur
     try:
         day = record_service.edit_checkin_time(conn, uid, body.at, body.date)
         hhmm = (body.at or "").strip()
-        return {"ok": True, "message": f"sajat vorood be {hhmm} eslah shod", "day": day}
+        return {"ok": True, "message": f"ساعت ورود به {hhmm} اصلاح شد", "day": day}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
