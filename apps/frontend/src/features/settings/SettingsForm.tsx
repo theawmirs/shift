@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, Download, ChevronDown, Sliders, FileSpreadsheet, Save, Home, Building2 } from "lucide-react";
-import { API } from "../../shared/lib/api";
+import { reportsApi } from "../../shared/api/endpoints/reports";
 import { useToast } from "../../shared/ui/Toast";
 import { CardSkeleton } from "../../shared/ui/Skeleton";
 import { Button } from "../../shared/ui/Button";
@@ -66,7 +66,7 @@ export function SettingsForm() {
     }
     setDlLoading(true);
     try {
-      const blob = await API.excelBlob(selMonth);
+      const blob = await reportsApi.excelBlob(selMonth);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.download = `گزارش-${selMonth}.xlsx`;

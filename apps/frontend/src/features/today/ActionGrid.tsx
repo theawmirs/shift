@@ -35,6 +35,7 @@ export function ActionGrid({
   const effectiveReason = day_status_reason ?? disabledReason ?? null;
 
   const [overrideModal, setOverrideModal] = useState<"in" | "out" | null>(null);
+  const [checkoutConfirmOpen, setCheckoutConfirmOpen] = useState(false);
   const [otModal, setOtModal] = useState<{ open: boolean; extraHours: number; at?: string } | null>(null);
   const [customTime, setCustomTime] = useState<string>(() => {
     const d = new Date();
@@ -96,14 +97,21 @@ export function ActionGrid({
 
   const handleActionClick = (k: string) => {
     if (k === "out") {
-      const liveHours = liveMinutes / 60;
-      if (liveHours > standardHours) {
-        const extra = Math.round((liveHours - standardHours) * 100) / 100;
-        setOtModal({ open: true, extraHours: extra });
-        return;
-      }
+      setCheckoutConfirmOpen(true);
+      return;
     }
     onAction(k);
+  };
+
+  const handleConfirmCheckout = () => {
+    setCheckoutConfirmOpen(false);
+    const liveHours = liveMinutes / 60;
+    if (liveHours > standardHours) {
+      const extra = Math.round((liveHours - standardHours) * 100) / 100;
+      setOtModal({ open: true, extraHours: extra });
+      return;
+    }
+    onAction("out");
   };
 
   const handleManualSubmit = () => {
@@ -288,6 +296,55 @@ export function ActionGrid({
             </div>
           </div>
         )}
+      </Drawer>
+
+      {/* Checkout Confirmation Drawer */}
+      <Drawer
+        open={checkoutConfirmOpen}
+        onClose={() => setCheckoutConfirmOpen(false)}
+        title="تایید ثبت خروج"
+        height="auto"
+      >
+        <div style={{ display: "grid", gap: 14, padding: "8px 0" }}>
+          <div
+            className="row"
+            style={{
+              borderColor: "var(--border)",
+              background: "rgba(15,23,42,0.04)",
+              flexDirection: "column",
+              alignItems: "stretch",
+              gap: 8,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <LogOut size={18} style={{ color: "var(--danger, #ef4444)" }} />
+              <b style={{ fontSize: 14 }}>
+                آیا از ثبت خروج مطمئن هستید؟
+              </b>
+            </div>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
+              با ثبت خروج، روز کاری شما بسته شده و ثبت تردد جدید برای امروز پایان می‌یابد.
+            </p>
+          </div>
+
+          <div style={{ display: "grid", gap: 8 }}>
+            <Button
+              variant="primary"
+              style={{ padding: "12px", fontWeight: 800, fontSize: 13, background: "#ef4444", borderColor: "#000" }}
+              onClick={handleConfirmCheckout}
+            >
+              ✅ بله، ثبت خروج نهایی
+            </Button>
+
+            <Button
+              variant="ghost"
+              style={{ padding: "10px", fontSize: 12 }}
+              onClick={() => setCheckoutConfirmOpen(false)}
+            >
+              انصراف (بازگشت)
+            </Button>
+          </div>
+        </div>
       </Drawer>
 
       {/* Override Time Drawer */}
