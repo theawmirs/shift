@@ -141,6 +141,18 @@ export function useRecordMutation() {
   });
 }
 
+export function useEditCheckinMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ at, date }: { at: string; date?: string }) => API.editCheckin(at, date),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.today });
+      queryClient.invalidateQueries({ queryKey: queryKeys.week });
+      queryClient.invalidateQueries({ queryKey: ["month"] });
+    },
+  });
+}
+
 export function useDailyLeaveMutation() {
   const queryClient = useQueryClient();
   return useMutation({
