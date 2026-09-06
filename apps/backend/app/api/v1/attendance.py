@@ -3,6 +3,7 @@ import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app.api.deps import get_db, get_current_user_optional, get_current_user
 from app.schemas.attendance import (
+    CheckinEditRequest,
     RecordRequest,
     RecordResponse,
     StatusResponse,
@@ -90,6 +91,15 @@ def api_record(body: RecordRequest, uid: int | None = Depends(get_current_user_o
             allow_holiday=bool(body.allow_holiday),
         )
         return RecordResponse(ok=True, message=msg, day_payload=record_service.day_payload(conn, body.date or record_service.today_str(), user_id=uid))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/in/edit", summary="Edit check-in time for today or date")
+def api_edit_checkin(body: CheckinEditRequest, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
+    try:
+        day = record_service.edit_checkin_time(conn, uid, body.at, body.date)
+        hhmm = (body.at or "").strip()
+        return {"ok": True, "message": f"ساعت ورود به {hhmm} اصلاح شد", "day": day}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

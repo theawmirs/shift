@@ -60,6 +60,10 @@ class RecordRequest(BaseModel):
     note: str | None = None
     allow_holiday: bool = False
 
+class CheckinEditRequest(BaseModel):
+    at: str
+    date: str | None = None
+
 class RecordResponse(BaseModel):
     ok: bool
     message: str

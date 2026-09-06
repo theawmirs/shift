@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useToast } from "../shared/ui/Toast";
 import { Hero } from "../features/today/Hero";
 import { ActionGrid } from "../features/today/ActionGrid";
+import { EditCheckinSheet } from "../features/today/EditCheckinSheet";
 import { DayDoneCard } from "../features/today/DayDoneCard";
 import { DailyLeaveCard } from "../features/leave/DailyLeaveCard";
 import { WeekSummary } from "../features/week/WeekSummary";
@@ -9,7 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { API } from "../shared/lib/api";
 import { HeroSkeleton, CardSkeleton } from "../shared/ui/Skeleton";
 import { Button } from "../shared/ui/Button";
-import { useTodayQuery, useRecordMutation } from "../shared/api/queries";
+import { useTodayQuery, useRecordMutation, useEditCheckinMutation } from "../shared/api/queries";
 import { AlertCircle, CheckCircle, Info, Sparkles } from "lucide-react";
 
 function computeFallbackDayStatus(day: any) {
@@ -39,8 +40,10 @@ export function TodayPage() {
   const navigate = useNavigate();
   const { data: status, error, refetch } = useTodayQuery();
   const recordMutation = useRecordMutation();
+  const editCheckinMutation = useEditCheckinMutation();
   const [holidayOptIn, setHolidayOptIn] = useState(false);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [editInOpen, setEditInOpen] = useState(false);
 
   const onAction = async (k: string, at?: string, otHours?: number) => {
     const map: Record<string, string> = { in: "in", out: "out", leave: "leave_start", back: "leave_end" };
@@ -71,6 +74,17 @@ export function TodayPage() {
     try {
       const j = await API.toggleWorkMode();
       push(j.mode === "remote" ? "🏠 دورکار شد" : "🏢 حضوری شد");
+      await refetch();
+    } catch (e: any) {
+      push(`❌ ${e.message}`, "error");
+    }
+  };
+
+  const onEditCheckin = async (at: string) => {
+    try {
+      const r = await editCheckinMutation.mutateAsync({ at });
+      push(r.message || `ساعت ورود به ${at} اصلاح شد`);
+      setEditInOpen(false);
       await refetch();
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
@@ -262,8 +276,26 @@ export function TodayPage() {
         </>
       ) : (
         <>
-          <Hero liveMinutes={liveMinutes} shamsi={shamsi} weekday={status.weekday} inTime={status.day?.in || "—"} status={day_status} />
+          <Hero
+            liveMinutes={liveMinutes}
+            shamsi={shamsi}
+            weekday={status.weekday}
+            inTime={status.day?.in || "—"}
+            status={day_status}
+            inTimeEditable={day_status === "working" && !!status.day?.in && !status.day?.out}
+            onEditInClick={() => setEditInOpen(true)}
+          />
           {banner}
+
+          <EditCheckinSheet
+            open={editInOpen}
+            initialTime={status.day?.in || ""}
+            loading={editCheckinMutation.isPending}
+            onConfirm={onEditCheckin}
+            onCancel={() => {
+              if (!editCheckinMutation.isPending) setEditInOpen(false);
+            }}
+          />
 
           {day_status === "holiday" && holidayOptIn && (
             <div
@@ -307,6 +339,9 @@ export function TodayPage() {
             liveMinutes={liveMinutes}
             standardHours={Number(status.settings?.standard_hours || 8)}
             loadingAction={loadingAction}
+            inTime={status.day?.in || "—"}
+            dateLabel={`${status.weekday || ""} — ${shamsi}`}
+            onEditInClick={() => setEditInOpen(true)}
           />
         </>
       )}

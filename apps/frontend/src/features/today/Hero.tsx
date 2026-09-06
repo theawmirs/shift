@@ -1,16 +1,20 @@
-import { Clock3, BadgeCheck, BarChart3, Radio, Hourglass } from "lucide-react";
+import { Clock3, BadgeCheck, BarChart3, Radio, Hourglass, Pencil } from "lucide-react";
 
 export function Hero({
   liveMinutes,
   shamsi = "۲۹ مرداد ۱۴۰۵",
   weekday = "پنجشنبه",
   inTime = "09:42",
+  inTimeEditable = false,
+  onEditInClick,
 }: {
   liveMinutes: number;
   shamsi?: string;
   weekday?: string;
   inTime?: string;
   status?: string | null;
+  inTimeEditable?: boolean;
+  onEditInClick?: () => void;
 }) {
   const liveHours = liveMinutes / 60;
   const standardHours = 8;
@@ -41,20 +45,34 @@ export function Hero({
           </span>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             {isWorking ? (
-              <span
-                className="pill pill-live"
-                style={{
-                  background: "#22C55E",
-                  color: "#052e0b",
-                  fontSize: 11,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 5,
-                }}
-              >
-                <Radio size={13} className="pulse-icon" />
-                <span>{inTime} ورود</span>
-              </span>
+              <>
+                <span
+                  className="pill pill-live"
+                  style={{
+                    background: "#22C55E",
+                    color: "#052e0b",
+                    fontSize: 11,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                  }}
+                >
+                  <Radio size={13} className="pulse-icon" />
+                  <span>{inTime} ورود</span>
+                </span>
+                {inTimeEditable && (
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    style={{ width: 28, height: 28, borderRadius: 9, boxShadow: "2px 2px 0 #000" }}
+                    onClick={onEditInClick}
+                    title="ویرایش ساعت ورود"
+                    aria-label="ویرایش ساعت ورود"
+                  >
+                    <Pencil size={13} />
+                  </button>
+                )}
+              </>
             ) : (
               <span
                 className="pill pill-idle"
