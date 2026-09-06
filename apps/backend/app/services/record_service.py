@@ -338,6 +338,64 @@ def record_event(conn: sqlite3.Connection, event_type: str, at: str | None = Non
     }
     return labels.get(event_type, f"رویداد {event_type} در {time_str} ثبت شد")
 
+def edit_checkin_time(conn: sqlite3.Connection, user_id: int | None, at: str, date: str | None = None) -> dict:
+    sdate = date or today_str()
+    raw = (at or "").strip()
+    m = re.match(r"^(\d{1,2}):(\d{2})$", raw)
+    if not m:
+        raise ValueError("ساعت ورود نامعتبر است")
+    hh, mm = int(m.group(1)), int(m.group(2))
+    if hh < 0 or hh > 23 or mm < 0 or mm > 59:
+        raise ValueError("ساعت ورود نامعتبر است")
+
+    if user_id is None:
+        in_row = conn.execute(
+            "SELECT id FROM events WHERE shamsi_date=? AND event_type='in' AND user_id IS NULL ORDER BY ts_utc ASC LIMIT 1",
+            (sdate,),
+        ).fetchone()
+        out_row = conn.execute(
+            "SELECT id FROM events WHERE shamsi_date=? AND event_type='out' AND user_id IS NULL LIMIT 1",
+            (sdate,),
+        ).fetchone()
+    else:
+        in_row = conn.execute(
+            "SELECT id FROM events WHERE shamsi_date=? AND event_type='in' AND user_id=? ORDER BY ts_utc ASC LIMIT 1",
+            (sdate, user_id),
+        ).fetchone()
+        out_row = conn.execute(
+            "SELECT id FROM events WHERE shamsi_date=? AND event_type='out' AND user_id=? LIMIT 1",
+            (sdate, user_id),
+        ).fetchone()
+    if in_row is None:
+        raise ValueError("هنوز ورود ثبت نشده")
+    if out_row is not None:
+        raise ValueError("امروز قبلا خروج ثبت شده — تا فردا")
+
+    jy, jm, jd = parse_date(sdate)
+    gy, gm, gd = jalali.jalali_to_gregorian(jy, jm, jd)
+    new_tehran = datetime.datetime(gy, gm, gd, hh, mm, tzinfo=settings.tehran_tz)
+    now = now_tehran()
+    if new_tehran > now + datetime.timedelta(minutes=5):
+        raise ValueError("ساعت ورود نميتواند در آينده باشد")
+
+    events = day_events(conn, sdate, user_id)
+    leave_open = False
+    last_ls = None
+    for et, dt, _ in events:
+        if et == "leave_start":
+            last_ls = dt
+            leave_open = True
+        elif et == "leave_end":
+            last_ls = None
+            leave_open = False
+    if leave_open and last_ls is not None and not (new_tehran < last_ls):
+        raise ValueError("ساعت ورود بايد قبل از شروع مرخصي باشد")
+
+    new_utc = new_tehran.astimezone(datetime.timezone.utc).isoformat()
+    conn.execute("UPDATE events SET ts_utc=? WHERE id=?", (new_utc, in_row["id"]))
+    conn.commit()
+    return day_payload(conn, sdate, user_id=user_id)
+
 def record_overtime(conn: sqlite3.Connection, hours: str, date_str: str | None = None, user_id: int | None = None) -> str:
     sdate = date_str or today_str()
     try:
