@@ -657,7 +657,7 @@ export function TasksList() {
           </span>
         </div>
 
-        {queryError ? (
+        {queryError && !tasksData ? (
           <div style={{ textAlign: "center", padding: "20px 0", color: "var(--red)" }}>
             خطا در دریافت تسک‌ها: {String((queryError as any)?.message || queryError)}
           </div>

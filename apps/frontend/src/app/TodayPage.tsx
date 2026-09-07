@@ -91,7 +91,7 @@ export function TodayPage() {
     }
   };
 
-  if (error)
+  if (error && !status)
     return (
       <div className="card">
         <p style={{ color: "var(--red)", fontWeight: 800 }}>❌ {String((error as any)?.message || error)}</p>
