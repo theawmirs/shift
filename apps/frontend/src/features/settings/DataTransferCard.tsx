@@ -61,8 +61,8 @@ export function DataTransferCard({ onImportSuccess }: { onImportSuccess?: () => 
     try {
       const res = await API.csvImport(file, "upsert");
       setImportResult(res);
+      await onImportSuccess?.();
       push(`✅ واردسازی انجام شد: ${res.inserted || 0} ثبت جدید، ${res.updated || 0} ویرایش`);
-      onImportSuccess?.();
     } catch (e: any) {
       push(`❌ خطا در ورود اطلاعات: ${e.message}`, "error");
     } finally {

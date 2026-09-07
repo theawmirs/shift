@@ -351,6 +351,9 @@ export const API = {
   record(event_type: string, at?: string, date?: string, allow_holiday?: boolean): Promise<any> {
     return this.jpost("/api/record", { event_type, at, date, allow_holiday: !!allow_holiday });
   },
+  editCheckin(at: string, date?: string): Promise<any> {
+    return this.jpost("/api/in/edit", { at, date });
+  },
   editDay(body: {
     date: string;
     in_time?: string | null;

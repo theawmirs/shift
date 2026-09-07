@@ -177,14 +177,15 @@ export function DailyLeaveDrawer({
         type: typ,
         reason: reason.trim() || undefined,
       });
+      setEndDate("");
+      setReason("");
+      onClose?.();
+      onChanged?.();
       push(
         `✅ مرخصی ثبت شد — ${r.start_date}${r.end_date !== r.start_date ? ` تا ${r.end_date}` : ""} · ${
           r.hours
         } ساعت`
       );
-      setEndDate("");
-      setReason("");
-      onChanged?.();
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
     }
@@ -193,8 +194,8 @@ export function DailyLeaveDrawer({
   const cancel = async (id: number | string) => {
     try {
       await deleteMutation.mutateAsync(id);
-      push("🗑 مرخصی لغو شد");
       onChanged?.();
+      push("🗑 مرخصی لغو شد");
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
     }

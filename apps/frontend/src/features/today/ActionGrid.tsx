@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { LogIn, LogOut, Coffee, Undo2, Home, Building2, Clock, Sparkles } from "lucide-react";
+import { LogIn, LogOut, Coffee, Undo2, Home, Building2, Clock, Sparkles, Pencil } from "lucide-react";
 import { Drawer } from "../../shared/ui/Drawer";
 import { Button } from "../../shared/ui/Button";
 import { fmtHoursFa } from "../../shared/lib/format";
+import { CheckoutConfirmSheet } from "./CheckoutConfirmSheet";
 
 export interface ActionGridProps {
   onAction: (k: string, at?: string, otHours?: number) => void;
@@ -16,6 +17,9 @@ export interface ActionGridProps {
   liveMinutes?: number;
   standardHours?: number;
   loadingAction?: string | null;
+  inTime?: string;
+  dateLabel?: string;
+  onEditInClick?: () => void;
 }
 
 export function ActionGrid({
@@ -30,18 +34,23 @@ export function ActionGrid({
   liveMinutes = 0,
   standardHours = 8,
   loadingAction = null,
+  inTime = "—",
+  dateLabel = "",
+  onEditInClick,
 }: ActionGridProps) {
   const isRemote = workMode === "remote";
   const effectiveReason = day_status_reason ?? disabledReason ?? null;
 
   const [overrideModal, setOverrideModal] = useState<"in" | "out" | null>(null);
   const [otModal, setOtModal] = useState<{ open: boolean; extraHours: number; at?: string } | null>(null);
+  const [confirmSheet, setConfirmSheet] = useState<{ open: boolean; at?: string }>({ open: false });
   const [customTime, setCustomTime] = useState<string>(() => {
     const d = new Date();
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   });
 
   function isDisabled(k: string) {
+    if (confirmSheet.open) return true;
     if (loadingAction !== null) return true;
     if (day_status === "done") return true;
     if (day_status === "holiday" && !holidayOptIn) return true;
@@ -96,27 +105,38 @@ export function ActionGrid({
 
   const handleActionClick = (k: string) => {
     if (k === "out") {
-      const liveHours = liveMinutes / 60;
-      if (liveHours > standardHours) {
-        const extra = Math.round((liveHours - standardHours) * 100) / 100;
-        setOtModal({ open: true, extraHours: extra });
-        return;
-      }
+      // Open confirm sheet; confirm continues through the existing OT flow.
+      setConfirmSheet({ open: true });
+      return;
     }
     onAction(k);
+  };
+
+  const proceedWithExit = (at?: string) => {
+    const liveHours = liveMinutes / 60;
+    if (liveHours > standardHours) {
+      const extra = Math.round((liveHours - standardHours) * 100) / 100;
+      setOtModal({ open: true, extraHours: extra, at });
+      return;
+    }
+    onAction("out", at);
+  };
+
+  const handleConfirmExit = () => {
+    if (loadingAction === "out") return;
+    const at = confirmSheet.at;
+    setConfirmSheet({ open: false });
+    proceedWithExit(at);
   };
 
   const handleManualSubmit = () => {
     if (!overrideModal || !customTime) return;
     const at = customTime.trim();
     if (overrideModal === "out") {
-      const liveHours = liveMinutes / 60;
-      if (liveHours > standardHours) {
-        const extra = Math.round((liveHours - standardHours) * 100) / 100;
-        setOverrideModal(null);
-        setOtModal({ open: true, extraHours: extra, at });
-        return;
-      }
+      // Manual exit goes through the confirm sheet showing the chosen time.
+      setOverrideModal(null);
+      setConfirmSheet({ open: true, at });
+      return;
     }
     onAction(overrideModal, at);
     setOverrideModal(null);
@@ -166,20 +186,32 @@ export function ActionGrid({
       {/* ── Separate Manual Time Overrides ── */}
       {(day_status === "idle" || day_status === "working" || (day_status === "holiday" && holidayOptIn)) && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
-          <Button
-            variant="ghost"
-            className="mono"
-            style={{
-              padding: "8px 10px",
-              fontSize: 11,
-              opacity: day_status !== "idle" && !(day_status === "holiday" && holidayOptIn) ? 0.4 : 1,
-              pointerEvents: day_status !== "idle" && !(day_status === "holiday" && holidayOptIn) ? "none" : "auto",
-            }}
-            onClick={() => setOverrideModal("in")}
-            icon={<Clock size={13} />}
-          >
-            ورود دستی (ساعت دلخواه)
-          </Button>
+          {day_status === "working" ? (
+            <Button
+              variant="ghost"
+              className="mono"
+              style={{ padding: "8px 10px", fontSize: 11 }}
+              onClick={onEditInClick}
+              icon={<Pencil size={13} />}
+            >
+              ویرایش ساعت ورود
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              className="mono"
+              style={{
+                padding: "8px 10px",
+                fontSize: 11,
+                opacity: day_status !== "idle" && !(day_status === "holiday" && holidayOptIn) ? 0.4 : 1,
+                pointerEvents: day_status !== "idle" && !(day_status === "holiday" && holidayOptIn) ? "none" : "auto",
+              }}
+              onClick={() => setOverrideModal("in")}
+              icon={<Clock size={13} />}
+            >
+              ورود دستی (ساعت دلخواه)
+            </Button>
+          )}
           <Button
             variant="ghost"
             className="mono"
@@ -227,6 +259,21 @@ export function ActionGrid({
           {isRemote ? "دورکار" : "حضوری"}
         </span>
       </button>
+
+      {/* Checkout Confirmation Sheet — cancel/Escape/backdrop/drag records nothing */}
+      <CheckoutConfirmSheet
+        open={confirmSheet.open}
+        inTime={inTime ?? "—"}
+        liveMinutes={liveMinutes}
+        standardHours={standardHours}
+        dateLabel={dateLabel ?? ""}
+        loading={loadingAction === "out"}
+        exitTime={confirmSheet.at}
+        onConfirm={handleConfirmExit}
+        onCancel={() => {
+          if (loadingAction !== "out") setConfirmSheet({ open: false });
+        }}
+      />
 
       {/* Overtime Decision Modal */}
       <Drawer

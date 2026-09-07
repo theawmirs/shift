@@ -35,9 +35,17 @@ export function useAddTaskMutation() {
   return useMutation({
     mutationFn: (body: { title: string; description?: string; priority?: string; due_date?: string; date?: string }) =>
       API.addTask(body),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: queryKeys.today });
+    onSuccess: async (res) => {
+      if (res?.task) {
+        queryClient.setQueriesData({ queryKey: ["tasks"] }, (old: any) => {
+          if (!old || !Array.isArray(old.tasks)) return old;
+          return { ...old, tasks: [res.task, ...old.tasks] };
+        });
+      }
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+      ]);
     },
   });
 }
@@ -47,9 +55,20 @@ export function usePatchTaskMutation() {
   return useMutation({
     mutationFn: ({ id, body }: { id: number | string; body: { title?: string; description?: string; priority?: string; due_date?: string; done?: boolean } }) =>
       API.patchTask(id, body),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: queryKeys.today });
+    onSuccess: async (res) => {
+      if (res?.task) {
+        queryClient.setQueriesData({ queryKey: ["tasks"] }, (old: any) => {
+          if (!old || !Array.isArray(old.tasks)) return old;
+          return {
+            ...old,
+            tasks: old.tasks.map((task: any) => (task.id === res.task.id ? { ...task, ...res.task } : task)),
+          };
+        });
+      }
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+      ]);
     },
   });
 }
@@ -58,9 +77,18 @@ export function useDeleteTaskMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number | string) => API.delTask(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: queryKeys.today });
+    onSuccess: async (_res, id) => {
+      queryClient.setQueriesData({ queryKey: ["tasks"] }, (old: any) => {
+        if (!old || !Array.isArray(old.tasks)) return old;
+        return {
+          ...old,
+          tasks: old.tasks.filter((task: any) => task.id !== id),
+        };
+      });
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+      ]);
     },
   });
 }
@@ -110,11 +138,13 @@ export function useUpdateSettingsMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ key, value }: { key: string; value: any }) => API.putSetting(key, value),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.settings });
-      queryClient.invalidateQueries({ queryKey: queryKeys.today });
-      queryClient.invalidateQueries({ queryKey: queryKeys.week });
-      queryClient.invalidateQueries({ queryKey: ["month"] });
+    onSuccess: async () => {
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.settings }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.week }),
+        queryClient.invalidateQueries({ queryKey: ["month"] }),
+      ]);
     },
   });
 }
@@ -132,11 +162,51 @@ export function useRecordMutation() {
   return useMutation({
     mutationFn: ({ event_type, at, date, allow_holiday }: { event_type: string; at?: string; date?: string; allow_holiday?: boolean }) =>
       API.record(event_type, at, date, allow_holiday),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.today });
-      queryClient.invalidateQueries({ queryKey: queryKeys.week });
-      queryClient.invalidateQueries({ queryKey: ["month"] });
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    onSuccess: async (res) => {
+      if (res?.day_payload) {
+        queryClient.setQueryData(queryKeys.today, (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            day: res.day_payload,
+            day_status: res.day_payload?.day_status ?? old.day_status,
+            day_status_label: res.day_payload?.day_status_label ?? old.day_status_label,
+            day_status_reason: res.day_payload?.day_status_reason ?? old.day_status_reason,
+          };
+        });
+      }
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.week }),
+        queryClient.invalidateQueries({ queryKey: ["month"] }),
+        queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+      ]);
+    },
+  });
+}
+
+export function useEditCheckinMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ at, date }: { at: string; date?: string }) => API.editCheckin(at, date),
+    onSuccess: async (res) => {
+      if (res?.day) {
+        queryClient.setQueryData(queryKeys.today, (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            day: res.day,
+            day_status: res.day?.day_status ?? old.day_status,
+            day_status_label: res.day?.day_status_label ?? old.day_status_label,
+            day_status_reason: res.day?.day_status_reason ?? old.day_status_reason,
+          };
+        });
+      }
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.week }),
+        queryClient.invalidateQueries({ queryKey: ["month"] }),
+      ]);
     },
   });
 }
@@ -146,11 +216,13 @@ export function useDailyLeaveMutation() {
   return useMutation({
     mutationFn: (params: { date: string; end_date?: string; type?: string; reason?: string }) =>
       API.createDailyLeave(params),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.leaves });
-      queryClient.invalidateQueries({ queryKey: queryKeys.today });
-      queryClient.invalidateQueries({ queryKey: queryKeys.week });
-      queryClient.invalidateQueries({ queryKey: ["month"] });
+    onSuccess: async () => {
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.leaves }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.week }),
+        queryClient.invalidateQueries({ queryKey: ["month"] }),
+      ]);
     },
   });
 }
@@ -160,11 +232,13 @@ export function useHourlyLeaveMutation() {
   return useMutation({
     mutationFn: ({ at, date }: { at?: string; date?: string } = {}) =>
       API.record("leave_start", at, date),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.leaves });
-      queryClient.invalidateQueries({ queryKey: queryKeys.today });
-      queryClient.invalidateQueries({ queryKey: queryKeys.week });
-      queryClient.invalidateQueries({ queryKey: ["month"] });
+    onSuccess: async () => {
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.leaves }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.week }),
+        queryClient.invalidateQueries({ queryKey: ["month"] }),
+      ]);
     },
   });
 }
@@ -173,11 +247,13 @@ export function useDeleteLeaveMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number | string) => API.deleteDailyLeave(Number(id)),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.leaves });
-      queryClient.invalidateQueries({ queryKey: queryKeys.today });
-      queryClient.invalidateQueries({ queryKey: queryKeys.week });
-      queryClient.invalidateQueries({ queryKey: ["month"] });
+    onSuccess: async () => {
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.leaves }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.week }),
+        queryClient.invalidateQueries({ queryKey: ["month"] }),
+      ]);
     },
   });
 }
