@@ -80,8 +80,8 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
         work_mode: workMode,
         notes: notes.trim() || null,
       });
+      await queryClient.invalidateQueries();
       push(`✅ ساعت کاری تاریخ ${dateFormatted} ذخیره شد`);
-      queryClient.invalidateQueries();
       setIsEditing(false);
       onUpdated?.(res.day);
       onClose();
@@ -105,8 +105,8 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
         work_mode: "office",
         notes: null,
       });
+      await queryClient.invalidateQueries();
       push(`🗑 ساعات کاری تاریخ ${dateFormatted} پاک شد`);
-      queryClient.invalidateQueries();
       setIsEditing(false);
       setShowConfirmDelete(false);
       onUpdated?.(res.day);
