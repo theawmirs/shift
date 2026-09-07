@@ -35,7 +35,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const push = (msg: string, variant: ToastVariant = "success") => {
     const id = Date.now() + Math.random();
     setToasts((s) => [...s, { id, msg, variant }]);
-    setTimeout(() => setToasts((s) => s.filter((t) => t.id !== id)), 2800);
+    setTimeout(() => setToasts((s) => s.filter((t) => t.id !== id)), 3200);
   };
   const dismiss = (id: number) => setToasts((s) => s.filter((t) => t.id !== id));
   return (

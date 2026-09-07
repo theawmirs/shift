@@ -57,11 +57,11 @@ export function TodayPage() {
           await API.ot(otHours);
         } catch {}
       }
+      await refetch();
       push(
         r.message ||
           (k === "in" ? `✅ ورود ثبت شد${at ? ` (${at})` : ""}` : k === "out" ? `✅ خروج ثبت شد${at ? ` (${at})` : ""}` : k === "leave" ? "🟡 مرخصی شروع شد" : "🔵 برگشتم")
       );
-      await refetch();
       if (k === "out") navigate("/reports");
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
@@ -73,8 +73,8 @@ export function TodayPage() {
   const onRemoteToggle = async () => {
     try {
       const j = await API.toggleWorkMode();
-      push(j.mode === "remote" ? "🏠 دورکار شد" : "🏢 حضوری شد");
       await refetch();
+      push(j.mode === "remote" ? "🏠 دورکار شد" : "🏢 حضوری شد");
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
     }
@@ -83,9 +83,9 @@ export function TodayPage() {
   const onEditCheckin = async (at: string) => {
     try {
       const r = await editCheckinMutation.mutateAsync({ at });
-      push(r.message || `ساعت ورود به ${at} اصلاح شد`);
-      setEditInOpen(false);
       await refetch();
+      setEditInOpen(false);
+      push(r.message || `ساعت ورود به ${at} اصلاح شد`);
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
     }

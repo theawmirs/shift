@@ -8,7 +8,7 @@ export function SettingsPage() {
   const queryClient = useQueryClient();
 
   const handleRefreshData = () => {
-    queryClient.invalidateQueries();
+    return queryClient.invalidateQueries();
   };
 
   return (
