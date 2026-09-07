@@ -36,7 +36,7 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
     return <CardSkeleton rows={5} />;
   }
 
-  if (err) {
+  if (err && !m && !months.length) {
     return (
       <div className="card">
         <p style={{ color: "var(--red)", fontWeight: 800 }}>❌ {err}</p>
