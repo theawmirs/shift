@@ -2,7 +2,7 @@ import { useState } from "react";
 import { LogIn, LogOut, Coffee, Undo2, Home, Building2, Clock, Sparkles, Pencil } from "lucide-react";
 import { Drawer } from "../../shared/ui/Drawer";
 import { Button } from "../../shared/ui/Button";
-import { fmtHoursFa } from "../../shared/lib/format";
+import { fmtHoursFa, toAsciiDigits } from "../../shared/lib/format";
 import { useToast } from "../../shared/ui/Toast";
 import { CheckoutConfirmSheet } from "./CheckoutConfirmSheet";
 
@@ -26,7 +26,8 @@ export interface ActionGridProps {
 
 function parseTimeToMinutes(timeStr?: string | null): number | null {
   if (!timeStr || !timeStr.includes(":")) return null;
-  const parts = timeStr.trim().split(":");
+  const clean = toAsciiDigits(timeStr).trim();
+  const parts = clean.split(":");
   const h = parseInt(parts[0], 10);
   const m = parseInt(parts[1], 10);
   if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) return null;
