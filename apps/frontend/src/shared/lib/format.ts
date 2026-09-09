@@ -55,6 +55,13 @@ function toFaDigits(n: number | string): string {
   return String(n).replace(/[0-9]/g, (d) => FA_DIGITS[Number(d)]);
 }
 
+export function toAsciiDigits(str: string | null | undefined): string {
+  if (!str) return "";
+  return String(str)
+    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 1776))
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 1632));
+}
+
 export function fmtHoursCompactFa(val: number | string | null | undefined): string {
   if (val == null) return "۰ دقیقه";
   const num = typeof val === "string" ? parseFloat(val) : val;

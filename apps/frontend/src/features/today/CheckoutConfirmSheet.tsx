@@ -1,7 +1,7 @@
 import { AlertTriangle } from "lucide-react";
 import { Drawer } from "../../shared/ui/Drawer";
 import { Button } from "../../shared/ui/Button";
-import { fmtHoursFa } from "../../shared/lib/format";
+import { fmtHoursFa, toAsciiDigits } from "../../shared/lib/format";
 
 export interface CheckoutConfirmSheetProps {
   open: boolean;
@@ -35,15 +35,18 @@ export function CheckoutConfirmSheet({
 
   if (exitTime && inTime && inTime !== "—") {
     const parseM = (s: string) => {
-      const p = s.split(":");
+      const clean = toAsciiDigits(s).trim();
+      const p = clean.split(":");
       return parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
     };
     try {
       const inM = parseM(inTime);
       const outM = parseM(exitTime);
-      const grossM = Math.max(0, outM - inM);
-      const leaveM = Math.round(leaveHours * 60);
-      effectiveMinutes = Math.max(0, grossM - leaveM);
+      if (!isNaN(inM) && !isNaN(outM)) {
+        const grossM = Math.max(0, outM - inM);
+        const leaveM = Math.round(leaveHours * 60);
+        effectiveMinutes = Math.max(0, grossM - leaveM);
+      }
     } catch {
       effectiveMinutes = liveMinutes;
     }
