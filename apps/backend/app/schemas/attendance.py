@@ -84,7 +84,7 @@ class DayEditResponse(BaseModel):
     day: dict[str, Any]
 
 class OvertimeRequest(BaseModel):
-    hours: str
+    hours: float | str | None = None
     date: str | None = None
 
 class OvertimeResponse(BaseModel):

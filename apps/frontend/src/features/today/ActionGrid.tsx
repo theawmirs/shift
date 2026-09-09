@@ -3,6 +3,7 @@ import { LogIn, LogOut, Coffee, Undo2, Home, Building2, Clock, Sparkles, Pencil 
 import { Drawer } from "../../shared/ui/Drawer";
 import { Button } from "../../shared/ui/Button";
 import { fmtHoursFa } from "../../shared/lib/format";
+import { useToast } from "../../shared/ui/Toast";
 import { CheckoutConfirmSheet } from "./CheckoutConfirmSheet";
 
 export interface ActionGridProps {
@@ -15,11 +16,40 @@ export interface ActionGridProps {
   leave_open?: boolean;
   holidayOptIn?: boolean;
   liveMinutes?: number;
+  leaveHours?: number;
   standardHours?: number;
   loadingAction?: string | null;
   inTime?: string;
   dateLabel?: string;
   onEditInClick?: () => void;
+}
+
+function parseTimeToMinutes(timeStr?: string | null): number | null {
+  if (!timeStr || !timeStr.includes(":")) return null;
+  const parts = timeStr.trim().split(":");
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) return null;
+  return h * 60 + m;
+}
+
+function computeEffectiveWorkedMinutes(
+  inTimeStr?: string | null,
+  outTimeStr?: string | null,
+  leaveHours: number = 0,
+  fallbackLiveMinutes: number = 0
+): number {
+  if (!outTimeStr) {
+    return fallbackLiveMinutes;
+  }
+  const inM = parseTimeToMinutes(inTimeStr);
+  const outM = parseTimeToMinutes(outTimeStr);
+  if (inM === null || outM === null) {
+    return fallbackLiveMinutes;
+  }
+  const gross = Math.max(0, outM - inM);
+  const leaveM = Math.round(leaveHours * 60);
+  return Math.max(0, gross - leaveM);
 }
 
 export function ActionGrid({
@@ -32,12 +62,14 @@ export function ActionGrid({
   leave_open,
   holidayOptIn = false,
   liveMinutes = 0,
+  leaveHours = 0,
   standardHours = 8,
   loadingAction = null,
   inTime = "—",
   dateLabel = "",
   onEditInClick,
 }: ActionGridProps) {
+  const { push } = useToast();
   const isRemote = workMode === "remote";
   const effectiveReason = day_status_reason ?? disabledReason ?? null;
 
@@ -113,9 +145,10 @@ export function ActionGrid({
   };
 
   const proceedWithExit = (at?: string) => {
-    const liveHours = liveMinutes / 60;
-    if (liveHours > standardHours) {
-      const extra = Math.round((liveHours - standardHours) * 100) / 100;
+    const workedMinutes = computeEffectiveWorkedMinutes(inTime, at, leaveHours, liveMinutes);
+    const workedHours = workedMinutes / 60;
+    if (workedHours > standardHours) {
+      const extra = Math.round((workedHours - standardHours) * 100) / 100;
       setOtModal({ open: true, extraHours: extra, at });
       return;
     }
@@ -132,12 +165,31 @@ export function ActionGrid({
   const handleManualSubmit = () => {
     if (!overrideModal || !customTime) return;
     const at = customTime.trim();
+    const timeM = parseTimeToMinutes(at);
+    if (timeM === null) {
+      push("❌ فرمت ساعت نامعتبر است (مثال: 18:00)", "error");
+      return;
+    }
+
+    const d = new Date();
+    const nowMinutes = d.getHours() * 60 + d.getMinutes();
+    if (timeM > nowMinutes + 5) {
+      push("❌ ساعت وارد شده نمی‌تواند در آینده باشد", "error");
+      return;
+    }
+
     if (overrideModal === "out") {
+      const inM = parseTimeToMinutes(inTime);
+      if (inM !== null && timeM <= inM) {
+        push("❌ ساعت خروج باید بعد از ساعت ورود باشد", "error");
+        return;
+      }
       // Manual exit goes through the confirm sheet showing the chosen time.
       setOverrideModal(null);
       setConfirmSheet({ open: true, at });
       return;
     }
+
     onAction(overrideModal, at);
     setOverrideModal(null);
   };
@@ -265,6 +317,7 @@ export function ActionGrid({
         open={confirmSheet.open}
         inTime={inTime ?? "—"}
         liveMinutes={liveMinutes}
+        leaveHours={leaveHours}
         standardHours={standardHours}
         dateLabel={dateLabel ?? ""}
         loading={loadingAction === "out"}

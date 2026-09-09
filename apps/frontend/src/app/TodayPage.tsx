@@ -337,6 +337,7 @@ export function TodayPage() {
             disabledReason={bannerReason}
             leave_open={!!status.day?.leave_open}
             liveMinutes={liveMinutes}
+            leaveHours={Number(status.day?.leave || 0)}
             standardHours={Number(status.settings?.standard_hours || 8)}
             loadingAction={loadingAction}
             inTime={status.day?.in || "—"}

@@ -7,6 +7,7 @@ export interface CheckoutConfirmSheetProps {
   open: boolean;
   inTime: string;
   liveMinutes: number;
+  leaveHours?: number;
   standardHours: number;
   dateLabel: string;
   loading: boolean;
@@ -21,6 +22,7 @@ export function CheckoutConfirmSheet({
   open,
   inTime,
   liveMinutes,
+  leaveHours = 0,
   standardHours,
   dateLabel,
   loading,
@@ -28,24 +30,50 @@ export function CheckoutConfirmSheet({
   onConfirm,
   onCancel,
 }: CheckoutConfirmSheetProps) {
-  const liveHours = liveMinutes / 60;
-  const diffMinutes = Math.round(standardHours * 60 - liveMinutes);
+  let effectiveMinutes = liveMinutes;
+  const isManual = Boolean(exitTime);
+
+  if (exitTime && inTime && inTime !== "—") {
+    const parseM = (s: string) => {
+      const p = s.split(":");
+      return parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
+    };
+    try {
+      const inM = parseM(inTime);
+      const outM = parseM(exitTime);
+      const grossM = Math.max(0, outM - inM);
+      const leaveM = Math.round(leaveHours * 60);
+      effectiveMinutes = Math.max(0, grossM - leaveM);
+    } catch {
+      effectiveMinutes = liveMinutes;
+    }
+  }
+
+  const effectiveHours = effectiveMinutes / 60;
+  const diffMinutes = Math.round(standardHours * 60 - effectiveMinutes);
 
   const rows: Array<{ label: string; value: string; ltr?: boolean; color?: string }> = [
     { label: "زمان ورود", value: inTime, ltr: true },
-    { label: "کارکرد تا این لحظه", value: fmtHoursFa(liveHours) },
-    { label: "سقف موظفی روزانه", value: fmtHoursFa(standardHours) },
   ];
+
+  if (isManual && exitTime) {
+    rows.push({ label: "زمان خروج انتخابی", value: exitTime, ltr: true });
+    rows.push({ label: "کارکرد تا ساعت خروج", value: fmtHoursFa(effectiveHours) });
+  } else {
+    rows.push({ label: "کارکرد تا این لحظه", value: fmtHoursFa(effectiveHours) });
+  }
+
+  rows.push({ label: "سقف موظفی روزانه", value: fmtHoursFa(standardHours) });
 
   if (diffMinutes > 0) {
     rows.push({
-      label: "کسری کارکرد فعلی",
+      label: isManual ? "کسری کارکرد" : "کسری کارکرد فعلی",
       value: fmtHoursFa(diffMinutes / 60),
       color: "var(--amber)",
     });
   } else if (diffMinutes < 0) {
     rows.push({
-      label: "اضافه‌کاری تا الان",
+      label: isManual ? "اضافه‌کاری" : "اضافه‌کاری تا الان",
       value: fmtHoursFa(Math.abs(diffMinutes) / 60),
       color: "var(--green, #22c55e)",
     });
@@ -55,10 +83,6 @@ export function CheckoutConfirmSheet({
       value: "تکمیل سقف موظفی 🎉",
       color: "var(--green, #22c55e)",
     });
-  }
-
-  if (exitTime) {
-    rows.push({ label: "زمان خروج انتخابی", value: exitTime, ltr: true });
   }
   rows.push({ label: "تاریخ", value: dateLabel });
 
