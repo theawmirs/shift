@@ -9,7 +9,7 @@ export function WeekSummary() {
   const { data, error, isLoading } = useWeekReportQuery();
   const [selectedDay, setSelectedDay] = useState<any | null>(null);
 
-  if (error && !data)
+  if (error)
     return (
       <div className="card">
         <p style={{ color: "var(--red)", fontWeight: 800 }}>❌ {String((error as any)?.message || error)}</p>

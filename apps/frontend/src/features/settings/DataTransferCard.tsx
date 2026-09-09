@@ -13,10 +13,6 @@ export function DataTransferCard({ onImportSuccess }: { onImportSuccess?: () => 
   const [importResult, setImportResult] = useState<any | null>(null);
 
   const handleExportCSV = async () => {
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      push("⚠️ دریافت خروجی CSV نیازمند اتصال به اینترنت است", "error");
-      return;
-    }
     setExportLoading(true);
     try {
       const blob = await API.csvExportBlob();
@@ -55,12 +51,6 @@ export function DataTransferCard({ onImportSuccess }: { onImportSuccess?: () => 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      push("⚠️ ورود اطلاعات از فایل CSV نیازمند اتصال به اینترنت است", "error");
-      e.target.value = "";
-      return;
-    }
 
     if (!file.name.endsWith(".csv")) {
       push("❌ فقط فایل با پسوند CSV مجاز است", "error");

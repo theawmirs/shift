@@ -35,10 +35,6 @@ export function useMonthReport({ onExcel }: { onExcel?: (msg: string, variant?: 
 
   const downloadExcel = useCallback(async () => {
     if (!selMonth) return;
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      onExcel?.("⚠️ دریافت فایل اکسل نیازمند اتصال به اینترنت است", "error");
-      return;
-    }
     try {
       const blob = await API.excelBlob(selMonth);
       const url = URL.createObjectURL(blob);

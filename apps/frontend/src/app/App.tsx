@@ -1,13 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
-import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { queryClient, idbPersister } from "../shared/api/queryClient";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "../shared/api/queryClient";
 import { ToastProvider } from "../shared/ui/Toast";
 import { AttendanceProvider } from "../shared/lib/attendance";
 import { AuthContext } from "../shared/lib/auth";
 import { Topbar, BottomNav, DesktopSidebar } from "../shared/ui/Chrome";
-import { OfflineBanner } from "../shared/ui/OfflineBanner";
-import { processOfflineOutbox } from "../shared/lib/offlineSync";
 import { TodayPage } from "./TodayPage";
 import { WeekPage } from "./WeekPage";
 import { TasksPage } from "./TasksPage";
@@ -29,14 +27,7 @@ function Shell() {
   const [token, setToken] = useState<string | null>(() => {
     try { return localStorage.getItem("wt-token"); } catch { return null; }
   });
-  const [user, setUser] = useState<User | null>(() => {
-    try {
-      const s = localStorage.getItem("wt-user");
-      return s ? JSON.parse(s) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [user, setUser] = useState<User | null>(null);
   const [checking, setChecking] = useState<boolean>(true);
 
   useEffect(() => {
@@ -55,7 +46,6 @@ function Shell() {
       try {
         localStorage.removeItem("wt-token");
         localStorage.removeItem("wt-refresh-token");
-        localStorage.removeItem("wt-user");
       } catch {}
       API.clearTokens();
       queryClient.clear();
@@ -77,66 +67,32 @@ function Shell() {
       const rt = localStorage.getItem("wt-refresh-token");
       if (rt) API.setRefreshToken(rt);
     } catch {}
-
-    // If offline, do NOT try network auth — use cached token & user safely
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      setChecking(false);
-      return;
-    }
-
     API.authMe()
       .then((data: any) => {
         const u = data.user || data;
         setUser(u);
-        try { localStorage.setItem("wt-user", JSON.stringify(u)); } catch {}
-        // If online and connected, attempt to sync any pending outbox items
-        processOfflineOutbox().catch(() => {});
       })
-      .catch(async (err: any) => {
-        const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
-        const isNetErr =
-          err?.name === "TypeError" ||
-          String(err?.message || "").toLowerCase().includes("network") ||
-          String(err?.message || "").toLowerCase().includes("fetch");
-
-        // If it was just a network error, keep current session alive!
-        if (isOffline || isNetErr) {
-          setChecking(false);
-          return;
-        }
-
+      .catch(async () => {
         try {
           await API._doRefresh();
           const data2 = await API.authMe();
           const u2 = data2.user || data2;
           const nt = API.getToken();
-          if (nt) {
-            setToken(nt);
-            setUser(u2);
-            try { localStorage.setItem("wt-user", JSON.stringify(u2)); } catch {}
-            setChecking(false);
-            return;
-          }
+          if (nt) { setToken(nt); setUser(u2); setChecking(false); return; }
         } catch (refreshErr: any) {
-          const isRefreshNetErr =
-            typeof navigator !== "undefined" && !navigator.onLine ||
-            String(refreshErr?.message || "").toLowerCase().includes("fetch");
-
-          if (!isRefreshNetErr) {
-            setToken(null);
-            setUser(null);
-            try {
-              localStorage.removeItem("wt-token");
-              localStorage.removeItem("wt-refresh-token");
-              localStorage.removeItem("wt-user");
-            } catch {}
-            API.clearTokens();
-            queryClient.clear();
-          }
+          // If refresh failed during initial check, log user out immediately
+          setToken(null);
+          setUser(null);
+          try {
+            localStorage.removeItem("wt-token");
+            localStorage.removeItem("wt-refresh-token");
+          } catch {}
+          API.clearTokens();
+          queryClient.clear();
         }
       })
       .finally(() => setChecking(false));
-  }, [token]);
+  }, []);
 
   const handleLogin = useCallback((t: any, u?: User | null) => {
     let access = t;
@@ -153,16 +109,11 @@ function Shell() {
       else if (u && ((u as any).refresh_token || (u as any).refreshToken)) {
         localStorage.setItem("wt-refresh-token", (u as any).refresh_token || (u as any).refreshToken);
       }
-      if (u) localStorage.setItem("wt-user", JSON.stringify(u));
     } catch {}
     API.setTokens(access, refresh || (u as any)?.refresh_token || (u as any)?.refreshToken || null);
     if (u) setUser(u);
     else {
-      API.authMe().then((data: any) => {
-        const usr = data.user || data;
-        setUser(usr);
-        try { localStorage.setItem("wt-user", JSON.stringify(usr)); } catch {}
-      }).catch(() => {});
+      API.authMe().then((data: any) => setUser(data.user || data)).catch(() => {});
     }
   }, []);
 
@@ -170,11 +121,7 @@ function Shell() {
     try { await API.authLogout(); } catch {}
     setToken(null);
     setUser(null);
-    try {
-      localStorage.removeItem("wt-token");
-      localStorage.removeItem("wt-refresh-token");
-      localStorage.removeItem("wt-user");
-    } catch {}
+    try { localStorage.removeItem("wt-token"); localStorage.removeItem("wt-refresh-token"); } catch {}
     API.clearTokens();
   }, []);
 
@@ -199,9 +146,6 @@ function Shell() {
 
         {/* Main Application Area */}
         <div className="desktop-main-wrapper">
-          {/* Offline / Syncing Global Banner */}
-          <OfflineBanner />
-
           {/* Mobile Topbar */}
           <Topbar theme={theme} onToggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))} />
 
@@ -227,13 +171,7 @@ function Shell() {
 
 export function App() {
   return (
-    <PersistQueryClientProvider
-      client={queryClient}
-      persistOptions={{
-        persister: idbPersister,
-        maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days cache retention
-      }}
-    >
+    <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <AttendanceProvider>
           <BrowserRouter>
@@ -241,7 +179,7 @@ export function App() {
           </BrowserRouter>
         </AttendanceProvider>
       </ToastProvider>
-    </PersistQueryClientProvider>
+    </QueryClientProvider>
   );
 }
 

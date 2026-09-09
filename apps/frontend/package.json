@@ -11,10 +11,8 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.102.5",
-    "@tanstack/react-query-persist-client": "^5.102.8",
     "@types/qrcode": "^1.5.6",
     "framer-motion": "^11.3.30",
-    "idb-keyval": "^6.3.0",
     "lucide-react": "^0.441.0",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
@@ -27,7 +25,6 @@
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.3.3",
     "typescript": "^5.9.3",
-    "vite": "^5.4.3",
-    "vite-plugin-pwa": "^1.3.0"
+    "vite": "^5.4.3"
   }
 }
