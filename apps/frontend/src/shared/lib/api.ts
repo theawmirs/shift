@@ -366,10 +366,7 @@ export const API = {
     return this.jpost("/api/day/edit", body);
   },
   ot(hours: number | string, date?: string): Promise<any> {
-    return this.jpost(
-      `/api/ot?hours=${encodeURIComponent(hours)}${date ? `&date=${encodeURIComponent(date)}` : ""}`,
-      {}
-    );
+    return this.jpost("/api/overtime", { hours: Number(hours), date });
   },
 
   // settings
