@@ -104,9 +104,28 @@ def api_edit_checkin(body: CheckinEditRequest, uid: int | None = Depends(get_cur
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/overtime", summary="Record overtime hours for today or date")
-def api_overtime(body: OvertimeRequest, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
+@router.post("/ot", summary="Alias for recording overtime hours")
+def api_overtime(
+    body: OvertimeRequest | None = None,
+    hours: float | str | None = Query(None),
+    date: str | None = Query(None),
+    uid: int | None = Depends(get_current_user_optional),
+    conn: sqlite3.Connection = Depends(get_db)
+):
+    target_hours = None
+    target_date = None
+    if body is not None and body.hours is not None:
+        target_hours = body.hours
+        target_date = body.date
+    elif hours is not None:
+        target_hours = hours
+        target_date = date
+
+    if target_hours is None:
+        raise HTTPException(status_code=400, detail="ساعت اضافه‌کاری مشخص نشده است")
+
     try:
-        msg = record_service.record_overtime(conn, str(body.hours), body.date, user_id=uid)
+        msg = record_service.record_overtime(conn, str(target_hours), target_date, user_id=uid)
         return {"ok": True, "message": msg}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

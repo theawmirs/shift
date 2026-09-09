@@ -302,13 +302,33 @@ def record_event(conn: sqlite3.Connection, event_type: str, at: str | None = Non
     gy, gm, gd = jalali.jalali_to_gregorian(jy, jm, jd)
 
     if at:
-        parts = at.strip().split(":")
-        hh, mm = int(parts[0]), int(parts[1])
+        raw = at.strip()
+        m = re.match(r"^(\d{1,2}):(\d{2})$", raw)
+        if not m:
+            raise ValueError("ساعت وارد شده نامعتبر است")
+        hh, mm = int(m.group(1)), int(m.group(2))
+        if hh < 0 or hh > 23 or mm < 0 or mm > 59:
+            raise ValueError("ساعت وارد شده نامعتبر است")
         dt_tehran = datetime.datetime(gy, gm, gd, hh, mm, tzinfo=settings.tehran_tz)
     else:
         dt_tehran = now_tehran()
         if date_str and date_str != today_str():
             dt_tehran = dt_tehran.replace(year=gy, month=gm, day=gd)
+
+    now = now_tehran()
+    if (date_str is None or date_str == today_str()) and dt_tehran > now + datetime.timedelta(minutes=5):
+        raise ValueError("ساعت ثبت رویداد نمی‌تواند در آینده باشد")
+
+    if event_type == "out":
+        if d["in"] is None:
+            raise ValueError("هنوز ورود ثبت نشده است")
+        if dt_tehran < d["in"]:
+            raise ValueError("ساعت خروج نمی‌تواند قبل از ساعت ورود باشد")
+        if d["leave_open"]:
+            raise ValueError("در حال حاضر در مرخصی ساعتی هستید — ابتدا بازگشت از مرخصی را ثبت کنید")
+    elif event_type == "in":
+        if d["in"] is not None:
+            raise ValueError("امروز قبلاً ورود ثبت شده است")
 
     dt_utc = dt_tehran.astimezone(datetime.timezone.utc)
     wdf = jalali.weekday_fa(gy, gm, gd)
@@ -406,6 +426,24 @@ def record_overtime(conn: sqlite3.Connection, hours: str, date_str: str | None =
     events = day_events(conn, sdate, user_id)
     if not any(et == "out" for et, _, _ in events):
         raise ValueError("ابتدا خروج را ثبت کنید، سپس اضافه کاری را اعلام نمایید")
+
+    # Validate against actual physical presence
+    d = compute_day(conn, sdate, user_id=user_id)
+    u_settings = get_user_settings(conn, user_id=user_id)
+    standard = float(u_settings.get("standard_hours", "8"))
+
+    gross = d.get("gross", 0.0)
+    leave_h = d.get("leave", 0.0)
+    net_physical = max(0.0, gross - leave_h)
+
+    if d.get("is_holiday"):
+        max_possible_ot = net_physical
+    else:
+        max_possible_ot = max(0.0, net_physical - standard)
+
+    ot_val = max(0.0, ot_val)
+    if ot_val > max_possible_ot + 0.05:
+        ot_val = round(max_possible_ot, 2)
     
     if user_id is None:
         conn.execute("UPDATE events SET note=? WHERE shamsi_date=? AND event_type='out' AND user_id IS NULL", (f"ot:{ot_val}", sdate))
