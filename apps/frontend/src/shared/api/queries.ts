@@ -243,6 +243,36 @@ export function useHourlyLeaveMutation() {
   });
 }
 
+export function useAddManualHourlyLeaveMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { start_time: string; end_time: string; date?: string; note?: string }) =>
+      API.addHourlyLeave(body),
+    onSuccess: async () => {
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.week }),
+        queryClient.invalidateQueries({ queryKey: ["month"] }),
+      ]);
+    },
+  });
+}
+
+export function useDeleteManualHourlyLeaveMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { start_time: string; end_time: string; date?: string }) =>
+      API.deleteHourlyLeave(params),
+    onSuccess: async () => {
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.week }),
+        queryClient.invalidateQueries({ queryKey: ["month"] }),
+      ]);
+    },
+  });
+}
+
 export function useDeleteLeaveMutation() {
   const queryClient = useQueryClient();
   return useMutation({
