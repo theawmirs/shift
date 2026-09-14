@@ -5,6 +5,7 @@ import { Button } from "../../shared/ui/Button";
 import { fmtHoursFa, toAsciiDigits } from "../../shared/lib/format";
 import { useToast } from "../../shared/ui/Toast";
 import { CheckoutConfirmSheet } from "./CheckoutConfirmSheet";
+import { ManualHourlyLeaveSheet } from "./ManualHourlyLeaveSheet";
 
 export interface ActionGridProps {
   onAction: (k: string, at?: string, otHours?: number) => void;
@@ -20,8 +21,11 @@ export interface ActionGridProps {
   standardHours?: number;
   loadingAction?: string | null;
   inTime?: string;
+  outTime?: string | null;
+  leaveIntervals?: [string, string][];
   dateLabel?: string;
   onEditInClick?: () => void;
+  onLeaveChanged?: () => void;
 }
 
 function parseTimeToMinutes(timeStr?: string | null): number | null {
@@ -67,14 +71,18 @@ export function ActionGrid({
   standardHours = 8,
   loadingAction = null,
   inTime = "—",
+  outTime = null,
+  leaveIntervals = [],
   dateLabel = "",
   onEditInClick,
+  onLeaveChanged,
 }: ActionGridProps) {
   const { push } = useToast();
   const isRemote = workMode === "remote";
   const effectiveReason = day_status_reason ?? disabledReason ?? null;
 
   const [overrideModal, setOverrideModal] = useState<"in" | "out" | null>(null);
+  const [hourlyLeaveModal, setHourlyLeaveModal] = useState(false);
   const [otModal, setOtModal] = useState<{ open: boolean; extraHours: number; at?: string } | null>(null);
   const [confirmSheet, setConfirmSheet] = useState<{ open: boolean; at?: string }>({ open: false });
   const [customTime, setCustomTime] = useState<string>(() => {
@@ -237,47 +245,70 @@ export function ActionGrid({
       </div>
 
       {/* ── Separate Manual Time Overrides ── */}
-      {(day_status === "idle" || day_status === "working" || (day_status === "holiday" && holidayOptIn)) && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
-          {day_status === "working" ? (
-            <Button
-              variant="ghost"
-              className="mono"
-              style={{ padding: "8px 10px", fontSize: 11 }}
-              onClick={onEditInClick}
-              icon={<Pencil size={13} />}
-            >
-              ویرایش ساعت ورود
-            </Button>
-          ) : (
+      {(day_status === "idle" || day_status === "working" || day_status === "on_leave" || (day_status === "holiday" && holidayOptIn)) && (
+        <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {day_status === "working" || day_status === "on_leave" ? (
+              <Button
+                variant="ghost"
+                className="mono"
+                style={{ padding: "8px 10px", fontSize: 11 }}
+                onClick={onEditInClick}
+                icon={<Pencil size={13} />}
+              >
+                ویرایش ساعت ورود
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                className="mono"
+                style={{
+                  padding: "8px 10px",
+                  fontSize: 11,
+                  opacity: day_status !== "idle" && !(day_status === "holiday" && holidayOptIn) ? 0.4 : 1,
+                  pointerEvents: day_status !== "idle" && !(day_status === "holiday" && holidayOptIn) ? "none" : "auto",
+                }}
+                onClick={() => setOverrideModal("in")}
+                icon={<Clock size={13} />}
+              >
+                ورود دستی (ساعت دلخواه)
+              </Button>
+            )}
             <Button
               variant="ghost"
               className="mono"
               style={{
                 padding: "8px 10px",
                 fontSize: 11,
-                opacity: day_status !== "idle" && !(day_status === "holiday" && holidayOptIn) ? 0.4 : 1,
-                pointerEvents: day_status !== "idle" && !(day_status === "holiday" && holidayOptIn) ? "none" : "auto",
+                opacity: day_status !== "working" ? 0.4 : 1,
+                pointerEvents: day_status !== "working" ? "none" : "auto",
               }}
-              onClick={() => setOverrideModal("in")}
+              onClick={() => setOverrideModal("out")}
               icon={<Clock size={13} />}
             >
-              ورود دستی (ساعت دلخواه)
+              خروج دستی (ساعت دلخواه)
             </Button>
-          )}
+          </div>
+
+          {/* Manual Hourly Leave (ورود و خروج مرخصی ساعتی) */}
           <Button
             variant="ghost"
             className="mono"
             style={{
-              padding: "8px 10px",
-              fontSize: 11,
-              opacity: day_status !== "working" ? 0.4 : 1,
-              pointerEvents: day_status !== "working" ? "none" : "auto",
+              padding: "10px 12px",
+              fontSize: 12,
+              fontWeight: 800,
+              opacity: (day_status !== "working" && day_status !== "on_leave") ? 0.4 : 1,
+              pointerEvents: (day_status !== "working" && day_status !== "on_leave") ? "none" : "auto",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
             }}
-            onClick={() => setOverrideModal("out")}
-            icon={<Clock size={13} />}
+            onClick={() => setHourlyLeaveModal(true)}
+            icon={<Coffee size={14} style={{ color: "#D97706" }} />}
           >
-            خروج دستی (ساعت دلخواه)
+            مرخصی ساعتی دستی (ثبت ورود و خروج)
           </Button>
         </div>
       )}
@@ -438,6 +469,16 @@ export function ActionGrid({
           </Button>
         </div>
       </Drawer>
+
+      {/* Manual Hourly Leave Drawer (ورود و خروج مرخصی ساعتی) */}
+      <ManualHourlyLeaveSheet
+        open={hourlyLeaveModal}
+        onClose={() => setHourlyLeaveModal(false)}
+        inTime={inTime}
+        outTime={outTime}
+        leaveIntervals={leaveIntervals}
+        onSuccess={onLeaveChanged}
+      />
     </div>
   );
 }

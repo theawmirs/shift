@@ -143,13 +143,13 @@ export function DailyLeaveDrawer({
   onChanged?: () => void;
 }) {
   const { push } = useToast();
-  const todayStr = useMemo(() => _todayStr(), [open]);
+  const todayStr = useMemo(() => _todayStr(), []);
   const maxStr = useMemo(() => {
     const [y, m, d] = todayStr.split("-").map(Number);
     return _plusDays(y, m, d, 30);
   }, [todayStr]);
 
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState(() => _todayStr());
   const [endDate, setEndDate] = useState("");
   const [typ, setTyp] = useState("annual");
   const [reason, setReason] = useState("");
@@ -160,10 +160,14 @@ export function DailyLeaveDrawer({
   const createMutation = useDailyLeaveMutation();
   const deleteMutation = useDeleteLeaveMutation();
 
-  // when drawer opens, default date to today
+  // Reset secondary pickers when closed
   useEffect(() => {
-    if (open && !date) setDate(todayStr);
-  }, [open, todayStr]);
+    if (!open) {
+      setPicker(null);
+      setEndDate("");
+      setReason("");
+    }
+  }, [open]);
 
   const submit = async () => {
     if (!date) {

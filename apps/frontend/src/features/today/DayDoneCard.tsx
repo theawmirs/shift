@@ -201,21 +201,49 @@ export function DayDoneCard({ day, weekday, shamsi }: DayDoneCardProps) {
       </div>
 
       {/* ── Optional Hourly Leave Indicator ── */}
-      {leaveHours > 0 && (
+      {(leaveHours > 0 || (day?.leave_intervals && day.leave_intervals.length > 0)) && (
         <div
           className="row"
           style={{
-            padding: "8px 12px",
+            padding: "10px 12px",
             background: "rgba(96, 165, 250, 0.08)",
             borderColor: "#60A5FA",
-            fontSize: 12,
+            flexDirection: "column",
+            alignItems: "stretch",
+            gap: 8,
           }}
         >
-          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Coffee size={14} style={{ color: "#60A5FA" }} />
-            <b>مرخصی ساعتی استفاده‌شده:</b>
-          </span>
-          <b className="mono">{fmtHoursFa(leaveHours)}</b>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, color: "var(--text)" }}>
+              <Coffee size={14} style={{ color: "#60A5FA" }} />
+              <span>مرخصی ساعتی استفاده‌شده:</span>
+            </span>
+            <b className="mono" style={{ fontSize: 13, color: "var(--text)" }}>{fmtHoursFa(leaveHours)}</b>
+          </div>
+
+          {Array.isArray(day?.leave_intervals) && day.leave_intervals.length > 0 && (
+            <div style={{ display: "grid", gap: 4, borderTop: "1px dashed rgba(96, 165, 250, 0.3)", paddingTop: 6 }}>
+              {day.leave_intervals.map((inv: [string, string], idx: number) => (
+                <div
+                  key={idx}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    fontSize: 11.5,
+                    color: "var(--text)",
+                  }}
+                >
+                  <span style={{ color: "var(--muted)" }}>بازه {idx + 1}:</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span className="mono" style={{ color: "#EF4444", fontWeight: 800 }}>خروج: {inv[0]}</span>
+                    <span style={{ color: "var(--muted)" }}>←</span>
+                    <span className="mono" style={{ color: "#22C55E", fontWeight: 800 }}>ورود: {inv[1]}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

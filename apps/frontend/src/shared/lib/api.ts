@@ -369,6 +369,18 @@ export const API = {
     return this.jpost("/api/overtime", { hours: Number(hours), date });
   },
 
+  // ── Hourly leaves (مرخصی ساعتی) ──
+  addHourlyLeave(body: { start_time: string; end_time: string; date?: string; note?: string }): Promise<any> {
+    return this.jpost("/api/leave/hourly", body);
+  },
+  deleteHourlyLeave(params: { start_time: string; end_time: string; date?: string }): Promise<any> {
+    const qs = new URLSearchParams();
+    qs.set("start_time", params.start_time);
+    qs.set("end_time", params.end_time);
+    if (params.date) qs.set("date", params.date);
+    return this.jdel(`/api/leave/hourly?${qs.toString()}`);
+  },
+
   // settings
   getSettings(): Promise<any> {
     return this.jget("/api/settings");

@@ -479,6 +479,160 @@ def record_overtime(conn: sqlite3.Connection, hours: str, date_str: str | None =
     conn.commit()
     return f"✅ اضافه‌کاری {ot_val:.1f} ساعت برای تاریخ {sdate} ثبت شد"
 
+def add_hourly_leave(
+    conn: sqlite3.Connection,
+    user_id: int | None,
+    start_time: str,
+    end_time: str,
+    date_str: str | None = None,
+    note: str | None = None,
+) -> dict:
+    sdate = date_str or today_str()
+    raw_start = (start_time or "").strip()
+    raw_end = (end_time or "").strip()
+
+    m_start = re.match(r"^(\d{1,2}):(\d{2})$", raw_start)
+    m_end = re.match(r"^(\d{1,2}):(\d{2})$", raw_end)
+    if not m_start or not m_end:
+        raise ValueError("فرمت ساعت شروع یا پایان مرخصی نامعتبر است (مثال: 12:30)")
+
+    sh, sm = int(m_start.group(1)), int(m_start.group(2))
+    eh, em = int(m_end.group(1)), int(m_end.group(2))
+    if sh < 0 or sh > 23 or sm < 0 or sm > 59 or eh < 0 or eh > 23 or em < 0 or em > 59:
+        raise ValueError("ساعت وارد شده نامعتبر است")
+
+    jy, jm, jd = parse_date(sdate)
+    gy, gm, gd = jalali.jalali_to_gregorian(jy, jm, jd)
+    wdf = jalali.weekday_fa(gy, gm, gd)
+
+    dt_start = datetime.datetime(gy, gm, gd, sh, sm, tzinfo=settings.tehran_tz)
+    dt_end = datetime.datetime(gy, gm, gd, eh, em, tzinfo=settings.tehran_tz)
+
+    if dt_end <= dt_start:
+        raise ValueError("ساعت ورود (پایان مرخصی) باید بعد از ساعت خروج (شروع مرخصی) باشد")
+
+    d = compute_day(conn, sdate, user_id=user_id)
+    if d["in"] is None:
+        raise ValueError("ابتدا باید ساعت ورود به شرکت ثبت شود")
+
+    if dt_start < d["in"]:
+        raise ValueError("ساعت خروج به مرخصی نمی‌تواند قبل از ساعت ورود به شرکت باشد")
+
+    if d["out"] is not None and dt_end > d["out"]:
+        raise ValueError("ساعت پایان مرخصی نمی‌تواند بعد از ساعت خروج از شرکت باشد")
+
+    if sdate == today_str():
+        now = now_tehran()
+        if dt_start > now + datetime.timedelta(minutes=5) or dt_end > now + datetime.timedelta(minutes=5):
+            raise ValueError("ساعت مرخصی نمی‌تواند در آینده باشد")
+
+    # Check for overlaps with existing leave intervals
+    for a, b in d["leave_intervals"]:
+        if not (dt_end <= a or dt_start >= b):
+            inv_str = f"{a.strftime('%H:%M')} تا {b.strftime('%H:%M')}"
+            raise ValueError(f"این بازه با مرخصی ساعتی ثبت‌شده دیگر ({inv_str}) تداخل دارد")
+
+    if d["leave_open"]:
+        events = day_events(conn, sdate, user_id)
+        for et, dt, _ in reversed(events):
+            if et == "leave_start":
+                if not (dt_end <= dt or dt_start >= dt):
+                    raise ValueError("یک مرخصی ساعتی باز در حال حاضر وجود دارد")
+                break
+
+    # Insert leave_start and leave_end events
+    start_utc = dt_start.astimezone(datetime.timezone.utc).isoformat()
+    end_utc = dt_end.astimezone(datetime.timezone.utc).isoformat()
+
+    if user_id is None:
+        conn.execute(
+            "INSERT INTO events(event_type, ts_utc, shamsi_date, weekday, note, user_id) VALUES(?,?,?,?,?,NULL)",
+            ("leave_start", start_utc, sdate, wdf, note),
+        )
+        conn.execute(
+            "INSERT INTO events(event_type, ts_utc, shamsi_date, weekday, note, user_id) VALUES(?,?,?,?,?,NULL)",
+            ("leave_end", end_utc, sdate, wdf, note),
+        )
+    else:
+        conn.execute(
+            "INSERT INTO events(event_type, ts_utc, shamsi_date, weekday, note, user_id) VALUES(?,?,?,?,?,?)",
+            ("leave_start", start_utc, sdate, wdf, note, user_id),
+        )
+        conn.execute(
+            "INSERT INTO events(event_type, ts_utc, shamsi_date, weekday, note, user_id) VALUES(?,?,?,?,?,?)",
+            ("leave_end", end_utc, sdate, wdf, note, user_id),
+        )
+    conn.commit()
+    return day_payload(conn, sdate, user_id=user_id)
+
+def delete_hourly_leave(
+    conn: sqlite3.Connection,
+    user_id: int | None,
+    start_time: str,
+    end_time: str,
+    date_str: str | None = None,
+) -> dict:
+    sdate = date_str or today_str()
+    raw_start = (start_time or "").strip()
+    raw_end = (end_time or "").strip()
+
+    m_start = re.match(r"^(\d{1,2}):(\d{2})$", raw_start)
+    m_end = re.match(r"^(\d{1,2}):(\d{2})$", raw_end)
+    if not m_start or not m_end:
+        raise ValueError("فرمت ساعت شروع یا پایان مرخصی نامعتبر است")
+
+    sh, sm = int(m_start.group(1)), int(m_start.group(2))
+    eh, em = int(m_end.group(1)), int(m_end.group(2))
+
+    jy, jm, jd = parse_date(sdate)
+    gy, gm, gd = jalali.jalali_to_gregorian(jy, jm, jd)
+
+    dt_start = datetime.datetime(gy, gm, gd, sh, sm, tzinfo=settings.tehran_tz)
+    dt_end = datetime.datetime(gy, gm, gd, eh, em, tzinfo=settings.tehran_tz)
+
+    if user_id is None:
+        rows = conn.execute(
+            "SELECT id, event_type, ts_utc FROM events WHERE shamsi_date=? AND user_id IS NULL AND event_type IN ('leave_start', 'leave_end') ORDER BY ts_utc ASC",
+            (sdate,),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT id, event_type, ts_utc FROM events WHERE shamsi_date=? AND user_id=? AND event_type IN ('leave_start', 'leave_end') ORDER BY ts_utc ASC",
+            (sdate, user_id),
+        ).fetchall()
+
+    start_id = None
+    end_id = None
+
+    cur_start_id = None
+    cur_start_dt = None
+
+    for r in rows:
+        et = r["event_type"]
+        dt = datetime.datetime.fromisoformat(r["ts_utc"]).astimezone(settings.tehran_tz)
+        if et == "leave_start":
+            cur_start_id = r["id"]
+            cur_start_dt = dt
+        elif et == "leave_end" and cur_start_id is not None:
+            if (
+                cur_start_dt.hour == dt_start.hour
+                and cur_start_dt.minute == dt_start.minute
+                and dt.hour == dt_end.hour
+                and dt.minute == dt_end.minute
+            ):
+                start_id = cur_start_id
+                end_id = r["id"]
+                break
+            cur_start_id = None
+            cur_start_dt = None
+
+    if not start_id or not end_id:
+        raise ValueError("بازه مرخصی ساعتی مورد نظر یافت نشد")
+
+    conn.execute("DELETE FROM events WHERE id IN (?, ?)", (start_id, end_id))
+    conn.commit()
+    return day_payload(conn, sdate, user_id=user_id)
+
 def edit_or_create_day_record(
     conn: sqlite3.Connection,
     sdate: str,
