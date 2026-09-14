@@ -113,8 +113,8 @@ export function ManualHourlyLeaveSheet({
     <Drawer open={open} onClose={onClose} title="ثبت مرخصی ساعتی دستی" height="85vh">
       <div dir="rtl" style={{ display: "grid", gap: 14 }}>
         {/* Description Banner */}
-        <p style={{ color: "var(--muted)", fontSize: 12, margin: 0, lineHeight: 1.6 }}>
-          اگر در طول روز برای کار شخصی از شرکت خارج شدید و دکمه مرخصی را ثبت نکردید، ساعت دقیق <b>خروج</b> و <b>ورود مجدد</b> را وارد کنید:
+        <p style={{ color: "var(--text)", opacity: 0.9, fontSize: 12, margin: 0, lineHeight: 1.6 }}>
+          اگر در طول روز برای کار شخصی از شرکت خارج شدید و دکمه مرخصی را ثبت نکردید، ساعت دقیق <b style={{ color: "var(--amber-2)" }}>خروج</b> و <b style={{ color: "var(--amber-2)" }}>ورود مجدد</b> را وارد کنید:
         </p>
 
         {/* Attendance Reference Card */}
@@ -124,8 +124,8 @@ export function ManualHourlyLeaveSheet({
             gridTemplateColumns: "1fr 1fr",
             gap: 8,
             padding: "10px 12px",
-            background: "var(--card2)",
-            border: "2px solid #000",
+            background: "var(--surface-2, var(--card2))",
+            border: "2px solid var(--border-strong, #000)",
             borderRadius: 14,
             boxShadow: "2px 2px 0 #000",
             fontSize: 12,
@@ -139,7 +139,7 @@ export function ManualHourlyLeaveSheet({
           </div>
           <div>
             <span style={{ color: "var(--muted)", fontSize: 11, fontWeight: 700 }}>وضعیت خروج از شرکت:</span>
-            <b className="mono" style={{ display: "block", fontSize: 14, marginTop: 2, color: outTime ? "var(--text)" : "var(--green, #22c55e)" }}>
+            <b className="mono" style={{ display: "block", fontSize: 14, marginTop: 2, color: outTime ? "var(--text)" : "#22C55E" }}>
               {outTime ? outTime : "در حال کار 🟢"}
             </b>
           </div>
@@ -149,7 +149,7 @@ export function ManualHourlyLeaveSheet({
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {/* Leave Start Time (خروج به مرخصی) */}
           <div style={{ display: "grid", gap: 4 }}>
-            <label style={{ fontSize: 11, fontWeight: 800, color: "var(--red, #ef4444)", display: "flex", alignItems: "center", gap: 4 }}>
+            <label style={{ fontSize: 11.5, fontWeight: 800, color: "#EF4444", display: "flex", alignItems: "center", gap: 4 }}>
               <Clock size={13} />
               <span>ساعت خروج (شروع مرخصی)</span>
             </label>
@@ -177,7 +177,7 @@ export function ManualHourlyLeaveSheet({
 
           {/* Leave End Time (ورود / بازگشت از مرخصی) */}
           <div style={{ display: "grid", gap: 4 }}>
-            <label style={{ fontSize: 11, fontWeight: 800, color: "var(--green, #22c55e)", display: "flex", alignItems: "center", gap: 4 }}>
+            <label style={{ fontSize: 11.5, fontWeight: 800, color: "#22C55E", display: "flex", alignItems: "center", gap: 4 }}>
               <Clock size={13} />
               <span>ساعت ورود (پایان مرخصی)</span>
             </label>
@@ -211,20 +211,19 @@ export function ManualHourlyLeaveSheet({
               <div
                 className="row"
                 style={{
-                  background: "rgba(34, 197, 94, 0.10)",
-                  borderColor: "var(--green, #22c55e)",
-                  padding: "8px 12px",
-                  fontSize: 12,
+                  background: "rgba(34, 197, 94, 0.14)",
+                  borderColor: "#22C55E",
+                  padding: "9px 12px",
+                  fontSize: 12.5,
                   fontWeight: 800,
-                  color: "var(--green, #166534)",
                   display: "flex",
                   alignItems: "center",
-                  gap: 6,
+                  gap: 8,
                 }}
               >
-                <Sparkles size={15} style={{ color: "var(--green)" }} />
-                <span>مدت زمان مرخصی:</span>
-                <b className="mono" style={{ fontSize: 13 }}>
+                <Sparkles size={15} style={{ color: "#22C55E" }} />
+                <span style={{ color: "var(--text)" }}>مدت زمان مرخصی:</span>
+                <b className="mono" style={{ fontSize: 14, color: "#22C55E" }}>
                   {fmtHoursFa(diffMinutes / 60)}
                 </b>
               </div>
@@ -232,18 +231,18 @@ export function ManualHourlyLeaveSheet({
               <div
                 className="row"
                 style={{
-                  background: "rgba(239, 68, 68, 0.08)",
-                  borderColor: "var(--red, #ef4444)",
-                  padding: "8px 12px",
-                  fontSize: 11.5,
+                  background: "rgba(239, 68, 68, 0.14)",
+                  borderColor: "#EF4444",
+                  padding: "9px 12px",
+                  fontSize: 12,
                   fontWeight: 700,
-                  color: "var(--red, #b91c1c)",
+                  color: "#EF4444",
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
                 }}
               >
-                <AlertCircle size={14} style={{ color: "var(--red)" }} />
+                <AlertCircle size={15} style={{ color: "#EF4444", flexShrink: 0 }} />
                 <span>ساعت ورود (پایان مرخصی) باید بعد از ساعت خروج باشد.</span>
               </div>
             )}
@@ -252,7 +251,7 @@ export function ManualHourlyLeaveSheet({
 
         {/* Optional Note Field */}
         <div style={{ display: "grid", gap: 4 }}>
-          <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)" }}>
+          <label style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text)" }}>
             توضیحات یا دلیل (اختیاری)
           </label>
           <input
@@ -279,9 +278,9 @@ export function ManualHourlyLeaveSheet({
 
         {/* ── List of Today's Existing Hourly Leaves ── */}
         {leaveIntervals && leaveIntervals.length > 0 && (
-          <div style={{ marginTop: 6, borderTop: "2px solid rgba(0,0,0,0.08)", paddingTop: 12, display: "grid", gap: 8 }}>
+          <div style={{ marginTop: 6, borderTop: "2px solid rgba(255,255,255,0.08)", paddingTop: 12, display: "grid", gap: 8 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 12, fontWeight: 800, display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 12.5, fontWeight: 800, color: "var(--text)", display: "flex", alignItems: "center", gap: 6 }}>
                 <Coffee size={14} style={{ color: "var(--amber-2)" }} />
                 <span>مرخصی‌های ساعتی امروز</span>
               </span>
@@ -302,8 +301,8 @@ export function ManualHourlyLeaveSheet({
                     key={idx}
                     className="row"
                     style={{
-                      padding: "8px 12px",
-                      background: "var(--card)",
+                      padding: "10px 12px",
+                      background: "var(--surface-2, var(--card2))",
                       borderColor: "var(--border)",
                       display: "flex",
                       alignItems: "center",
@@ -312,15 +311,15 @@ export function ManualHourlyLeaveSheet({
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12 }}>
-                      <span className="mono" style={{ color: "var(--red, #ef4444)", fontWeight: 800 }}>
+                      <span className="mono" style={{ color: "#EF4444", fontWeight: 800 }}>
                         خروج: {inv[0]}
                       </span>
-                      <ArrowLeftRight size={13} style={{ color: "var(--muted)", opacity: 0.6 }} />
-                      <span className="mono" style={{ color: "var(--green, #22c55e)", fontWeight: 800 }}>
+                      <ArrowLeftRight size={13} style={{ color: "var(--muted)", opacity: 0.8 }} />
+                      <span className="mono" style={{ color: "#22C55E", fontWeight: 800 }}>
                         ورود: {inv[1]}
                       </span>
                       {durH !== null && (
-                        <span className="badge mono" style={{ fontSize: 10, padding: "2px 6px" }}>
+                        <span className="badge mono" style={{ fontSize: 10, padding: "2px 8px", background: "rgba(255,255,255,0.08)", color: "var(--text)", border: "1px solid var(--border)" }}>
                           {fmtHoursFa(durH)}
                         </span>
                       )}
@@ -333,7 +332,7 @@ export function ManualHourlyLeaveSheet({
                       style={{ padding: "4px 8px", width: "auto", fontSize: 11 }}
                       loading={isDeleting}
                       onClick={() => handleDelete(inv)}
-                      icon={<Trash2 size={13} style={{ color: "var(--red, #ef4444)" }} />}
+                      icon={<Trash2 size={13} style={{ color: "#EF4444" }} />}
                       title="حذف این مرخصی"
                     >
                       حذف

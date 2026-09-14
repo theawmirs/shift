@@ -295,8 +295,8 @@ export function ActionGrid({
             variant="ghost"
             className="mono"
             style={{
-              padding: "8px 12px",
-              fontSize: 11.5,
+              padding: "10px 12px",
+              fontSize: 12,
               fontWeight: 800,
               opacity: (day_status !== "working" && day_status !== "on_leave") ? 0.4 : 1,
               pointerEvents: (day_status !== "working" && day_status !== "on_leave") ? "none" : "auto",
@@ -304,11 +304,9 @@ export function ActionGrid({
               alignItems: "center",
               justifyContent: "center",
               gap: 6,
-              background: "rgba(245, 158, 11, 0.06)",
-              borderColor: "var(--border-strong)",
             }}
             onClick={() => setHourlyLeaveModal(true)}
-            icon={<Coffee size={14} style={{ color: "var(--amber-2)" }} />}
+            icon={<Coffee size={14} style={{ color: "#D97706" }} />}
           >
             مرخصی ساعتی دستی (ثبت ورود و خروج)
           </Button>

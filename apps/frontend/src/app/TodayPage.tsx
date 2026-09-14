@@ -333,8 +333,8 @@ export function TodayPage() {
             <div
               className="card brutal"
               style={{
-                borderColor: "#60A5FA",
-                background: "rgba(96, 165, 250, 0.07)",
+                borderColor: "#3B82F6",
+                background: "rgba(59, 130, 246, 0.10)",
                 padding: "12px 14px",
                 display: "grid",
                 gap: 8,
@@ -342,7 +342,7 @@ export function TodayPage() {
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 800, fontSize: 13, color: "var(--text)" }}>
-                  <Coffee size={15} style={{ color: "#3B82F6" }} />
+                  <Coffee size={15} style={{ color: "#60A5FA" }} />
                   <span>مرخصی‌های ساعتی امروز</span>
                 </span>
                 <span className="badge badge-ok mono" style={{ fontSize: 11 }}>
@@ -357,7 +357,7 @@ export function TodayPage() {
                     className="row"
                     style={{
                       padding: "8px 12px",
-                      background: "var(--card)",
+                      background: "var(--surface-2, var(--card2))",
                       borderColor: "var(--border)",
                       display: "flex",
                       alignItems: "center",
@@ -366,11 +366,11 @@ export function TodayPage() {
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span className="mono" style={{ color: "var(--red, #ef4444)", fontWeight: 800 }}>
+                      <span className="mono" style={{ color: "#EF4444", fontWeight: 800 }}>
                         خروج: {inv[0]}
                       </span>
-                      <ArrowLeftRight size={13} style={{ color: "var(--muted)", opacity: 0.6 }} />
-                      <span className="mono" style={{ color: "var(--green, #22c55e)", fontWeight: 800 }}>
+                      <ArrowLeftRight size={13} style={{ color: "var(--muted)", opacity: 0.8 }} />
+                      <span className="mono" style={{ color: "#22C55E", fontWeight: 800 }}>
                         ورود: {inv[1]}
                       </span>
                     </div>

@@ -214,9 +214,9 @@ export function DayDoneCard({ day, weekday, shamsi }: DayDoneCardProps) {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, color: "var(--text)" }}>
               <Coffee size={14} style={{ color: "#60A5FA" }} />
-              <b>مرخصی ساعتی استفاده‌شده:</b>
+              <span>مرخصی ساعتی استفاده‌شده:</span>
             </span>
             <b className="mono" style={{ fontSize: 13, color: "var(--text)" }}>{fmtHoursFa(leaveHours)}</b>
           </div>
@@ -231,14 +231,14 @@ export function DayDoneCard({ day, weekday, shamsi }: DayDoneCardProps) {
                     alignItems: "center",
                     justifyContent: "space-between",
                     fontSize: 11.5,
-                    color: "var(--muted)",
+                    color: "var(--text)",
                   }}
                 >
-                  <span>بازه {idx + 1}:</span>
+                  <span style={{ color: "var(--muted)" }}>بازه {idx + 1}:</span>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span className="mono" style={{ color: "var(--red, #ef4444)", fontWeight: 800 }}>خروج: {inv[0]}</span>
-                    <span>←</span>
-                    <span className="mono" style={{ color: "var(--green, #22c55e)", fontWeight: 800 }}>ورود: {inv[1]}</span>
+                    <span className="mono" style={{ color: "#EF4444", fontWeight: 800 }}>خروج: {inv[0]}</span>
+                    <span style={{ color: "var(--muted)" }}>←</span>
+                    <span className="mono" style={{ color: "#22C55E", fontWeight: 800 }}>ورود: {inv[1]}</span>
                   </div>
                 </div>
               ))}
