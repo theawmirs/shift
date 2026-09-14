@@ -11,7 +11,8 @@ import { API } from "../shared/lib/api";
 import { HeroSkeleton, CardSkeleton } from "../shared/ui/Skeleton";
 import { Button } from "../shared/ui/Button";
 import { useTodayQuery, useRecordMutation, useEditCheckinMutation } from "../shared/api/queries";
-import { AlertCircle, CheckCircle, Info, Sparkles } from "lucide-react";
+import { AlertCircle, CheckCircle, Info, Sparkles, Coffee, ArrowLeftRight } from "lucide-react";
+import { fmtHoursFa } from "../shared/lib/format";
 
 function computeFallbackDayStatus(day: any) {
   if (!day) return { status: null, label: null, reason: null };
@@ -327,6 +328,58 @@ export function TodayPage() {
             </div>
           )}
 
+          {/* ── Active Hourly Leaves Display Card (نمایش ورود و خروج مرخصی ساعتی) ── */}
+          {status.day?.leave_intervals && status.day.leave_intervals.length > 0 && (
+            <div
+              className="card brutal"
+              style={{
+                borderColor: "#60A5FA",
+                background: "rgba(96, 165, 250, 0.07)",
+                padding: "12px 14px",
+                display: "grid",
+                gap: 8,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 800, fontSize: 13, color: "var(--text)" }}>
+                  <Coffee size={15} style={{ color: "#3B82F6" }} />
+                  <span>مرخصی‌های ساعتی امروز</span>
+                </span>
+                <span className="badge badge-ok mono" style={{ fontSize: 11 }}>
+                  مجموع: {fmtHoursFa(status.day?.leave)}
+                </span>
+              </div>
+
+              <div style={{ display: "grid", gap: 6 }}>
+                {status.day.leave_intervals.map((inv: [string, string], idx: number) => (
+                  <div
+                    key={idx}
+                    className="row"
+                    style={{
+                      padding: "8px 12px",
+                      background: "var(--card)",
+                      borderColor: "var(--border)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      fontSize: 12,
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span className="mono" style={{ color: "var(--red, #ef4444)", fontWeight: 800 }}>
+                        خروج: {inv[0]}
+                      </span>
+                      <ArrowLeftRight size={13} style={{ color: "var(--muted)", opacity: 0.6 }} />
+                      <span className="mono" style={{ color: "var(--green, #22c55e)", fontWeight: 800 }}>
+                        ورود: {inv[1]}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <ActionGrid
             onAction={onAction}
             onRemoteToggle={onRemoteToggle}
@@ -341,8 +394,11 @@ export function TodayPage() {
             standardHours={Number(status.settings?.standard_hours || 8)}
             loadingAction={loadingAction}
             inTime={status.day?.in || "—"}
+            outTime={status.day?.out}
+            leaveIntervals={status.day?.leave_intervals}
             dateLabel={`${status.weekday || ""} — ${shamsi}`}
             onEditInClick={() => setEditInOpen(true)}
+            onLeaveChanged={() => refetch()}
           />
         </>
       )}

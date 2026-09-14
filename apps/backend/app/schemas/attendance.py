@@ -83,6 +83,22 @@ class DayEditResponse(BaseModel):
     message: str
     day: dict[str, Any]
 
+class HourlyLeaveAddRequest(BaseModel):
+    start_time: str
+    end_time: str
+    date: str | None = None
+    note: str | None = None
+
+class HourlyLeaveDeleteRequest(BaseModel):
+    start_time: str
+    end_time: str
+    date: str | None = None
+
+class HourlyLeaveResponse(BaseModel):
+    ok: bool
+    message: str
+    day: dict[str, Any]
+
 class OvertimeRequest(BaseModel):
     hours: float | str | None = None
     date: str | None = None

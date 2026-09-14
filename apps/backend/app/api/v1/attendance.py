@@ -7,6 +7,9 @@ from app.schemas.attendance import (
     RecordRequest,
     RecordResponse,
     StatusResponse,
+    HourlyLeaveAddRequest,
+    HourlyLeaveDeleteRequest,
+    HourlyLeaveResponse,
     OvertimeRequest,
     WorkModeRequest,
     WorkModeResponse,
@@ -127,6 +130,61 @@ def api_overtime(
     try:
         msg = record_service.record_overtime(conn, str(target_hours), target_date, user_id=uid)
         return {"ok": True, "message": msg}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/leave/hourly", response_model=HourlyLeaveResponse, summary="Add manual hourly leave interval")
+def api_add_hourly_leave(
+    body: HourlyLeaveAddRequest,
+    uid: int | None = Depends(get_current_user_optional),
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    try:
+        day = record_service.add_hourly_leave(
+            conn=conn,
+            user_id=uid,
+            start_time=body.start_time,
+            end_time=body.end_time,
+            date_str=body.date,
+            note=body.note,
+        )
+        return HourlyLeaveResponse(
+            ok=True,
+            message=f"✅ مرخصی ساعتی از ساعت {body.start_time} تا {body.end_time} با موفقیت ثبت شد",
+            day=day,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.delete("/leave/hourly", response_model=HourlyLeaveResponse, summary="Delete manual hourly leave interval")
+@router.post("/leave/hourly/delete", response_model=HourlyLeaveResponse, summary="Alternative delete manual hourly leave interval")
+def api_delete_hourly_leave(
+    body: HourlyLeaveDeleteRequest | None = None,
+    start_time: str | None = Query(None),
+    end_time: str | None = Query(None),
+    date: str | None = Query(None),
+    uid: int | None = Depends(get_current_user_optional),
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    st = body.start_time if body and body.start_time else start_time
+    et = body.end_time if body and body.end_time else end_time
+    dt = body.date if body and body.date else date
+    if not st or not et:
+        raise HTTPException(status_code=400, detail="ساعت شروع و پایان مرخصی مشخص نشده است")
+
+    try:
+        day = record_service.delete_hourly_leave(
+            conn=conn,
+            user_id=uid,
+            start_time=st,
+            end_time=et,
+            date_str=dt,
+        )
+        return HourlyLeaveResponse(
+            ok=True,
+            message=f"🗑 مرخصی ساعتی از {st} تا {et} حذف شد",
+            day=day,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
