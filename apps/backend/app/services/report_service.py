@@ -157,6 +157,14 @@ def compute_month(conn: DBAdapter, month_key: str, user_id: int | None = None) -
 
             deficit = max(0.0, standard - net) if (in_dt or out_dt) else 0.0
 
+        ot_interval_str = None
+        if out_dt and overtime > 0:
+            ot_minutes = int(round(overtime * 60))
+            ot_start_dt = out_dt - datetime.timedelta(minutes=ot_minutes)
+            if in_dt and ot_start_dt < in_dt:
+                ot_start_dt = in_dt
+            ot_interval_str = [ot_start_dt.strftime("%H:%M"), out_dt.strftime("%H:%M")]
+
         has_events = bool(events)
         d_item = {
             "date": sdate,
@@ -177,6 +185,7 @@ def compute_month(conn: DBAdapter, month_key: str, user_id: int | None = None) -
             "late": round(late, 2),
             "deficit": round(deficit, 2),
             "overtime": round(overtime, 2),
+            "overtime_interval": ot_interval_str,
             "ot_declared": ot_declared,
             "work_mode": wm,
             "work_mode_label": record_service.WORK_MODE_LABEL.get(wm, wm),

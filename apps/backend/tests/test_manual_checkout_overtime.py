@@ -88,6 +88,7 @@ def test_manual_checkout_and_overtime_clamping(test_env):
     assert d["net"] == 9.0
     assert d["overtime"] == 1.0  # Clamped to 1.0 instead of 4.0!
     assert d["deficit"] == 0.0
+    assert d["overtime_interval"] == ["17:00", "18:00"]
 
 def test_api_ot_alias_and_query_param(test_env):
     client = test_env["client"]

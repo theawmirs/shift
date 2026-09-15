@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Drawer } from "../../shared/ui/Drawer";
 import { Button } from "../../shared/ui/Button";
-import { fmtHoursFa, formatShamsiDateText } from "../../shared/lib/format";
+import { fmtHoursFa, formatShamsiDateText, computeOvertimeRange } from "../../shared/lib/format";
 import { Edit3, Building2, Home, Trash2, AlertTriangle } from "lucide-react";
 import { API } from "../../shared/lib/api";
 import { useToast } from "../../shared/ui/Toast";
@@ -66,6 +66,7 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
   const hasLate = currentDay?.late != null && Number(currentDay.late) > 0;
   const hasWork = hasIn || hasOut || hasNet || hasGross || Boolean(currentDay?.has_events);
   const standardHours = 8;
+  const otRange = currentDay?.overtime_interval || computeOvertimeRange(currentDay?.out, currentDay?.overtime, currentDay?.in);
 
   const handleSaveEdit = async () => {
     if (!currentDay) return;
@@ -375,11 +376,40 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
 
                 {/* Overtime Hours (اضافه‌کاری) */}
                 {hasOvertime && (
-                  <div className="row" style={{ borderColor: "var(--green)", background: "rgba(16,185,129,0.06)" }}>
-                    <b>اضافه‌کاری</b>
-                    <span className="mono" style={{ fontWeight: 800, color: "var(--green)" }}>
-                      {fmtH(currentDay.overtime)}
-                    </span>
+                  <div
+                    className="row"
+                    style={{
+                      borderColor: "#22C55E",
+                      background: "rgba(34, 197, 94, 0.08)",
+                      flexDirection: "column",
+                      alignItems: "stretch",
+                      gap: 6,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <b style={{ color: "var(--text)" }}>اضافه‌کاری</b>
+                      <span className="mono" style={{ fontWeight: 800, color: "#22C55E" }}>
+                        {fmtH(currentDay.overtime)}
+                      </span>
+                    </div>
+                    {otRange && (
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          fontSize: 12,
+                          borderTop: "1px dashed rgba(34, 197, 94, 0.25)",
+                          paddingTop: 6,
+                        }}
+                      >
+                        <span style={{ color: "var(--muted)", fontWeight: 700 }}>بازه اضافه‌کاری:</span>
+                        <span className="mono" style={{ fontWeight: 800, color: "var(--text)" }}>
+                          از <span style={{ color: "#22C55E" }}>{otRange[0]}</span> تا{" "}
+                          <span style={{ color: "#22C55E" }}>{otRange[1]}</span>
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
 
