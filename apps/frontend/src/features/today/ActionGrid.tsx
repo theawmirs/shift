@@ -3,9 +3,9 @@ import { LogIn, LogOut, Coffee, Undo2, Home, Building2, Clock, Sparkles, Pencil 
 import { Drawer } from "../../shared/ui/Drawer";
 import { Button } from "../../shared/ui/Button";
 import { fmtHoursFa, toAsciiDigits, computeOvertimeRange } from "../../shared/lib/format";
-import { useToast } from "../../shared/ui/Toast";
 import { CheckoutConfirmSheet } from "./CheckoutConfirmSheet";
 import { ManualHourlyLeaveSheet } from "./ManualHourlyLeaveSheet";
+import { ManualAttendanceSheet } from "./ManualAttendanceSheet";
 
 export interface ActionGridProps {
   onAction: (k: string, at?: string, otHours?: number) => void;
@@ -77,18 +77,13 @@ export function ActionGrid({
   onEditInClick,
   onLeaveChanged,
 }: ActionGridProps) {
-  const { push } = useToast();
   const isRemote = workMode === "remote";
   const effectiveReason = day_status_reason ?? disabledReason ?? null;
 
-  const [overrideModal, setOverrideModal] = useState<"in" | "out" | null>(null);
+  const [manualAttendanceModal, setManualAttendanceModal] = useState<"in" | "out" | null>(null);
   const [hourlyLeaveModal, setHourlyLeaveModal] = useState(false);
   const [otModal, setOtModal] = useState<{ open: boolean; extraHours: number; at?: string } | null>(null);
   const [confirmSheet, setConfirmSheet] = useState<{ open: boolean; at?: string }>({ open: false });
-  const [customTime, setCustomTime] = useState<string>(() => {
-    const d = new Date();
-    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  });
 
   function isDisabled(k: string) {
     if (confirmSheet.open) return true;
@@ -171,36 +166,13 @@ export function ActionGrid({
     proceedWithExit(at);
   };
 
-  const handleManualSubmit = () => {
-    if (!overrideModal || !customTime) return;
-    const at = customTime.trim();
-    const timeM = parseTimeToMinutes(at);
-    if (timeM === null) {
-      push("❌ فرمت ساعت نامعتبر است (مثال: 18:00)", "error");
-      return;
-    }
-
-    const d = new Date();
-    const nowMinutes = d.getHours() * 60 + d.getMinutes();
-    if (timeM > nowMinutes + 5) {
-      push("❌ ساعت وارد شده نمی‌تواند در آینده باشد", "error");
-      return;
-    }
-
-    if (overrideModal === "out") {
-      const inM = parseTimeToMinutes(inTime);
-      if (inM !== null && timeM <= inM) {
-        push("❌ ساعت خروج باید بعد از ساعت ورود باشد", "error");
-        return;
-      }
-      // Manual exit goes through the confirm sheet showing the chosen time.
-      setOverrideModal(null);
+  const handleManualAttendanceSubmit = (mode: "in" | "out", at: string) => {
+    setManualAttendanceModal(null);
+    if (mode === "out") {
       setConfirmSheet({ open: true, at });
-      return;
+    } else {
+      onAction("in", at);
     }
-
-    onAction(overrideModal, at);
-    setOverrideModal(null);
   };
 
   return (
@@ -268,7 +240,7 @@ export function ActionGrid({
                   opacity: day_status !== "idle" && !(day_status === "holiday" && holidayOptIn) ? 0.4 : 1,
                   pointerEvents: day_status !== "idle" && !(day_status === "holiday" && holidayOptIn) ? "none" : "auto",
                 }}
-                onClick={() => setOverrideModal("in")}
+                onClick={() => setManualAttendanceModal("in")}
                 icon={<Clock size={13} />}
               >
                 ورود دستی (ساعت دلخواه)
@@ -283,7 +255,7 @@ export function ActionGrid({
                 opacity: day_status !== "working" ? 0.4 : 1,
                 pointerEvents: day_status !== "working" ? "none" : "auto",
               }}
-              onClick={() => setOverrideModal("out")}
+              onClick={() => setManualAttendanceModal("out")}
               icon={<Clock size={13} />}
             >
               خروج دستی (ساعت دلخواه)
@@ -447,53 +419,17 @@ export function ActionGrid({
         })()}
       </Drawer>
 
-      {/* Override Time Drawer */}
-      <Drawer
-        open={overrideModal !== null}
-        onClose={() => setOverrideModal(null)}
-        title={overrideModal === "in" ? "ثبت ورود با ساعت دلخواه" : "ثبت خروج با ساعت دلخواه"}
-        height="auto"
-      >
-        <div style={{ display: "grid", gap: 14, padding: "8px 0" }}>
-          <p style={{ color: "var(--muted)", fontSize: 12, margin: 0 }}>
-            {overrideModal === "in"
-              ? "اگه یادت رفته بود موقع ورود دکمه بزنی، ساعت واقعی ورودت رو وارد کن:"
-              : "اگه یادت رفته بود موقع خروج دکمه بزنی، ساعت واقعی خروجت رو وارد کن:"}
-          </p>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%" }}>
-            <input
-              type="time"
-              value={customTime}
-              onChange={(e) => setCustomTime(e.target.value)}
-              className="mono"
-              style={{
-                fontSize: 22,
-                fontWeight: 800,
-                padding: "10px 14px",
-                borderRadius: 14,
-                border: "2.5px solid #000",
-                boxShadow: "3px 3px 0 #000",
-                background: "#fff",
-                color: "#0F172A",
-                textAlign: "center",
-                width: "100%",
-                maxWidth: "240px",
-                boxSizing: "border-box",
-                direction: "ltr",
-                margin: "0 auto",
-                display: "block",
-              }}
-            />
-          </div>
-          <Button
-            variant="primary"
-            style={{ fontWeight: 800, padding: "12px", marginTop: 4 }}
-            onClick={handleManualSubmit}
-          >
-            ثبت {overrideModal === "in" ? "ورود" : "خروج"} در ساعت {customTime}
-          </Button>
-        </div>
-      </Drawer>
+      {/* Manual Check-in / Check-out Sheet */}
+      <ManualAttendanceSheet
+        open={manualAttendanceModal !== null}
+        mode={manualAttendanceModal}
+        inTime={inTime}
+        leaveHours={leaveHours}
+        standardHours={standardHours}
+        loading={loadingAction === "in" || loadingAction === "out"}
+        onClose={() => setManualAttendanceModal(null)}
+        onSubmit={handleManualAttendanceSubmit}
+      />
 
       {/* Manual Hourly Leave Drawer (ورود و خروج مرخصی ساعتی) */}
       <ManualHourlyLeaveSheet
