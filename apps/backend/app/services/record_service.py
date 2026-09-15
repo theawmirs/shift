@@ -208,6 +208,14 @@ def compute_day(conn: sqlite3.Connection, sdate: str, user_id: int | None = None
                 deficit = 0.0
             overtime = 0.0
 
+    ot_interval = None
+    if out_dt and overtime > 0:
+        ot_minutes = int(round(overtime * 60))
+        ot_start_dt = out_dt - datetime.timedelta(minutes=ot_minutes)
+        if in_dt and ot_start_dt < in_dt:
+            ot_start_dt = in_dt
+        ot_interval = (ot_start_dt, out_dt)
+
     return {
         "date": sdate,
         "jy": jy,
@@ -228,6 +236,7 @@ def compute_day(conn: sqlite3.Connection, sdate: str, user_id: int | None = None
         "late": late,
         "deficit": deficit,
         "overtime": overtime,
+        "ot_interval": ot_interval,
         "ot_declared": ot_declared,
         "has_events": len(events) > 0,
     }
@@ -279,6 +288,7 @@ def day_payload(conn: sqlite3.Connection, sdate: str, user_id: int | None = None
         "gross": round(d["gross"], 2), "leave": round(d["leave"], 2),
         "net": round(d["net"], 2), "late": round(d["late"], 2),
         "deficit": round(d["deficit"], 2), "overtime": round(d["overtime"], 2),
+        "overtime_interval": [fmt_company_time(d["ot_interval"][0]), fmt_company_time(d["ot_interval"][1])] if d.get("ot_interval") else None,
         "ot_declared": d["ot_declared"],
         "work_mode": d["work_mode"], "work_mode_label": d["work_mode_label"],
         "day_status": ds, "day_status_label": dsl, "day_status_reason": dsr,

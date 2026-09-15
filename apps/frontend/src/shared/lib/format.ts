@@ -76,3 +76,49 @@ export function fmtHoursCompactFa(val: number | string | null | undefined): stri
   if (minutes === 0) return `${toFaDigits(hours)} ساعت`;
   return `${toFaDigits(hours)} ساعت و ${toFaDigits(minutes)} دقیقه`;
 }
+
+/**
+ * Computes the overtime interval [startTime, endTime] based on checkout time and overtime hours.
+ * Overtime occurs in the period directly before checkout.
+ * Example: outTime="19:30", overtimeHours=1.5 -> ["18:00", "19:30"]
+ */
+export function computeOvertimeRange(
+  outTime?: string | null,
+  overtimeHours?: number | string | null,
+  inTime?: string | null
+): [string, string] | null {
+  if (!outTime || !overtimeHours) return null;
+  const otNum = typeof overtimeHours === "string" ? parseFloat(overtimeHours) : overtimeHours;
+  if (isNaN(otNum) || otNum <= 0) return null;
+
+  const cleanOut = toAsciiDigits(outTime).trim();
+  if (!cleanOut.includes(":")) return null;
+  const [outHStr, outMStr] = cleanOut.split(":");
+  const outH = parseInt(outHStr, 10);
+  const outM = parseInt(outMStr, 10);
+  if (isNaN(outH) || isNaN(outM)) return null;
+
+  const outTotalM = outH * 60 + outM;
+  const otTotalM = Math.round(otNum * 60);
+  let startTotalM = Math.max(0, outTotalM - otTotalM);
+
+  if (inTime) {
+    const cleanIn = toAsciiDigits(inTime).trim();
+    if (cleanIn.includes(":")) {
+      const [inHStr, inMStr] = cleanIn.split(":");
+      const inH = parseInt(inHStr, 10);
+      const inM = parseInt(inMStr, 10);
+      if (!isNaN(inH) && !isNaN(inM)) {
+        const inTotalM = inH * 60 + inM;
+        if (startTotalM < inTotalM) {
+          startTotalM = inTotalM;
+        }
+      }
+    }
+  }
+
+  const sH = String(Math.floor(startTotalM / 60)).padStart(2, "0");
+  const sM = String(startTotalM % 60).padStart(2, "0");
+  return [`${sH}:${sM}`, cleanOut];
+}
+
