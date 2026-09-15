@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LogIn, LogOut, Coffee, Undo2, Home, Building2, Clock, Sparkles, Pencil } from "lucide-react";
+import { LogIn, LogOut, Coffee, Undo2, Home, Building2, Clock, Sparkles } from "lucide-react";
 import { Drawer } from "../../shared/ui/Drawer";
 import { Button } from "../../shared/ui/Button";
 import { fmtHoursFa, toAsciiDigits, computeOvertimeRange } from "../../shared/lib/format";
@@ -25,6 +25,7 @@ export interface ActionGridProps {
   leaveIntervals?: [string, string][];
   dateLabel?: string;
   onEditInClick?: () => void;
+  onEditCheckin?: (at: string) => Promise<any> | void;
   onLeaveChanged?: () => void;
 }
 
@@ -74,16 +75,17 @@ export function ActionGrid({
   outTime = null,
   leaveIntervals = [],
   dateLabel = "",
-  onEditInClick,
+  onEditInClick: _onEditInClick,
+  onEditCheckin,
   onLeaveChanged,
 }: ActionGridProps) {
   const isRemote = workMode === "remote";
   const effectiveReason = day_status_reason ?? disabledReason ?? null;
 
-  const [manualAttendanceModal, setManualAttendanceModal] = useState<"in" | "out" | null>(null);
+  const [manualAttendanceModal, setManualAttendanceModal] = useState(false);
   const [hourlyLeaveModal, setHourlyLeaveModal] = useState(false);
-  const [otModal, setOtModal] = useState<{ open: boolean; extraHours: number; at?: string } | null>(null);
-  const [confirmSheet, setConfirmSheet] = useState<{ open: boolean; at?: string }>({ open: false });
+  const [otModal, setOtModal] = useState<{ open: boolean; extraHours: number; at?: string; inAt?: string } | null>(null);
+  const [confirmSheet, setConfirmSheet] = useState<{ open: boolean; at?: string; inAt?: string }>({ open: false });
 
   function isDisabled(k: string) {
     if (confirmSheet.open) return true;
@@ -148,12 +150,13 @@ export function ActionGrid({
     onAction(k);
   };
 
-  const proceedWithExit = (at?: string) => {
-    const workedMinutes = computeEffectiveWorkedMinutes(inTime, at, leaveHours, liveMinutes);
+  const proceedWithExit = (at?: string, inAt?: string) => {
+    const currentIn = inAt || inTime;
+    const workedMinutes = computeEffectiveWorkedMinutes(currentIn, at, leaveHours, liveMinutes);
     const workedHours = workedMinutes / 60;
     if (workedHours > standardHours) {
       const extra = Math.round((workedHours - standardHours) * 100) / 100;
-      setOtModal({ open: true, extraHours: extra, at });
+      setOtModal({ open: true, extraHours: extra, at, inAt });
       return;
     }
     onAction("out", at);
@@ -162,16 +165,41 @@ export function ActionGrid({
   const handleConfirmExit = () => {
     if (loadingAction === "out") return;
     const at = confirmSheet.at;
+    const inAt = confirmSheet.inAt;
     setConfirmSheet({ open: false });
-    proceedWithExit(at);
+    proceedWithExit(at, inAt);
   };
 
-  const handleManualAttendanceSubmit = (mode: "in" | "out", at: string) => {
-    setManualAttendanceModal(null);
-    if (mode === "out") {
-      setConfirmSheet({ open: true, at });
-    } else {
-      onAction("in", at);
+  const handleManualAttendanceSubmit = async (entryTime: string | null, exitTime: string | null) => {
+    if (!entryTime && !exitTime) return;
+
+    // 1. Only Entry is provided
+    if (entryTime && !exitTime) {
+      setManualAttendanceModal(false);
+      if (inTime && inTime !== "—") {
+        if (onEditCheckin) {
+          await onEditCheckin(entryTime);
+        }
+      } else {
+        onAction("in", entryTime);
+      }
+      return;
+    }
+
+    // 2. Both Entry and Exit are provided (or Exit provided)
+    if (exitTime) {
+      if (entryTime && entryTime !== inTime) {
+        if (inTime && inTime !== "—") {
+          if (onEditCheckin) {
+            await onEditCheckin(entryTime);
+          }
+        } else {
+          await onAction("in", entryTime);
+        }
+      }
+
+      setManualAttendanceModal(false);
+      setConfirmSheet({ open: true, at: exitTime, inAt: entryTime || inTime });
     }
   };
 
@@ -219,48 +247,24 @@ export function ActionGrid({
       {/* ── Separate Manual Time Overrides ── */}
       {(day_status === "idle" || day_status === "working" || day_status === "on_leave" || (day_status === "holiday" && holidayOptIn)) && (
         <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            {day_status === "working" || day_status === "on_leave" ? (
-              <Button
-                variant="ghost"
-                className="mono"
-                style={{ padding: "8px 10px", fontSize: 11 }}
-                onClick={onEditInClick}
-                icon={<Pencil size={13} />}
-              >
-                ویرایش ساعت ورود
-              </Button>
-            ) : (
-              <Button
-                variant="ghost"
-                className="mono"
-                style={{
-                  padding: "8px 10px",
-                  fontSize: 11,
-                  opacity: day_status !== "idle" && !(day_status === "holiday" && holidayOptIn) ? 0.4 : 1,
-                  pointerEvents: day_status !== "idle" && !(day_status === "holiday" && holidayOptIn) ? "none" : "auto",
-                }}
-                onClick={() => setManualAttendanceModal("in")}
-                icon={<Clock size={13} />}
-              >
-                ورود دستی (ساعت دلخواه)
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              className="mono"
-              style={{
-                padding: "8px 10px",
-                fontSize: 11,
-                opacity: day_status !== "working" ? 0.4 : 1,
-                pointerEvents: day_status !== "working" ? "none" : "auto",
-              }}
-              onClick={() => setManualAttendanceModal("out")}
-              icon={<Clock size={13} />}
-            >
-              خروج دستی (ساعت دلخواه)
-            </Button>
-          </div>
+          {/* Manual Attendance (تردد دستی - ثبت ورود و خروج) */}
+          <Button
+            variant="ghost"
+            className="mono"
+            style={{
+              padding: "10px 12px",
+              fontSize: 12,
+              fontWeight: 800,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+            }}
+            onClick={() => setManualAttendanceModal(true)}
+            icon={<Clock size={14} style={{ color: "#3B82F6" }} />}
+          >
+            تردد دستی (ثبت ورود و خروج)
+          </Button>
 
           {/* Manual Hourly Leave (ورود و خروج مرخصی ساعتی) */}
           <Button
@@ -319,7 +323,7 @@ export function ActionGrid({
       {/* Checkout Confirmation Sheet — cancel/Escape/backdrop/drag records nothing */}
       <CheckoutConfirmSheet
         open={confirmSheet.open}
-        inTime={inTime ?? "—"}
+        inTime={confirmSheet.inAt || inTime || "—"}
         liveMinutes={liveMinutes}
         leaveHours={leaveHours}
         standardHours={standardHours}
@@ -421,13 +425,13 @@ export function ActionGrid({
 
       {/* Manual Check-in / Check-out Sheet */}
       <ManualAttendanceSheet
-        open={manualAttendanceModal !== null}
-        mode={manualAttendanceModal}
+        open={manualAttendanceModal}
         inTime={inTime}
+        day_status={day_status}
         leaveHours={leaveHours}
         standardHours={standardHours}
         loading={loadingAction === "in" || loadingAction === "out"}
-        onClose={() => setManualAttendanceModal(null)}
+        onClose={() => setManualAttendanceModal(false)}
         onSubmit={handleManualAttendanceSubmit}
       />
 
