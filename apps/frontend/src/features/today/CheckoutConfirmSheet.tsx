@@ -1,7 +1,7 @@
 import { AlertTriangle } from "lucide-react";
 import { Drawer } from "../../shared/ui/Drawer";
 import { Button } from "../../shared/ui/Button";
-import { fmtHoursFa, toAsciiDigits } from "../../shared/lib/format";
+import { fmtHoursFa, toAsciiDigits, computeOvertimeRange } from "../../shared/lib/format";
 
 export interface CheckoutConfirmSheetProps {
   open: boolean;
@@ -75,11 +75,26 @@ export function CheckoutConfirmSheet({
       color: "var(--amber)",
     });
   } else if (diffMinutes < 0) {
+    const otHours = Math.abs(diffMinutes) / 60;
     rows.push({
       label: isManual ? "اضافه‌کاری" : "اضافه‌کاری تا الان",
-      value: fmtHoursFa(Math.abs(diffMinutes) / 60),
+      value: fmtHoursFa(otHours),
       color: "var(--green, #22c55e)",
     });
+    const currentLiveTime = (() => {
+      const d = new Date();
+      return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    })();
+    const targetOutTime = exitTime || currentLiveTime;
+    const otRange = computeOvertimeRange(targetOutTime, otHours, inTime);
+    if (otRange) {
+      rows.push({
+        label: "بازه اضافه‌کاری",
+        value: `از ${otRange[0]} تا ${otRange[1]}`,
+        ltr: true,
+        color: "var(--green, #22c55e)",
+      });
+    }
   } else {
     rows.push({
       label: "وضعیت موظفی",

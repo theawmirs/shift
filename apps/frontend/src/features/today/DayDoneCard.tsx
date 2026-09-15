@@ -12,7 +12,7 @@ import {
   Home,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { fmtHoursFa, fmtHoursCompactFa } from "../../shared/lib/format";
+import { fmtHoursFa, fmtHoursCompactFa, computeOvertimeRange } from "../../shared/lib/format";
 import { Button } from "../../shared/ui/Button";
 
 export interface DayDoneCardProps {
@@ -33,6 +33,7 @@ export function DayDoneCard({ day, weekday, shamsi }: DayDoneCardProps) {
   const isRemote = day?.work_mode === "remote";
   const standardHours = 8;
   const pct = Math.min(100, Math.round((netHours / standardHours) * 100));
+  const otRange = day?.overtime_interval || computeOvertimeRange(day?.out, day?.overtime, day?.in);
 
   return (
     <div
@@ -197,6 +198,11 @@ export function DayDoneCard({ day, weekday, shamsi }: DayDoneCardProps) {
                 : "تکمیل ۱۰۰٪ ✔"}
             </b>
           </div>
+          {overtime > 0 && otRange && (
+            <span className="mono" style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700 }}>
+              (از {otRange[0]} تا {otRange[1]})
+            </span>
+          )}
         </div>
       </div>
 
@@ -269,6 +275,24 @@ export function DayDoneCard({ day, weekday, shamsi }: DayDoneCardProps) {
               {fmtHoursFa(overtime)}
             </span>
           </div>
+          {otRange && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                fontSize: 12,
+                borderTop: "1px dashed rgba(245, 158, 11, 0.3)",
+                paddingTop: 6,
+              }}
+            >
+              <span style={{ color: "var(--muted)", fontWeight: 700 }}>بازه اضافه‌کاری:</span>
+              <span className="mono" style={{ fontWeight: 800, color: "var(--text)" }}>
+                از <span style={{ color: "var(--amber-2)" }}>{otRange[0]}</span> تا{" "}
+                <span style={{ color: "var(--amber-2)" }}>{otRange[1]}</span>
+              </span>
+            </div>
+          )}
           <p style={{ margin: 0, fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
             تسک یادآور برای پر کردن فرم اضافه‌کاری در روز کاری بعدی فعال شد.
           </p>

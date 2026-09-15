@@ -2,7 +2,7 @@ import { useState } from "react";
 import { LogIn, LogOut, Coffee, Undo2, Home, Building2, Clock, Sparkles, Pencil } from "lucide-react";
 import { Drawer } from "../../shared/ui/Drawer";
 import { Button } from "../../shared/ui/Button";
-import { fmtHoursFa, toAsciiDigits } from "../../shared/lib/format";
+import { fmtHoursFa, toAsciiDigits, computeOvertimeRange } from "../../shared/lib/format";
 import { useToast } from "../../shared/ui/Toast";
 import { CheckoutConfirmSheet } from "./CheckoutConfirmSheet";
 import { ManualHourlyLeaveSheet } from "./ManualHourlyLeaveSheet";
@@ -372,54 +372,79 @@ export function ActionGrid({
         title="ثبت اضافه‌کاری امروز"
         height="auto"
       >
-        {otModal && (
-          <div style={{ display: "grid", gap: 14, padding: "8px 0" }}>
-            <div
-              className="row"
-              style={{
-                borderColor: "var(--amber)",
-                background: "rgba(245,158,11,0.08)",
-                flexDirection: "column",
-                alignItems: "stretch",
-                gap: 8,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Sparkles size={18} style={{ color: "var(--amber)" }} />
-                <b style={{ fontSize: 14 }}>
-                  شما {fmtHoursFa(otModal.extraHours)} بیشتر از موظفی حضور داشتید!
-                </b>
+        {otModal && (() => {
+          const d = new Date();
+          const liveTime = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+          const targetOut = otModal.at || liveTime;
+          const otRange = computeOvertimeRange(targetOut, otModal.extraHours, inTime);
+
+          return (
+            <div style={{ display: "grid", gap: 14, padding: "8px 0" }}>
+              <div
+                className="row"
+                style={{
+                  borderColor: "var(--amber)",
+                  background: "rgba(245,158,11,0.08)",
+                  flexDirection: "column",
+                  alignItems: "stretch",
+                  gap: 8,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Sparkles size={18} style={{ color: "var(--amber)" }} />
+                  <b style={{ fontSize: 14 }}>
+                    شما {fmtHoursFa(otModal.extraHours)} بیشتر از موظفی حضور داشتید!
+                  </b>
+                </div>
+                {otRange && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      fontSize: 12,
+                      borderTop: "1px dashed rgba(245,158,11,0.25)",
+                      paddingTop: 6,
+                    }}
+                  >
+                    <span style={{ color: "var(--muted)", fontWeight: 700 }}>بازه محاسبه اضافه‌کاری:</span>
+                    <span className="mono" style={{ fontWeight: 800, color: "var(--text)" }}>
+                      از <span style={{ color: "var(--amber-2)" }}>{otRange[0]}</span> تا{" "}
+                      <span style={{ color: "var(--amber-2)" }}>{otRange[1]}</span>
+                    </span>
+                  </div>
+                )}
+                <p style={{ margin: 0, fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
+                  آیا مایلید این زمان به عنوان اضافه‌کاری در سامانه ثبت شده و یادآور پر کردن فرم برایتان فعال گردد؟
+                </p>
               </div>
-              <p style={{ margin: 0, fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
-                آیا مایلید این زمان به عنوان اضافه‌کاری در سامانه ثبت شده و یادآور پر کردن فرم برایتان فعال گردد؟
-              </p>
-            </div>
 
-            <div style={{ display: "grid", gap: 8 }}>
-              <Button
-                variant="primary"
-                style={{ padding: "12px", fontWeight: 800, fontSize: 13 }}
-                onClick={() => {
-                  onAction("out", otModal.at, otModal.extraHours);
-                  setOtModal(null);
-                }}
-              >
-                ✅ بله، {fmtHoursFa(otModal.extraHours)} اضافه‌کاری ثبت شود
-              </Button>
+              <div style={{ display: "grid", gap: 8 }}>
+                <Button
+                  variant="primary"
+                  style={{ padding: "12px", fontWeight: 800, fontSize: 13 }}
+                  onClick={() => {
+                    onAction("out", otModal.at, otModal.extraHours);
+                    setOtModal(null);
+                  }}
+                >
+                  ✅ بله، {fmtHoursFa(otModal.extraHours)} اضافه‌کاری ثبت شود
+                </Button>
 
-              <Button
-                variant="ghost"
-                style={{ padding: "10px", fontSize: 12 }}
-                onClick={() => {
-                  onAction("out", otModal.at);
-                  setOtModal(null);
-                }}
-              >
-                خیر، فقط خروج ثبت شود (بدون اضافه‌کار)
-              </Button>
+                <Button
+                  variant="ghost"
+                  style={{ padding: "10px", fontSize: 12 }}
+                  onClick={() => {
+                    onAction("out", otModal.at);
+                    setOtModal(null);
+                  }}
+                >
+                  خیر، فقط خروج ثبت شود (بدون اضافه‌کار)
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </Drawer>
 
       {/* Override Time Drawer */}
