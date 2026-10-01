@@ -1,18 +1,19 @@
 import sqlite3
+from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Response
-from app.api.deps import get_db, get_current_user_optional, get_current_user
+from app.api.deps import get_db, get_current_user
 from app.schemas.settings import SettingsUpdateRequest, SettingsUpdateResponse
-from app.db.schema import DEFAULT_SETTINGS, get_user_settings, set_user_setting
+from app.db.schema import DEFAULT_SETTINGS, SENSITIVE_SETTINGS_KEYS, get_user_settings, set_user_setting
 from app.services import csv_service, record_service
 
 router = APIRouter(tags=["Settings"])
 
 @router.get("/settings", response_model=dict[str, str], summary="Get application configuration and settings")
-def get_settings(uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
+def get_settings(uid: int = Depends(get_current_user), conn: Any = Depends(get_db)):
     return get_user_settings(conn, user_id=uid)
 
-def _validate_and_save_setting(body: SettingsUpdateRequest, uid: int | None, conn: sqlite3.Connection):
-    if body.key not in DEFAULT_SETTINGS:
+def _validate_and_save_setting(body: SettingsUpdateRequest, uid: int, conn: Any):
+    if body.key in SENSITIVE_SETTINGS_KEYS or body.key not in DEFAULT_SETTINGS:
         raise HTTPException(status_code=400, detail=f"کلید نامعتبر: {body.key}")
 
     if body.key == "standard_hours":
@@ -55,17 +56,13 @@ def _validate_and_save_setting(body: SettingsUpdateRequest, uid: int | None, con
                 )
         conn.commit()
 
-    if uid is not None:
-        set_user_setting(conn, uid, body.key, body.value)
-    else:
-        conn.execute("INSERT OR REPLACE INTO settings(key, value) VALUES(?, ?)", (body.key, body.value))
-        conn.commit()
+    set_user_setting(conn, uid, body.key, body.value)
     return SettingsUpdateResponse(ok=True, key=body.key, value=body.value)
 
 @router.put("/settings", response_model=SettingsUpdateResponse, summary="Update single setting value")
 def put_settings(
     body: SettingsUpdateRequest,
-    uid: int | None = Depends(get_current_user_optional),
+    uid: int = Depends(get_current_user),
     conn: sqlite3.Connection = Depends(get_db),
 ):
     return _validate_and_save_setting(body, uid, conn)
@@ -73,7 +70,7 @@ def put_settings(
 @router.post("/settings", response_model=SettingsUpdateResponse, summary="Update single setting value for authenticated user")
 def post_settings(
     body: SettingsUpdateRequest,
-    uid: int | None = Depends(get_current_user_optional),
+    uid: int = Depends(get_current_user),
     conn: sqlite3.Connection = Depends(get_db),
 ):
     return _validate_and_save_setting(body, uid, conn)
@@ -83,7 +80,7 @@ def post_settings(
 @router.get("/csv/export", summary="Export full attendance events to CSV")
 @router.get("/data/export/csv", summary="Export full attendance events to CSV (alias)")
 def export_csv(
-    uid: int | None = Depends(get_current_user_optional),
+    uid: int = Depends(get_current_user),
     conn: sqlite3.Connection = Depends(get_db),
 ):
     csv_text = csv_service.export_attendance_csv(conn, user_id=uid)
@@ -108,7 +105,7 @@ def sample_csv():
 async def import_csv(
     file: UploadFile = File(...),
     mode: str = Form("upsert"),
-    uid: int | None = Depends(get_current_user_optional),
+    uid: int = Depends(get_current_user),
     conn: sqlite3.Connection = Depends(get_db),
 ):
     if not file.filename.endswith(".csv"):
