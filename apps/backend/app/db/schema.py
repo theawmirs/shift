@@ -11,8 +11,9 @@ DEFAULT_SETTINGS = {
     "system_offset_min": "0",
     "leave_quota_hours": "208",
     "default_work_mode": "office",  # office or remote
-    "jwt_secret": "default_worktime_secret_change_me_in_production",
 }
+
+SENSITIVE_SETTINGS_KEYS = {"jwt_secret", "auth_password_hash"}
 
 HOLIDAYS_1405 = [
     ("1405-01-01", "نوروز و عید فطر"),
@@ -168,6 +169,7 @@ def init_db(conn: DBAdapter) -> None:
         """)
         for k, v in DEFAULT_SETTINGS.items():
             conn.execute("INSERT INTO settings(key, value) VALUES(?, ?) ON CONFLICT (key) DO NOTHING", (k, v))
+        conn.execute("DELETE FROM settings WHERE key IN ('jwt_secret', 'auth_password_hash')")
         for d, n in HOLIDAYS_1405:
             conn.execute("INSERT INTO holidays(date, name) VALUES(?, ?) ON CONFLICT (date) DO NOTHING", (d, n))
         conn.commit()
@@ -295,6 +297,7 @@ def init_db(conn: DBAdapter) -> None:
         """)
         for k, v in DEFAULT_SETTINGS.items():
             conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES(?, ?)", (k, v))
+        conn.execute("DELETE FROM settings WHERE key IN ('jwt_secret', 'auth_password_hash')")
         for d, n in HOLIDAYS_1405:
             conn.execute("INSERT OR IGNORE INTO holidays(date, name) VALUES(?, ?) ON CONFLICT (date) DO NOTHING", (d, n))
         conn.commit()
@@ -306,6 +309,8 @@ def get_user_settings(conn: DBAdapter, user_id: int | None = None) -> dict[str, 
         rows = conn.execute("SELECT key, value FROM user_settings WHERE user_id=?", (user_id,)).fetchall()
         for r in rows:
             res[r["key"]] = r["value"]
+    for sk in SENSITIVE_SETTINGS_KEYS:
+        res.pop(sk, None)
     return res
 
 def set_user_setting(conn: DBAdapter, user_id: int, key: str, value: str) -> None:

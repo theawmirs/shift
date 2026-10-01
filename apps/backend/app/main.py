@@ -1,10 +1,30 @@
 import contextlib
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from app.core.config import settings
 from app.db.database import get_db_connection
 from app.db.schema import init_db
 from app.api.v1 import auth, attendance, leaves, reports, settings as api_settings
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response: Response = await call_next(request)
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://telegram.org; "
+            "style-src 'self' 'unsafe-inline'; "
+            "font-src 'self' data:; "
+            "img-src 'self' data: blob: https://*.telegram.org; "
+            "connect-src 'self' https://staging.att.pawndancertt.tech https://att.pawndancertt.tech https://*.telegram.org; "
+            "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org https://telegram.org;"
+        )
+        return response
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -28,12 +48,15 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # CORS configuration
+    # Security headers middleware
+    app.add_middleware(SecurityHeadersMiddleware)
+
+    # CORS configuration - pinned to real origins, no wildcard reflection
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=settings.CORS_ORIGINS,
         allow_credentials=True,
-        allow_methods=["*"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )
 

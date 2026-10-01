@@ -46,12 +46,16 @@ def get_user_by_id(conn: sqlite3.Connection, uid: int) -> dict | None:
     row = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
     return user_dict(row)
 
-def get_jwt_secret(conn: sqlite3.Connection) -> str:
-    secret = get_setting(conn, "jwt_secret")
-    if not secret:
-        secret = settings.JWT_SECRET or "default_secret_key_change_in_prod"
-        set_setting(conn, "jwt_secret", secret)
-    return secret
+_ephemeral_jwt_secret: str | None = None
+
+def get_jwt_secret(conn: sqlite3.Connection | None = None) -> str:
+    global _ephemeral_jwt_secret
+    if settings.JWT_SECRET and settings.JWT_SECRET != "default_worktime_secret_change_me_in_production":
+        return settings.JWT_SECRET
+    if _ephemeral_jwt_secret is None:
+        import secrets
+        _ephemeral_jwt_secret = secrets.token_hex(32)
+    return _ephemeral_jwt_secret
 
 def claim_orphans(conn: sqlite3.Connection, new_user_id: int) -> tuple[int, int]:
     cnt_users = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]

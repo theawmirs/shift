@@ -18,7 +18,7 @@ def test_env():
     test_db = os.path.join(temp_dir, "test_work_hours.db")
     settings.DB_PATH = test_db
     settings.EXPORTS_DIR = os.path.join(temp_dir, "exports")
-    settings.JWT_SECRET = "test_secret_key_123"
+    settings.JWT_SECRET = "test_secret_key_123_must_be_32_bytes_or_more"
 
     conn = sqlite3.connect(test_db, check_same_thread=False)
     conn.row_factory = sqlite3.Row
@@ -282,17 +282,42 @@ def test_holidays_endpoint(test_env):
 def test_csv_import_and_export(test_env):
     client = test_env["client"]
 
-    # Sample template test
+    # Sample template test (public)
     sample_res = client.get("/api/data/sample/csv")
     assert sample_res.status_code == 200
     assert "date,in,out,leave_hours,overtime_hours,work_mode,notes" in sample_res.text
 
-    # Import CSV data
+    # Unauthenticated import should return 401
     csv_payload = "date,in,out,leave_hours,overtime_hours,work_mode,notes\n1405-06-10,08:30,17:00,0,0.5,office,تست شیفت\n1405-06-11,09:00,18:00,1,0,remote,جلسه\n"
+    unauth_res = client.post(
+        "/api/data/import/csv",
+        data={"mode": "upsert"},
+        files={"file": ("test.csv", csv_payload.encode("utf-8"), "text/csv")},
+    )
+    assert unauth_res.status_code == 401
+
+    # Login user for authenticated CSV operations
+    init_res = client.post("/api/auth/telegram/init")
+    token = init_res.json()["token"]
+    client.post(
+        "/api/auth/telegram/webhook",
+        json={
+            "message": {
+                "text": f"/start {token}",
+                "chat": {"id": 55443322},
+                "from": {"id": 55443322, "username": "csv_user", "first_name": "CSV"},
+            }
+        },
+    )
+    access_token = client.get(f"/api/auth/poll?token={token}").json()["access_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    # Import CSV data with auth
     import_res = client.post(
         "/api/data/import/csv",
         data={"mode": "upsert"},
         files={"file": ("test.csv", csv_payload.encode("utf-8"), "text/csv")},
+        headers=headers,
     )
     assert import_res.status_code == 200
     res_data = import_res.json()
@@ -300,8 +325,8 @@ def test_csv_import_and_export(test_env):
     assert res_data["imported"] == 2
     assert len(res_data["errors"]) == 0
 
-    # Export CSV data
-    export_res = client.get("/api/data/export/csv?month=1405-06")
+    # Export CSV data with auth
+    export_res = client.get("/api/data/export/csv?month=1405-06", headers=headers)
     assert export_res.status_code == 200
     assert "1405-06-10" in export_res.text
     assert "1405-06-11" in export_res.text
@@ -330,7 +355,7 @@ def test_user_hard_delete_account(test_env):
     headers = {"Authorization": f"Bearer {access_token}"}
 
     # 2. Add some user data (settings, events)
-    client.post("/api/settings", json={"standard_hours": "6"}, headers=headers)
+    client.post("/api/settings", json={"key": "standard_hours", "value": "6"}, headers=headers)
 
     # 3. Call DELETE /api/auth/me
     del_res = client.delete("/api/auth/me", headers=headers)
@@ -341,7 +366,20 @@ def test_user_hard_delete_account(test_env):
     me_after = client.get("/api/auth/me", headers=headers)
     assert me_after.status_code == 401
 
-    client = test_env["client"]
+    # Login a new user to test day edit
+    init2 = client.post("/api/auth/telegram/init").json()["token"]
+    client.post(
+        "/api/auth/telegram/webhook",
+        json={
+            "message": {
+                "text": f"/start {init2}",
+                "chat": {"id": 990011},
+                "from": {"id": 990011, "username": "active_user", "first_name": "Active"},
+            }
+        },
+    )
+    tok2 = client.get(f"/api/auth/poll?token={init2}").json()["access_token"]
+    headers2 = {"Authorization": f"Bearer {tok2}"}
 
     # Edit past date 1405-05-15
     edit_res = client.post(
@@ -355,6 +393,7 @@ def test_user_hard_delete_account(test_env):
             "work_mode": "office",
             "notes": "ثبت دستی گذشته",
         },
+        headers=headers2,
     )
     assert edit_res.status_code == 200
     d = edit_res.json()["day"]
@@ -364,5 +403,54 @@ def test_user_hard_delete_account(test_env):
     assert d["leave"] == 1.0
     assert d["overtime"] == 0.25
     assert d["work_mode"] == "office"
+
+def test_security_jwt_secret_not_leaked(test_env):
+    client = test_env["client"]
+    # 1. Unauthenticated /api/settings MUST return 401
+    resp_unauth = client.get("/api/settings")
+    assert resp_unauth.status_code == 401
+
+    # 2. Authenticated user MUST NOT see jwt_secret or auth_password_hash
+    init_res = client.post("/api/auth/telegram/init")
+    token = init_res.json()["token"]
+    client.post("/api/auth/telegram/webhook", json={
+        "message": {
+            "text": f"/start {token}",
+            "chat": {"id": 778899},
+            "from": {"id": 778899, "username": "sec_auditor", "first_name": "Sec"},
+        }
+    })
+    access_token = client.get(f"/api/auth/poll?token={token}").json()["access_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    resp_auth = client.get("/api/settings", headers=headers)
+    assert resp_auth.status_code == 200
+    settings_data = resp_auth.json()
+    assert "jwt_secret" not in settings_data
+    assert "auth_password_hash" not in settings_data
+
+def test_security_cors_no_evil_reflection(test_env):
+    client = test_env["client"]
+    resp = client.get("/api/health", headers={"Origin": "https://evil.example"})
+    # CORS middleware must not reflect evil origin
+    allowed_origin = resp.headers.get("access-control-allow-origin")
+    assert allowed_origin != "https://evil.example"
+
+def test_security_headers_present(test_env):
+    client = test_env["client"]
+    resp = client.get("/api/health")
+    assert resp.status_code == 200
+    assert "Strict-Transport-Security" in resp.headers
+    assert resp.headers["X-Content-Type-Options"] == "nosniff"
+    assert "X-Frame-Options" in resp.headers
+    assert "Referrer-Policy" in resp.headers
+    assert "Permissions-Policy" in resp.headers
+    assert "Content-Security-Policy" in resp.headers
+
+def test_security_work_mode_toggle_unauthenticated(test_env):
+    client = test_env["client"]
+    # POST with empty body and no token MUST return 401 Unauthorized, NOT 500
+    resp = client.post("/api/work-mode/toggle", json={})
+    assert resp.status_code == 401
 
 
