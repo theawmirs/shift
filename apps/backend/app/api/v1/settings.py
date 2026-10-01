@@ -12,20 +12,47 @@ router = APIRouter(tags=["Settings"])
 def get_settings(uid: int = Depends(get_current_user), conn: Any = Depends(get_db)):
     return get_user_settings(conn, user_id=uid)
 
+SETTABLE_SETTINGS = {
+    "standard_hours",
+    "start_time",
+    "start_time_end",
+    "end_time",
+    "end_time_end",
+    "leave_quota_hours",
+    "system_offset_min",
+    "default_work_mode",
+}
+
 def _validate_and_save_setting(body: SettingsUpdateRequest, uid: int, conn: Any):
-    if body.key in SENSITIVE_SETTINGS_KEYS or body.key not in DEFAULT_SETTINGS:
-        raise HTTPException(status_code=400, detail=f"کلید نامعتبر: {body.key}")
+    if body.key not in SETTABLE_SETTINGS:
+        raise HTTPException(status_code=400, detail=f"کلید نامعتبر یا غیرقابل تغییر: {body.key}")
+
+    clean_val = body.value.translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")).strip()
 
     if body.key == "standard_hours":
         try:
-            v = float(body.value.translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")))
-            if not (1 <= v <= 24):
+            v = float(clean_val)
+            if not (4.0 <= v <= 12.0):
                 raise ValueError()
         except Exception:
-            raise HTTPException(status_code=400, detail="ساعت کاری باید بین ۱ تا ۲۴ باشد")
+            raise HTTPException(status_code=400, detail="ساعت کاری روزانه باید بین ۴ تا ۱۲ ساعت باشد")
+    elif body.key == "leave_quota_hours":
+        try:
+            v = float(clean_val)
+            if not (0.0 <= v <= 400.0):
+                raise ValueError()
+        except Exception:
+            raise HTTPException(status_code=400, detail="سهمیه کل مرخصی سالانه باید بین ۰ تا ۴۰۰ ساعت باشد")
+    elif body.key == "system_offset_min":
+        try:
+            v = int(clean_val)
+            if not (-120 <= v <= 120):
+                raise ValueError()
+        except Exception:
+            raise HTTPException(status_code=400, detail="آفست زمانی سیستم باید بین -۱۲۰ تا +۱۲۰ دقیقه باشد")
     elif body.key in ("start_time", "start_time_end", "end_time", "end_time_end"):
         try:
-            parts = body.value.split(":")
+            parts = clean_val.split(":")
             if len(parts) != 2:
                 raise ValueError()
             hh, mm = int(parts[0]), int(parts[1])
@@ -33,9 +60,19 @@ def _validate_and_save_setting(body: SettingsUpdateRequest, uid: int, conn: Any)
                 raise ValueError()
         except Exception:
             raise HTTPException(status_code=400, detail="فرمت ساعت نامعتبر است (HH:MM)")
+
+        if body.key == "start_time" and not (5 <= hh <= 12):
+            raise HTTPException(status_code=400, detail="آغاز پنجره ورود باید بین ۰۵:۰۰ تا ۱۲:۰۰ باشد")
+        elif body.key == "start_time_end" and not (6 <= hh <= 14):
+            raise HTTPException(status_code=400, detail="اتمام پنجره ورود باید بین ۰۶:۰۰ تا ۱۴:۰۰ باشد")
+        elif body.key == "end_time" and not (12 <= hh <= 20):
+            raise HTTPException(status_code=400, detail="آغاز پنجره خروج باید بین ۱۲:۰۰ تا ۲۰:۰۰ باشد")
+        elif body.key == "end_time_end" and not (13 <= hh <= 23):
+            raise HTTPException(status_code=400, detail="اتمام پنجره خروج باید بین ۱۳:۰۰ تا ۲۳:۵۹ باشد")
+
     elif body.key == "default_work_mode":
-        if body.value not in ("office", "remote"):
-            raise HTTPException(status_code=400, detail="نوع قرارداد کاری نامعتبر است")
+        if clean_val not in ("office", "remote"):
+            raise HTTPException(status_code=400, detail="نوع قرارداد کاری نامعتبر است (office یا remote)")
         
         # When changing default_work_mode, ensure all days WITH EXISTING EVENTS (including today if started/done)
         # have their historical mode frozen using INSERT OR REPLACE into day_work_mode.

@@ -128,7 +128,14 @@ def api_overtime(
         raise HTTPException(status_code=400, detail="ساعت اضافه‌کاری مشخص نشده است")
 
     try:
-        msg = record_service.record_overtime(conn, str(target_hours), target_date, user_id=uid)
+        th = float(str(target_hours).translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")))
+        if not (0.0 <= th <= 16.0):
+            raise ValueError()
+    except Exception:
+        raise HTTPException(status_code=400, detail="ساعت اضافه‌کاری باید بین ۰ تا ۱۶ ساعت باشد")
+
+    try:
+        msg = record_service.record_overtime(conn, str(th), target_date, user_id=uid)
         return {"ok": True, "message": msg}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -191,6 +198,11 @@ def api_delete_hourly_leave(
 @router.post("/day/edit", summary="Admin/User manual edit day record")
 @router.post("/edit-day", summary="Legacy alias for manual edit day record")
 def api_edit_day(body: DayEditRequest, uid: int = Depends(get_current_user), conn: sqlite3.Connection = Depends(get_db)):
+    if body.leave_hours is not None and not (0.0 <= body.leave_hours <= 16.0):
+        raise HTTPException(status_code=400, detail="ساعت مرخصی روزانه باید بین ۰ تا ۱۶ ساعت باشد")
+    if body.overtime_hours is not None and not (0.0 <= body.overtime_hours <= 16.0):
+        raise HTTPException(status_code=400, detail="ساعت اضافه‌کاری روزانه باید بین ۰ تا ۱۶ ساعت باشد")
+
     try:
         res = record_service.edit_or_create_day_record(
             conn=conn,
