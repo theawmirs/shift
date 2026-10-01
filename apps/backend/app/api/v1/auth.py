@@ -166,20 +166,15 @@ async def auth_refresh(request: Request, body: RefreshRequest | None = None, con
         raise HTTPException(status_code=401, detail="refresh_token نامعتبر")
     
     now_utc = datetime.datetime.now(datetime.timezone.utc)
-    
+    now_iso = now_utc.isoformat()
+    uid = row["user_id"]
+
     if row["revoked_at"] is not None:
-        # Check grace period for concurrent requests
-        try:
-            rev_at = datetime.datetime.fromisoformat(row["revoked_at"])
-            if rev_at.tzinfo is None:
-                rev_at = rev_at.replace(tzinfo=datetime.timezone.utc)
-            grace_sec = getattr(settings, "REFRESH_GRACE_SECONDS", 60)
-            if (now_utc - rev_at).total_seconds() > grace_sec:
-                raise HTTPException(status_code=401, detail="refresh_token باطل شده — دوباره وارد شو")
-        except HTTPException:
-            raise
-        except Exception:
-            raise HTTPException(status_code=401, detail="refresh_token باطل شده — دوباره وارد شو")
+        # Token reuse detected! Revoke entire token family for this user (OAuth 2.0 RTR Security)
+        conn.execute("UPDATE refresh_sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL", (now_iso, uid))
+        conn.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
+        conn.commit()
+        raise HTTPException(status_code=401, detail="استفاده مجدد از توکن باطل‌شده — کلیه نشست‌ها باطل شدند")
     
     try:
         exp = datetime.datetime.fromisoformat(row["expires_at"])
@@ -192,11 +187,9 @@ async def auth_refresh(request: Request, body: RefreshRequest | None = None, con
     except Exception:
         pass
 
-    uid = row["user_id"]
-    now_iso = now_utc.isoformat()
-    if row["revoked_at"] is None:
-        conn.execute("UPDATE refresh_sessions SET revoked_at=? WHERE id=?", (now_iso, row["id"]))
-        conn.commit()
+    # Atomically invalidate presented refresh token
+    conn.execute("UPDATE refresh_sessions SET revoked_at=? WHERE id=?", (now_iso, row["id"]))
+    conn.commit()
 
     urow = conn.execute("SELECT telegram_id FROM users WHERE id=?", (uid,)).fetchone()
     if not urow:

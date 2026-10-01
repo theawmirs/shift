@@ -1,3 +1,4 @@
+from typing import Any
 import csv
 import io
 import datetime
@@ -7,6 +8,14 @@ from app.core import jalali
 from app.services import record_service
 
 CSV_HEADERS = ["date", "in", "out", "leave_hours", "overtime_hours", "work_mode", "notes"]
+
+def sanitize_csv_cell(value: Any) -> Any:
+    """Neutralize formula injection for CSV exports (OWASP CSV Injection)."""
+    if isinstance(value, str) and value:
+        # If the cell starts with formula trigger characters (=, +, -, @, tab, CR), prepend a single quote
+        if value[0] in ("=", "+", "-", "@", "\t", "\r"):
+            return f"'{value}"
+    return value
 
 def export_attendance_csv(conn: sqlite3.Connection, user_id: int | None = None, month_key: str | None = None) -> str:
     """Generate CSV string containing attendance records for user/month."""
@@ -47,8 +56,8 @@ def export_attendance_csv(conn: sqlite3.Connection, user_id: int | None = None, 
             record_service.fmt_company_time(d["out"]) if d["out"] else "",
             round(d["leave"], 2) if d["leave"] > 0 else 0,
             round(d["overtime"], 2) if d["overtime"] > 0 else 0,
-            d["work_mode"] or "office",
-            notes_str,
+            sanitize_csv_cell(d["work_mode"] or "office"),
+            sanitize_csv_cell(notes_str),
         ])
 
     return output.getvalue()

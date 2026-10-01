@@ -490,4 +490,66 @@ def test_security_telegram_token_single_use_and_short_expiry(test_env):
     poll2 = client.get(f"/api/auth/poll?token={token}")
     assert poll2.status_code == 410
 
+def test_security_refresh_token_rotation_and_family_revocation(test_env):
+    client = test_env["client"]
+    init_res = client.post("/api/auth/telegram/init", headers={"X-Forwarded-For": "198.51.100.77"})
+    token = init_res.json()["token"]
+    client.post("/api/auth/telegram/webhook", json={
+        "message": {
+            "text": f"/start {token}",
+            "chat": {"id": 88112233},
+            "from": {"id": 88112233, "username": "rtr_user", "first_name": "RTR"},
+        }
+    })
+    auth_data = client.get(f"/api/auth/poll?token={token}").json()
+    rt1 = auth_data["refresh_token"]
+
+    # 1. First refresh with rt1: SUCCESS (rotates to rt2)
+    ref_res1 = client.post("/api/auth/refresh", json={"refresh_token": rt1})
+    assert ref_res1.status_code == 200
+    rt2 = ref_res1.json()["refresh_token"]
+    at2 = ref_res1.json()["access_token"]
+    assert rt2 != rt1
+
+    # 2. Second refresh with rt1 (REUSE ATTEMPT): MUST FAIL and REVOKE FAMILY
+    ref_res_reuse = client.post("/api/auth/refresh", json={"refresh_token": rt1})
+    assert ref_res_reuse.status_code == 401
+
+    # 3. rt2 should now also be revoked because the entire token family was revoked
+    ref_res2 = client.post("/api/auth/refresh", json={"refresh_token": rt2})
+    assert ref_res2.status_code == 401
+
+    # 4. at2 session should be terminated in DB
+    me_res = client.get("/api/auth/me", headers={"Authorization": f"Bearer {at2}"})
+    assert me_res.status_code == 401
+
+def test_security_csv_formula_injection_sanitized(test_env):
+    client = test_env["client"]
+    init_res = client.post("/api/auth/telegram/init", headers={"X-Forwarded-For": "198.51.100.88"})
+    token = init_res.json()["token"]
+    client.post("/api/auth/telegram/webhook", json={
+        "message": {
+            "text": f"/start {token}",
+            "chat": {"id": 88112244},
+            "from": {"id": 88112244, "username": "csv_inj_user", "first_name": "CSVInj"},
+        }
+    })
+    at = client.get(f"/api/auth/poll?token={token}").json()["access_token"]
+    headers = {"Authorization": f"Bearer {at}"}
+
+    # Record day with malicious formula note
+    client.post("/api/day/edit", json={
+        "date": "1405-07-05",
+        "in_time": "08:00",
+        "out_time": "16:00",
+        "work_mode": "office",
+        "notes": "=SUM(1,2)",
+    }, headers=headers)
+
+    # Export CSV and verify neutralization
+    export_res = client.get("/api/data/export/csv?month=1405-07", headers=headers)
+    assert export_res.status_code == 200
+    assert "'=SUM(1,2)" in export_res.text
+    assert ",=SUM(1,2)" not in export_res.text
+
 
