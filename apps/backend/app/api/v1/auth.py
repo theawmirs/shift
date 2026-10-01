@@ -70,7 +70,7 @@ def auth_poll(token: str, conn: sqlite3.Connection = Depends(get_db)):
         exp = datetime.datetime.fromisoformat(row["expires_at"])
         if exp.tzinfo is None:
             exp = exp.replace(tzinfo=datetime.timezone.utc)
-        if datetime.datetime.now(datetime.timezone.utc) > exp and row["status"] == "pending":
+        if datetime.datetime.now(datetime.timezone.utc) > exp:
             conn.execute("UPDATE login_tokens SET status='expired' WHERE token=?", (token,))
             conn.commit()
             raise HTTPException(status_code=410, detail="token expired")
@@ -80,8 +80,8 @@ def auth_poll(token: str, conn: sqlite3.Connection = Depends(get_db)):
         pass
 
     status = row["status"]
-    if status == "expired":
-        raise HTTPException(status_code=410, detail="token expired")
+    if status in ("expired", "consumed"):
+        raise HTTPException(status_code=410, detail="token expired or already used")
     if status == "pending":
         return PollResponse(status="pending")
     
@@ -92,6 +92,11 @@ def auth_poll(token: str, conn: sqlite3.Connection = Depends(get_db)):
         urow = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
         if not urow:
             raise HTTPException(status_code=500, detail="user not found")
+
+        # Invalidate token immediately upon first successful poll (single-use token)
+        conn.execute("UPDATE login_tokens SET status='expired' WHERE token=?", (token,))
+        conn.commit()
+
         user = auth_service.user_dict(urow)
         access_token, refresh_token = auth_service.issue_token_pair(conn, uid, user["telegram_id"])
         return PollResponse(
