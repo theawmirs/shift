@@ -29,7 +29,18 @@ def today_str() -> str:
 def parse_date(s: str) -> tuple[int, int, int]:
     try:
         parts = s.split("-")
-        return int(parts[0]), int(parts[1]), int(parts[2])
+        if len(parts) != 3:
+            raise ValueError(f"فرمت تاریخ نامعتبر است: {s}")
+        jy, jm, jd = int(parts[0]), int(parts[1]), int(parts[2])
+        if not (1400 <= jy <= 1420):
+            raise ValueError(f"سال شمسی نامعتبر است ({jy}). سال باید بین ۱۴۰۰ تا ۱۴۲۰ باشد.")
+        if not (1 <= jm <= 12):
+            raise ValueError(f"ماه نامعتبر است ({jm})")
+        if not (1 <= jd <= 31):
+            raise ValueError(f"روز نامعتبر است ({jd})")
+        return jy, jm, jd
+    except ValueError:
+        raise
     except Exception:
         raise ValueError(f"فرمت تاریخ نامعتبر است: {s}")
 
@@ -430,6 +441,10 @@ def record_overtime(conn: sqlite3.Connection, hours: str, date_str: str | None =
     sdate = date_str or today_str()
     try:
         ot_val = float(str(hours).translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")))
+        if ot_val < 0 or ot_val > 16:
+            raise ValueError("ساعت اضافه‌کاری باید بین ۰ تا ۱۶ ساعت باشد")
+    except ValueError:
+        raise
     except Exception:
         raise ValueError("ساعت اضافه‌کاری نامعتبر است")
     
@@ -655,6 +670,11 @@ def edit_or_create_day_record(
     user_id: int | None = None,
 ) -> dict:
     """Explicitly rewrite or insert attendance events and work mode for a specific date."""
+    if leave_hours < 0 or leave_hours > 16:
+        raise ValueError("ساعت مرخصی باید بین ۰ تا ۱۶ ساعت باشد")
+    if overtime_hours < 0 or overtime_hours > 16:
+        raise ValueError("ساعت اضافه‌کاری باید بین ۰ تا ۱۶ ساعت باشد")
+
     jy, jm, jd = parse_date(sdate)
     gy, gm, gd = jalali.jalali_to_gregorian(jy, jm, jd)
     wdf = jalali.weekday_fa(gy, gm, gd)

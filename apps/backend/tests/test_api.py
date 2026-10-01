@@ -275,7 +275,7 @@ def test_holidays_endpoint(test_env):
     assert len(holidays_1405) > 0
     assert all(h["date"].startswith("1405-") for h in holidays_1405)
 
-    resp_empty = client.get("/api/holidays/1499")
+    resp_empty = client.get("/api/holidays/1415")
     assert resp_empty.status_code == 200
     assert len(resp_empty.json()["holidays"]) == 0
 
@@ -551,5 +551,107 @@ def test_security_csv_formula_injection_sanitized(test_env):
     assert export_res.status_code == 200
     assert "'=SUM(1,2)" in export_res.text
     assert ",=SUM(1,2)" not in export_res.text
+
+def test_business_logic_date_bounds(test_env):
+    client = test_env["client"]
+    init_res = client.post("/api/auth/telegram/init", headers={"X-Forwarded-For": "198.51.100.91"})
+    token = init_res.json()["token"]
+    client.post("/api/auth/telegram/webhook", json={
+        "message": {
+            "text": f"/start {token}",
+            "chat": {"id": 88113301},
+            "from": {"id": 88113301, "username": "date_bnd_user", "first_name": "DateBnd"},
+        }
+    })
+    at = client.get(f"/api/auth/poll?token={token}").json()["access_token"]
+    headers = {"Authorization": f"Bearer {at}"}
+
+    # Record with year 1300 or 1500 must fail with 400
+    r1300 = client.post("/api/day/edit", json={"date": "1300-01-01", "in_time": "08:00"}, headers=headers)
+    assert r1300.status_code == 400
+
+    r1500 = client.post("/api/day/edit", json={"date": "1500-01-01", "in_time": "08:00"}, headers=headers)
+    assert r1500.status_code == 400
+
+    # Month report with year 1500 or 1300 must fail with 400
+    m1500 = client.get("/api/report/month?month=1500-01", headers=headers)
+    assert m1500.status_code == 400
+
+    m1300 = client.get("/api/report/month?month=1300-01", headers=headers)
+    assert m1300.status_code == 400
+
+    # Holidays with year 1500 must fail with 400
+    h1500 = client.get("/api/holidays/1500", headers=headers)
+    assert h1500.status_code == 400
+
+def test_business_logic_leave_and_overtime_bounds(test_env):
+    client = test_env["client"]
+    init_res = client.post("/api/auth/telegram/init", headers={"X-Forwarded-For": "198.51.100.92"})
+    token = init_res.json()["token"]
+    client.post("/api/auth/telegram/webhook", json={
+        "message": {
+            "text": f"/start {token}",
+            "chat": {"id": 88113302},
+            "from": {"id": 88113302, "username": "bounds_user", "first_name": "Bounds"},
+        }
+    })
+    at = client.get(f"/api/auth/poll?token={token}").json()["access_token"]
+    headers = {"Authorization": f"Bearer {at}"}
+
+    # leave_hours 99999 or -1 must be rejected
+    r_huge_leave = client.post("/api/day/edit", json={"date": "1405-06-15", "leave_hours": 99999}, headers=headers)
+    assert r_huge_leave.status_code == 400
+
+    r_neg_leave = client.post("/api/day/edit", json={"date": "1405-06-15", "leave_hours": -5}, headers=headers)
+    assert r_neg_leave.status_code == 400
+
+    # overtime_hours negative or huge must be rejected
+    r_neg_ot = client.post("/api/day/edit", json={"date": "1405-06-15", "overtime_hours": -500}, headers=headers)
+    assert r_neg_ot.status_code == 400
+
+    r_huge_ot = client.post("/api/day/edit", json={"date": "1405-06-15", "overtime_hours": 999}, headers=headers)
+    assert r_huge_ot.status_code == 400
+
+    r_ot_neg = client.post("/api/overtime", json={"hours": -500, "date": "1405-06-15"}, headers=headers)
+    assert r_ot_neg.status_code == 400
+
+    r_ot_huge = client.post("/api/overtime", json={"hours": 999, "date": "1405-06-15"}, headers=headers)
+    assert r_ot_huge.status_code == 400
+
+def test_business_logic_settings_allowlist_and_validation(test_env):
+    client = test_env["client"]
+    init_res = client.post("/api/auth/telegram/init", headers={"X-Forwarded-For": "198.51.100.93"})
+    token = init_res.json()["token"]
+    client.post("/api/auth/telegram/webhook", json={
+        "message": {
+            "text": f"/start {token}",
+            "chat": {"id": 88113303},
+            "from": {"id": 88113303, "username": "settings_user", "first_name": "Settings"},
+        }
+    })
+    at = client.get(f"/api/auth/poll?token={token}").json()["access_token"]
+    headers = {"Authorization": f"Bearer {at}"}
+
+    # 1. Unknown or unallowlisted key -> 400
+    r_unknown = client.post("/api/settings", json={"key": "unallowlisted_key", "value": "test"}, headers=headers)
+    assert r_unknown.status_code == 400
+
+    # 2. leave_quota_hours = 9999 -> 400
+    r_quota = client.post("/api/settings", json={"key": "leave_quota_hours", "value": "9999"}, headers=headers)
+    assert r_quota.status_code == 400
+
+    # 3. standard_hours = 2 -> 400
+    r_std = client.post("/api/settings", json={"key": "standard_hours", "value": "2"}, headers=headers)
+    assert r_std.status_code == 400
+
+    # 4. start_time = 00:00 -> 400
+    r_start = client.post("/api/settings", json={"key": "start_time", "value": "00:00"}, headers=headers)
+    assert r_start.status_code == 400
+
+    # 5. Valid settings -> 200
+    r_ok = client.post("/api/settings", json={"key": "standard_hours", "value": "8"}, headers=headers)
+    assert r_ok.status_code == 200
+    r_quota_ok = client.post("/api/settings", json={"key": "leave_quota_hours", "value": "208"}, headers=headers)
+    assert r_quota_ok.status_code == 200
 
 

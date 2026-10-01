@@ -28,6 +28,16 @@ def report_week(uid: int = Depends(get_current_user), conn: Any = Depends(get_db
 
 @router.get("/report/month", response_model=MonthReportResponse, summary="Get monthly detailed report")
 def report_month(month: str | None = None, uid: int = Depends(get_current_user), conn: Any = Depends(get_db)):
+    if month:
+        try:
+            parts = month.split("-")
+            if len(parts) != 2:
+                raise ValueError()
+            jy, jm = int(parts[0]), int(parts[1])
+            if not (1400 <= jy <= 1420 and 1 <= jm <= 12):
+                raise ValueError()
+        except Exception:
+            raise HTTPException(status_code=400, detail="فرمت ماه نامعتبر است (YYYY-MM بین ۱۴۰۰ تا ۱۴۲۰)")
     res = report_service.get_month_report(conn, month_key=month, user_id=uid)
     return MonthReportResponse(**res)
 
@@ -60,6 +70,16 @@ def list_months(uid: int = Depends(get_current_user), conn: Any = Depends(get_db
 
 @router.get("/excel", summary="Export month attendance report as Excel sheet")
 def export_excel(month: str | None = None, uid: int = Depends(get_current_user), conn: Any = Depends(get_db)):
+    if month:
+        try:
+            parts = month.split("-")
+            if len(parts) != 2:
+                raise ValueError()
+            jy, jm = int(parts[0]), int(parts[1])
+            if not (1400 <= jy <= 1420 and 1 <= jm <= 12):
+                raise ValueError()
+        except Exception:
+            raise HTTPException(status_code=400, detail="فرمت ماه نامعتبر است (YYYY-MM بین ۱۴۰۰ تا ۱۴۲۰)")
     path = report_service.export_excel(conn, month_key=month, user_id=uid)
     return FileResponse(
         path,
@@ -70,6 +90,8 @@ def export_excel(month: str | None = None, uid: int = Depends(get_current_user),
 @router.get("/holidays", response_model=HolidayListResponse, summary="Get list of holidays")
 @router.get("/holidays/{year}", response_model=HolidayListResponse, summary="Get list of holidays for a specific year")
 def get_holidays(year: int | None = None, conn: Any = Depends(get_db)):
+    if year is not None and not (1400 <= year <= 1420):
+        raise HTTPException(status_code=400, detail="سال نامعتبر است (بین ۱۴۰۰ تا ۱۴۲۰)")
     if year is not None:
         rows = conn.execute("SELECT date, name FROM holidays WHERE substr(date,1,4)=? ORDER BY date ASC", (f"{year:04d}",)).fetchall()
     else:
