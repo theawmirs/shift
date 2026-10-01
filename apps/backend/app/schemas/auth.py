@@ -16,6 +16,8 @@ class LoginInitResponse(BaseModel):
     botUrl: str
     qrData: str
     expiresAt: str
+    expires_at: str | None = None
+    expiresInSeconds: int | None = None
 
 class PollResponse(BaseModel):
     status: str

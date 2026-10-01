@@ -98,12 +98,14 @@ def create_login_token(conn: sqlite3.Connection) -> dict:
     )
     conn.commit()
     bot_url = f"{settings.BOT_URL_BASE}?start={token}"
-    exp_tehran = expires.astimezone(settings.tehran_tz).isoformat()
+    iso_utc = expires.strftime("%Y-%m-%dT%H:%M:%SZ")
     return {
         "token": token,
         "botUrl": bot_url,
         "qrData": bot_url,
-        "expiresAt": exp_tehran,
+        "expiresAt": iso_utc,
+        "expires_at": iso_utc,
+        "expiresInSeconds": settings.LOGIN_TOKEN_EXP_MIN * 60,
     }
 
 def issue_token_pair(conn: sqlite3.Connection, user_id: int, telegram_id: int) -> tuple[str, str]:

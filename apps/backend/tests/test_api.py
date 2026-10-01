@@ -453,4 +453,41 @@ def test_security_work_mode_toggle_unauthenticated(test_env):
     resp = client.post("/api/work-mode/toggle", json={})
     assert resp.status_code == 401
 
+def test_security_cors_preflight_no_credentials_on_invalid_origin(test_env):
+    client = test_env["client"]
+    resp = client.options("/api/settings", headers={
+        "Origin": "https://evil.example",
+        "Access-Control-Request-Method": "GET",
+    })
+    # Must NOT emit allow-credentials without a validated origin
+    assert "access-control-allow-credentials" not in resp.headers
+    assert "access-control-allow-origin" not in resp.headers
+
+def test_security_telegram_token_single_use_and_short_expiry(test_env):
+    client = test_env["client"]
+    init_res = client.post("/api/auth/telegram/init", headers={"X-Forwarded-For": "198.51.100.42"})
+    assert init_res.status_code == 200
+    init_data = init_res.json()
+    token = init_data["token"]
+    assert init_data["expiresInSeconds"] == 180  # 3 minutes
+
+    # Simulate bot login
+    client.post("/api/auth/telegram/webhook", json={
+        "message": {
+            "text": f"/start {token}",
+            "chat": {"id": 11335577},
+            "from": {"id": 11335577, "username": "single_use_user", "first_name": "Single"},
+        }
+    })
+
+    # Poll #1: Success (200)
+    poll1 = client.get(f"/api/auth/poll?token={token}")
+    assert poll1.status_code == 200
+    assert poll1.json()["status"] == "verified"
+    assert poll1.json()["access_token"] is not None
+
+    # Poll #2: Immediately revoked/consumed (410 Gone)
+    poll2 = client.get(f"/api/auth/poll?token={token}")
+    assert poll2.status_code == 410
+
 
