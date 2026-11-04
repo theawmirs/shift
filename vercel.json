@@ -2,20 +2,5 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm install --prefix apps/frontend",
   "buildCommand": "npm run build --prefix apps/frontend",
-  "outputDirectory": "apps/frontend/dist",
-  "functions": {
-    "api/index.py": {
-      "includeFiles": "apps/backend/**"
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/index.py"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ]
+  "outputDirectory": "apps/frontend/dist"
 }
