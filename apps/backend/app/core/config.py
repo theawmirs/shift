@@ -17,13 +17,25 @@ class Settings(BaseSettings):
     
     # Timezone & Security
     TIMEZONE: str = "Asia/Tehran"
-    JWT_SECRET: str | None = None  # Loaded dynamically from DB settings or ENV
+    JWT_SECRET: str | None = Field(default_factory=lambda: os.getenv("JWT_SECRET"))
     JWT_ALG: str = "HS256"
     JWT_EXP_MINUTES: int = 60 * 24 * 30  # 30 days access token
     JWT_REFRESH_DAYS: int = 90  # 90 days refresh token
     REFRESH_GRACE_SECONDS: int = 60  # Grace period for concurrent refreshes
     JWT_EXP_DAYS_LEGACY: int = 60
     LOGIN_TOKEN_EXP_MIN: int = 3
+    
+    # CORS
+    CORS_ORIGINS: list[str] = [
+        "https://staging.att.pawndancertt.tech",
+        "https://att.pawndancertt.tech",
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:34481",
+        "http://127.0.0.1:34471",
+    ]
     
     # Telegram Bot
     TELEGRAM_BOT_TOKEN: str | None = Field(default_factory=lambda: os.getenv("TELEGRAM_BOT_TOKEN"))

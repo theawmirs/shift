@@ -398,6 +398,7 @@ export function TodayPage() {
             leaveIntervals={status.day?.leave_intervals}
             dateLabel={`${status.weekday || ""} — ${shamsi}`}
             onEditInClick={() => setEditInOpen(true)}
+            onEditCheckin={onEditCheckin}
             onLeaveChanged={() => refetch()}
           />
         </>

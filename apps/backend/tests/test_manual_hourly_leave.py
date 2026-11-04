@@ -16,7 +16,7 @@ def test_env():
     test_db = os.path.join(temp_dir, "test_manual_hourly_leave.db")
     settings.DB_PATH = test_db
     settings.EXPORTS_DIR = os.path.join(temp_dir, "exports")
-    settings.JWT_SECRET = "test_secret_key_123"
+    settings.JWT_SECRET = "test_secret_key_123_must_be_32_bytes_or_more"
 
     conn = sqlite3.connect(test_db, check_same_thread=False)
     conn.row_factory = sqlite3.Row

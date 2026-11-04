@@ -18,7 +18,7 @@ def test_env():
     test_db = os.path.join(temp_dir, "test_work_hours.db")
     settings.DB_PATH = test_db
     settings.EXPORTS_DIR = os.path.join(temp_dir, "exports")
-    settings.JWT_SECRET = "test_secret_key_123"
+    settings.JWT_SECRET = "test_secret_key_123_must_be_32_bytes_or_more"
 
     conn = sqlite3.connect(test_db, check_same_thread=False)
     conn.row_factory = sqlite3.Row
@@ -275,24 +275,49 @@ def test_holidays_endpoint(test_env):
     assert len(holidays_1405) > 0
     assert all(h["date"].startswith("1405-") for h in holidays_1405)
 
-    resp_empty = client.get("/api/holidays/1499")
+    resp_empty = client.get("/api/holidays/1415")
     assert resp_empty.status_code == 200
     assert len(resp_empty.json()["holidays"]) == 0
 
 def test_csv_import_and_export(test_env):
     client = test_env["client"]
 
-    # Sample template test
+    # Sample template test (public)
     sample_res = client.get("/api/data/sample/csv")
     assert sample_res.status_code == 200
     assert "date,in,out,leave_hours,overtime_hours,work_mode,notes" in sample_res.text
 
-    # Import CSV data
+    # Unauthenticated import should return 401
     csv_payload = "date,in,out,leave_hours,overtime_hours,work_mode,notes\n1405-06-10,08:30,17:00,0,0.5,office,تست شیفت\n1405-06-11,09:00,18:00,1,0,remote,جلسه\n"
+    unauth_res = client.post(
+        "/api/data/import/csv",
+        data={"mode": "upsert"},
+        files={"file": ("test.csv", csv_payload.encode("utf-8"), "text/csv")},
+    )
+    assert unauth_res.status_code == 401
+
+    # Login user for authenticated CSV operations
+    init_res = client.post("/api/auth/telegram/init")
+    token = init_res.json()["token"]
+    client.post(
+        "/api/auth/telegram/webhook",
+        json={
+            "message": {
+                "text": f"/start {token}",
+                "chat": {"id": 55443322},
+                "from": {"id": 55443322, "username": "csv_user", "first_name": "CSV"},
+            }
+        },
+    )
+    access_token = client.get(f"/api/auth/poll?token={token}").json()["access_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    # Import CSV data with auth
     import_res = client.post(
         "/api/data/import/csv",
         data={"mode": "upsert"},
         files={"file": ("test.csv", csv_payload.encode("utf-8"), "text/csv")},
+        headers=headers,
     )
     assert import_res.status_code == 200
     res_data = import_res.json()
@@ -300,8 +325,8 @@ def test_csv_import_and_export(test_env):
     assert res_data["imported"] == 2
     assert len(res_data["errors"]) == 0
 
-    # Export CSV data
-    export_res = client.get("/api/data/export/csv?month=1405-06")
+    # Export CSV data with auth
+    export_res = client.get("/api/data/export/csv?month=1405-06", headers=headers)
     assert export_res.status_code == 200
     assert "1405-06-10" in export_res.text
     assert "1405-06-11" in export_res.text
@@ -330,7 +355,7 @@ def test_user_hard_delete_account(test_env):
     headers = {"Authorization": f"Bearer {access_token}"}
 
     # 2. Add some user data (settings, events)
-    client.post("/api/settings", json={"standard_hours": "6"}, headers=headers)
+    client.post("/api/settings", json={"key": "standard_hours", "value": "6"}, headers=headers)
 
     # 3. Call DELETE /api/auth/me
     del_res = client.delete("/api/auth/me", headers=headers)
@@ -341,7 +366,20 @@ def test_user_hard_delete_account(test_env):
     me_after = client.get("/api/auth/me", headers=headers)
     assert me_after.status_code == 401
 
-    client = test_env["client"]
+    # Login a new user to test day edit
+    init2 = client.post("/api/auth/telegram/init").json()["token"]
+    client.post(
+        "/api/auth/telegram/webhook",
+        json={
+            "message": {
+                "text": f"/start {init2}",
+                "chat": {"id": 990011},
+                "from": {"id": 990011, "username": "active_user", "first_name": "Active"},
+            }
+        },
+    )
+    tok2 = client.get(f"/api/auth/poll?token={init2}").json()["access_token"]
+    headers2 = {"Authorization": f"Bearer {tok2}"}
 
     # Edit past date 1405-05-15
     edit_res = client.post(
@@ -355,6 +393,7 @@ def test_user_hard_delete_account(test_env):
             "work_mode": "office",
             "notes": "ثبت دستی گذشته",
         },
+        headers=headers2,
     )
     assert edit_res.status_code == 200
     d = edit_res.json()["day"]
@@ -364,5 +403,255 @@ def test_user_hard_delete_account(test_env):
     assert d["leave"] == 1.0
     assert d["overtime"] == 0.25
     assert d["work_mode"] == "office"
+
+def test_security_jwt_secret_not_leaked(test_env):
+    client = test_env["client"]
+    # 1. Unauthenticated /api/settings MUST return 401
+    resp_unauth = client.get("/api/settings")
+    assert resp_unauth.status_code == 401
+
+    # 2. Authenticated user MUST NOT see jwt_secret or auth_password_hash
+    init_res = client.post("/api/auth/telegram/init")
+    token = init_res.json()["token"]
+    client.post("/api/auth/telegram/webhook", json={
+        "message": {
+            "text": f"/start {token}",
+            "chat": {"id": 778899},
+            "from": {"id": 778899, "username": "sec_auditor", "first_name": "Sec"},
+        }
+    })
+    access_token = client.get(f"/api/auth/poll?token={token}").json()["access_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    resp_auth = client.get("/api/settings", headers=headers)
+    assert resp_auth.status_code == 200
+    settings_data = resp_auth.json()
+    assert "jwt_secret" not in settings_data
+    assert "auth_password_hash" not in settings_data
+
+def test_security_cors_no_evil_reflection(test_env):
+    client = test_env["client"]
+    resp = client.get("/api/health", headers={"Origin": "https://evil.example"})
+    # CORS middleware must not reflect evil origin
+    allowed_origin = resp.headers.get("access-control-allow-origin")
+    assert allowed_origin != "https://evil.example"
+
+def test_security_headers_present(test_env):
+    client = test_env["client"]
+    resp = client.get("/api/health")
+    assert resp.status_code == 200
+    assert "Strict-Transport-Security" in resp.headers
+    assert resp.headers["X-Content-Type-Options"] == "nosniff"
+    assert "X-Frame-Options" in resp.headers
+    assert "Referrer-Policy" in resp.headers
+    assert "Permissions-Policy" in resp.headers
+    assert "Content-Security-Policy" in resp.headers
+
+def test_security_work_mode_toggle_unauthenticated(test_env):
+    client = test_env["client"]
+    # POST with empty body and no token MUST return 401 Unauthorized, NOT 500
+    resp = client.post("/api/work-mode/toggle", json={})
+    assert resp.status_code == 401
+
+def test_security_cors_preflight_no_credentials_on_invalid_origin(test_env):
+    client = test_env["client"]
+    resp = client.options("/api/settings", headers={
+        "Origin": "https://evil.example",
+        "Access-Control-Request-Method": "GET",
+    })
+    # Must NOT emit allow-credentials without a validated origin
+    assert "access-control-allow-credentials" not in resp.headers
+    assert "access-control-allow-origin" not in resp.headers
+
+def test_security_telegram_token_single_use_and_short_expiry(test_env):
+    client = test_env["client"]
+    init_res = client.post("/api/auth/telegram/init", headers={"X-Forwarded-For": "198.51.100.42"})
+    assert init_res.status_code == 200
+    init_data = init_res.json()
+    token = init_data["token"]
+    assert init_data["expiresInSeconds"] == 180  # 3 minutes
+
+    # Simulate bot login
+    client.post("/api/auth/telegram/webhook", json={
+        "message": {
+            "text": f"/start {token}",
+            "chat": {"id": 11335577},
+            "from": {"id": 11335577, "username": "single_use_user", "first_name": "Single"},
+        }
+    })
+
+    # Poll #1: Success (200)
+    poll1 = client.get(f"/api/auth/poll?token={token}")
+    assert poll1.status_code == 200
+    assert poll1.json()["status"] == "verified"
+    assert poll1.json()["access_token"] is not None
+
+    # Poll #2: Immediately revoked/consumed (410 Gone)
+    poll2 = client.get(f"/api/auth/poll?token={token}")
+    assert poll2.status_code == 410
+
+def test_security_refresh_token_rotation_and_family_revocation(test_env):
+    client = test_env["client"]
+    init_res = client.post("/api/auth/telegram/init", headers={"X-Forwarded-For": "198.51.100.77"})
+    token = init_res.json()["token"]
+    client.post("/api/auth/telegram/webhook", json={
+        "message": {
+            "text": f"/start {token}",
+            "chat": {"id": 88112233},
+            "from": {"id": 88112233, "username": "rtr_user", "first_name": "RTR"},
+        }
+    })
+    auth_data = client.get(f"/api/auth/poll?token={token}").json()
+    rt1 = auth_data["refresh_token"]
+
+    # 1. First refresh with rt1: SUCCESS (rotates to rt2)
+    ref_res1 = client.post("/api/auth/refresh", json={"refresh_token": rt1})
+    assert ref_res1.status_code == 200
+    rt2 = ref_res1.json()["refresh_token"]
+    at2 = ref_res1.json()["access_token"]
+    assert rt2 != rt1
+
+    # 2. Second refresh with rt1 (REUSE ATTEMPT): MUST FAIL and REVOKE FAMILY
+    ref_res_reuse = client.post("/api/auth/refresh", json={"refresh_token": rt1})
+    assert ref_res_reuse.status_code == 401
+
+    # 3. rt2 should now also be revoked because the entire token family was revoked
+    ref_res2 = client.post("/api/auth/refresh", json={"refresh_token": rt2})
+    assert ref_res2.status_code == 401
+
+    # 4. at2 session should be terminated in DB
+    me_res = client.get("/api/auth/me", headers={"Authorization": f"Bearer {at2}"})
+    assert me_res.status_code == 401
+
+def test_security_csv_formula_injection_sanitized(test_env):
+    client = test_env["client"]
+    init_res = client.post("/api/auth/telegram/init", headers={"X-Forwarded-For": "198.51.100.88"})
+    token = init_res.json()["token"]
+    client.post("/api/auth/telegram/webhook", json={
+        "message": {
+            "text": f"/start {token}",
+            "chat": {"id": 88112244},
+            "from": {"id": 88112244, "username": "csv_inj_user", "first_name": "CSVInj"},
+        }
+    })
+    at = client.get(f"/api/auth/poll?token={token}").json()["access_token"]
+    headers = {"Authorization": f"Bearer {at}"}
+
+    # Record day with malicious formula note
+    client.post("/api/day/edit", json={
+        "date": "1405-07-05",
+        "in_time": "08:00",
+        "out_time": "16:00",
+        "work_mode": "office",
+        "notes": "=SUM(1,2)",
+    }, headers=headers)
+
+    # Export CSV and verify neutralization
+    export_res = client.get("/api/data/export/csv?month=1405-07", headers=headers)
+    assert export_res.status_code == 200
+    assert "'=SUM(1,2)" in export_res.text
+    assert ",=SUM(1,2)" not in export_res.text
+
+def test_business_logic_date_bounds(test_env):
+    client = test_env["client"]
+    init_res = client.post("/api/auth/telegram/init", headers={"X-Forwarded-For": "198.51.100.91"})
+    token = init_res.json()["token"]
+    client.post("/api/auth/telegram/webhook", json={
+        "message": {
+            "text": f"/start {token}",
+            "chat": {"id": 88113301},
+            "from": {"id": 88113301, "username": "date_bnd_user", "first_name": "DateBnd"},
+        }
+    })
+    at = client.get(f"/api/auth/poll?token={token}").json()["access_token"]
+    headers = {"Authorization": f"Bearer {at}"}
+
+    # Record with year 1300 or 1500 must fail with 400
+    r1300 = client.post("/api/day/edit", json={"date": "1300-01-01", "in_time": "08:00"}, headers=headers)
+    assert r1300.status_code == 400
+
+    r1500 = client.post("/api/day/edit", json={"date": "1500-01-01", "in_time": "08:00"}, headers=headers)
+    assert r1500.status_code == 400
+
+    # Month report with year 1500 or 1300 must fail with 400
+    m1500 = client.get("/api/report/month?month=1500-01", headers=headers)
+    assert m1500.status_code == 400
+
+    m1300 = client.get("/api/report/month?month=1300-01", headers=headers)
+    assert m1300.status_code == 400
+
+    # Holidays with year 1500 must fail with 400
+    h1500 = client.get("/api/holidays/1500", headers=headers)
+    assert h1500.status_code == 400
+
+def test_business_logic_leave_and_overtime_bounds(test_env):
+    client = test_env["client"]
+    init_res = client.post("/api/auth/telegram/init", headers={"X-Forwarded-For": "198.51.100.92"})
+    token = init_res.json()["token"]
+    client.post("/api/auth/telegram/webhook", json={
+        "message": {
+            "text": f"/start {token}",
+            "chat": {"id": 88113302},
+            "from": {"id": 88113302, "username": "bounds_user", "first_name": "Bounds"},
+        }
+    })
+    at = client.get(f"/api/auth/poll?token={token}").json()["access_token"]
+    headers = {"Authorization": f"Bearer {at}"}
+
+    # leave_hours 99999 or -1 must be rejected
+    r_huge_leave = client.post("/api/day/edit", json={"date": "1405-06-15", "leave_hours": 99999}, headers=headers)
+    assert r_huge_leave.status_code == 400
+
+    r_neg_leave = client.post("/api/day/edit", json={"date": "1405-06-15", "leave_hours": -5}, headers=headers)
+    assert r_neg_leave.status_code == 400
+
+    # overtime_hours negative or huge must be rejected
+    r_neg_ot = client.post("/api/day/edit", json={"date": "1405-06-15", "overtime_hours": -500}, headers=headers)
+    assert r_neg_ot.status_code == 400
+
+    r_huge_ot = client.post("/api/day/edit", json={"date": "1405-06-15", "overtime_hours": 999}, headers=headers)
+    assert r_huge_ot.status_code == 400
+
+    r_ot_neg = client.post("/api/overtime", json={"hours": -500, "date": "1405-06-15"}, headers=headers)
+    assert r_ot_neg.status_code == 400
+
+    r_ot_huge = client.post("/api/overtime", json={"hours": 999, "date": "1405-06-15"}, headers=headers)
+    assert r_ot_huge.status_code == 400
+
+def test_business_logic_settings_allowlist_and_validation(test_env):
+    client = test_env["client"]
+    init_res = client.post("/api/auth/telegram/init", headers={"X-Forwarded-For": "198.51.100.93"})
+    token = init_res.json()["token"]
+    client.post("/api/auth/telegram/webhook", json={
+        "message": {
+            "text": f"/start {token}",
+            "chat": {"id": 88113303},
+            "from": {"id": 88113303, "username": "settings_user", "first_name": "Settings"},
+        }
+    })
+    at = client.get(f"/api/auth/poll?token={token}").json()["access_token"]
+    headers = {"Authorization": f"Bearer {at}"}
+
+    # 1. Unknown or unallowlisted key -> 400
+    r_unknown = client.post("/api/settings", json={"key": "unallowlisted_key", "value": "test"}, headers=headers)
+    assert r_unknown.status_code == 400
+
+    # 2. leave_quota_hours = 9999 -> 400
+    r_quota = client.post("/api/settings", json={"key": "leave_quota_hours", "value": "9999"}, headers=headers)
+    assert r_quota.status_code == 400
+
+    # 3. standard_hours = 2 -> 400
+    r_std = client.post("/api/settings", json={"key": "standard_hours", "value": "2"}, headers=headers)
+    assert r_std.status_code == 400
+
+    # 4. start_time = 00:00 -> 400
+    r_start = client.post("/api/settings", json={"key": "start_time", "value": "00:00"}, headers=headers)
+    assert r_start.status_code == 400
+
+    # 5. Valid settings -> 200
+    r_ok = client.post("/api/settings", json={"key": "standard_hours", "value": "8"}, headers=headers)
+    assert r_ok.status_code == 200
+    r_quota_ok = client.post("/api/settings", json={"key": "leave_quota_hours", "value": "208"}, headers=headers)
+    assert r_quota_ok.status_code == 200
 
 

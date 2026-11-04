@@ -25,7 +25,7 @@ from app.services import record_service
 router = APIRouter(tags=["Attendance & Tasks"])
 
 @router.get("/status", response_model=StatusResponse, summary="Get today status and live attendance stats")
-def get_status(uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
+def get_status(uid: int = Depends(get_current_user), conn: sqlite3.Connection = Depends(get_db)):
     sdate = record_service.today_str()
     d = record_service.compute_day(conn, sdate, user_id=uid)
     is_hol, hol_name = record_service.holiday_name(conn, sdate)
@@ -67,7 +67,7 @@ def get_status(uid: int | None = Depends(get_current_user_optional), conn: sqlit
     )
 
 @router.post("/record", response_model=RecordResponse, summary="Record attendance event (in, out, leave_start, leave_end)")
-def api_record(body: RecordRequest, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
+def api_record(body: RecordRequest, uid: int = Depends(get_current_user), conn: sqlite3.Connection = Depends(get_db)):
     raw = (body.event_type or "").strip().lower().replace("-", "_")
     mapping = {
         "in": "in",
@@ -98,7 +98,7 @@ def api_record(body: RecordRequest, uid: int | None = Depends(get_current_user_o
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/in/edit", summary="Edit check-in time for today or date")
-def api_edit_checkin(body: CheckinEditRequest, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
+def api_edit_checkin(body: CheckinEditRequest, uid: int = Depends(get_current_user), conn: sqlite3.Connection = Depends(get_db)):
     try:
         day = record_service.edit_checkin_time(conn, uid, body.at, body.date)
         hhmm = (body.at or "").strip()
@@ -112,7 +112,7 @@ def api_overtime(
     body: OvertimeRequest | None = None,
     hours: float | str | None = Query(None),
     date: str | None = Query(None),
-    uid: int | None = Depends(get_current_user_optional),
+    uid: int = Depends(get_current_user),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     target_hours = None
@@ -128,7 +128,14 @@ def api_overtime(
         raise HTTPException(status_code=400, detail="ساعت اضافه‌کاری مشخص نشده است")
 
     try:
-        msg = record_service.record_overtime(conn, str(target_hours), target_date, user_id=uid)
+        th = float(str(target_hours).translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")))
+        if not (0.0 <= th <= 16.0):
+            raise ValueError()
+    except Exception:
+        raise HTTPException(status_code=400, detail="ساعت اضافه‌کاری باید بین ۰ تا ۱۶ ساعت باشد")
+
+    try:
+        msg = record_service.record_overtime(conn, str(th), target_date, user_id=uid)
         return {"ok": True, "message": msg}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -136,7 +143,7 @@ def api_overtime(
 @router.post("/leave/hourly", response_model=HourlyLeaveResponse, summary="Add manual hourly leave interval")
 def api_add_hourly_leave(
     body: HourlyLeaveAddRequest,
-    uid: int | None = Depends(get_current_user_optional),
+    uid: int = Depends(get_current_user),
     conn: sqlite3.Connection = Depends(get_db),
 ):
     try:
@@ -163,7 +170,7 @@ def api_delete_hourly_leave(
     start_time: str | None = Query(None),
     end_time: str | None = Query(None),
     date: str | None = Query(None),
-    uid: int | None = Depends(get_current_user_optional),
+    uid: int = Depends(get_current_user),
     conn: sqlite3.Connection = Depends(get_db),
 ):
     st = body.start_time if body and body.start_time else start_time
@@ -190,7 +197,12 @@ def api_delete_hourly_leave(
 
 @router.post("/day/edit", summary="Admin/User manual edit day record")
 @router.post("/edit-day", summary="Legacy alias for manual edit day record")
-def api_edit_day(body: DayEditRequest, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
+def api_edit_day(body: DayEditRequest, uid: int = Depends(get_current_user), conn: sqlite3.Connection = Depends(get_db)):
+    if body.leave_hours is not None and not (0.0 <= body.leave_hours <= 16.0):
+        raise HTTPException(status_code=400, detail="ساعت مرخصی روزانه باید بین ۰ تا ۱۶ ساعت باشد")
+    if body.overtime_hours is not None and not (0.0 <= body.overtime_hours <= 16.0):
+        raise HTTPException(status_code=400, detail="ساعت اضافه‌کاری روزانه باید بین ۰ تا ۱۶ ساعت باشد")
+
     try:
         res = record_service.edit_or_create_day_record(
             conn=conn,
@@ -208,13 +220,13 @@ def api_edit_day(body: DayEditRequest, uid: int | None = Depends(get_current_use
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/work-mode", response_model=WorkModeResponse, summary="Get work mode for date")
-def get_work_mode(date: str | None = None, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
+def get_work_mode(date: str | None = None, uid: int = Depends(get_current_user), conn: sqlite3.Connection = Depends(get_db)):
     sdate = date or record_service.today_str()
     mode = record_service.get_work_mode(conn, sdate, user_id=uid)
     return WorkModeResponse(ok=True, date=sdate, mode=mode, label=record_service.WORK_MODE_LABEL.get(mode, mode))
 
 @router.put("/work-mode", response_model=WorkModeResponse, summary="Set work mode (office / remote)")
-def put_work_mode(body: WorkModeRequest, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
+def put_work_mode(body: WorkModeRequest, uid: int = Depends(get_current_user), conn: sqlite3.Connection = Depends(get_db)):
     sdate = body.date or record_service.today_str()
     if body.mode not in record_service.WORK_MODES:
         raise HTTPException(status_code=400, detail="mode must be office|remote")
@@ -222,7 +234,7 @@ def put_work_mode(body: WorkModeRequest, uid: int | None = Depends(get_current_u
     return WorkModeResponse(ok=True, date=sdate, mode=body.mode, label=record_service.WORK_MODE_LABEL.get(body.mode, body.mode))
 
 @router.post("/work-mode/toggle", response_model=WorkModeResponse, summary="Toggle work mode between office and remote")
-def toggle_work_mode(body: WorkModeRequest | None = None, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
+def toggle_work_mode(body: WorkModeRequest | None = None, uid: int = Depends(get_current_user), conn: sqlite3.Connection = Depends(get_db)):
     sdate = (body.date if body and body.date else None) or record_service.today_str()
     nxt = record_service.toggle_work_mode(conn, sdate, user_id=uid)
     return WorkModeResponse(ok=True, date=sdate, mode=nxt, label=record_service.WORK_MODE_LABEL.get(nxt, nxt))
@@ -243,18 +255,13 @@ def _map_task_rows(rows) -> list[TaskItem]:
         for r in rows
     ]
 
-def _get_all_user_tasks(conn: sqlite3.Connection, uid: int | None) -> list[sqlite3.Row]:
-    if uid is None:
-        return conn.execute("SELECT * FROM tasks WHERE user_id IS NULL ORDER BY id DESC").fetchall()
+def _get_all_user_tasks(conn: sqlite3.Connection, uid: int) -> list[sqlite3.Row]:
     return conn.execute("SELECT * FROM tasks WHERE user_id=? ORDER BY id DESC", (uid,)).fetchall()
 
 @router.get("/tasks", response_model=TaskListResponse, summary="List all tasks for user (or filtered by date)")
-def list_tasks(date: str | None = None, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
+def list_tasks(date: str | None = None, uid: int = Depends(get_current_user), conn: sqlite3.Connection = Depends(get_db)):
     if date:
-        if uid is None:
-            rows = conn.execute("SELECT * FROM tasks WHERE shamsi_date=? AND user_id IS NULL ORDER BY id DESC", (date,)).fetchall()
-        else:
-            rows = conn.execute("SELECT * FROM tasks WHERE shamsi_date=? AND user_id=? ORDER BY id DESC", (date, uid)).fetchall()
+        rows = conn.execute("SELECT * FROM tasks WHERE shamsi_date=? AND user_id=? ORDER BY id DESC", (date, uid)).fetchall()
         return TaskListResponse(date=date, tasks=_map_task_rows(rows))
 
     # By default, return all user tasks so frontend can handle complete task lifecycle & pagination
@@ -263,7 +270,7 @@ def list_tasks(date: str | None = None, uid: int | None = Depends(get_current_us
     return TaskListResponse(date=sdate, tasks=_map_task_rows(rows))
 
 @router.post("/tasks", response_model=TaskActionResponse, summary="Add task for date")
-def add_task(body: TaskAddRequest, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
+def add_task(body: TaskAddRequest, uid: int = Depends(get_current_user), conn: sqlite3.Connection = Depends(get_db)):
     sdate = body.date or record_service.today_str()
     title = body.title.strip()
     if not title:
@@ -274,18 +281,11 @@ def add_task(body: TaskAddRequest, uid: int | None = Depends(get_current_user_op
         prio = "medium"
 
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    if uid is None:
-        cnt = conn.execute("SELECT COUNT(*) FROM tasks WHERE shamsi_date=? AND user_id IS NULL", (sdate,)).fetchone()[0]
-        conn.execute(
-            "INSERT INTO tasks(shamsi_date, title, description, priority, due_date, done, day_num, created_at, user_id) VALUES(?,?,?,?,?,0,?,?,NULL)",
-            (sdate, title, body.description, prio, body.due_date, cnt + 1, now_iso),
-        )
-    else:
-        cnt = conn.execute("SELECT COUNT(*) FROM tasks WHERE shamsi_date=? AND user_id=?", (sdate, uid)).fetchone()[0]
-        conn.execute(
-            "INSERT INTO tasks(shamsi_date, title, description, priority, due_date, done, day_num, created_at, user_id) VALUES(?,?,?,?,?,0,?,?,?)",
-            (sdate, title, body.description, prio, body.due_date, cnt + 1, now_iso, uid),
-        )
+    cnt = conn.execute("SELECT COUNT(*) FROM tasks WHERE shamsi_date=? AND user_id=?", (sdate, uid)).fetchone()[0]
+    conn.execute(
+        "INSERT INTO tasks(shamsi_date, title, description, priority, due_date, done, day_num, created_at, user_id) VALUES(?,?,?,?,?,0,?,?,?)",
+        (sdate, title, body.description, prio, body.due_date, cnt + 1, now_iso, uid),
+    )
     conn.commit()
 
     rows = _get_all_user_tasks(conn, uid)
@@ -296,11 +296,8 @@ def add_task(body: TaskAddRequest, uid: int | None = Depends(get_current_user_op
     )
 
 @router.patch("/tasks/{tid}", response_model=TaskActionResponse, summary="Update task details")
-def patch_task(tid: int, body: TaskPatchRequest, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
-    if uid is None:
-        row = conn.execute("SELECT * FROM tasks WHERE id=? AND user_id IS NULL", (tid,)).fetchone()
-    else:
-        row = conn.execute("SELECT * FROM tasks WHERE id=? AND user_id=?", (tid, uid)).fetchone()
+def patch_task(tid: int, body: TaskPatchRequest, uid: int = Depends(get_current_user), conn: sqlite3.Connection = Depends(get_db)):
+    row = conn.execute("SELECT * FROM tasks WHERE id=? AND user_id=?", (tid, uid)).fetchone()
     
     if not row:
         raise HTTPException(status_code=404, detail="تسک پیدا نشد")
@@ -331,7 +328,8 @@ def patch_task(tid: int, body: TaskPatchRequest, uid: int | None = Depends(get_c
 
     if updates:
         params.append(tid)
-        conn.execute(f"UPDATE tasks SET {', '.join(updates)} WHERE id=?", params)
+        params.append(uid)
+        conn.execute(f"UPDATE tasks SET {', '.join(updates)} WHERE id=? AND user_id=?", params)
         conn.commit()
 
     rows = _get_all_user_tasks(conn, uid)
@@ -342,16 +340,13 @@ def patch_task(tid: int, body: TaskPatchRequest, uid: int | None = Depends(get_c
     )
 
 @router.delete("/tasks/{tid}", response_model=TaskActionResponse, summary="Delete task")
-def delete_task(tid: int, uid: int | None = Depends(get_current_user_optional), conn: sqlite3.Connection = Depends(get_db)):
-    if uid is None:
-        row = conn.execute("SELECT * FROM tasks WHERE id=? AND user_id IS NULL", (tid,)).fetchone()
-    else:
-        row = conn.execute("SELECT * FROM tasks WHERE id=? AND user_id=?", (tid, uid)).fetchone()
+def delete_task(tid: int, uid: int = Depends(get_current_user), conn: sqlite3.Connection = Depends(get_db)):
+    row = conn.execute("SELECT * FROM tasks WHERE id=? AND user_id=?", (tid, uid)).fetchone()
     
     if not row:
         raise HTTPException(status_code=404, detail="تسک پیدا نشد")
 
-    conn.execute("DELETE FROM tasks WHERE id=?", (tid,))
+    conn.execute("DELETE FROM tasks WHERE id=? AND user_id=?", (tid, uid))
     conn.commit()
 
     rows = _get_all_user_tasks(conn, uid)
