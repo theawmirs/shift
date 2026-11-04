@@ -3,6 +3,11 @@
   "installCommand": "npm install --prefix apps/frontend",
   "buildCommand": "npm run build --prefix apps/frontend",
   "outputDirectory": "apps/frontend/dist",
+  "functions": {
+    "api/index.py": {
+      "includeFiles": "apps/backend/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
