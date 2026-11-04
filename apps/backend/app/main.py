@@ -41,11 +41,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: ensure DB tables and seed data
-    conn = get_db_connection()
     try:
-        init_db(conn)
-    finally:
-        conn.close()
+        conn = get_db_connection()
+        try:
+            init_db(conn)
+        finally:
+            conn.close()
+    except Exception as e:
+        print(f"[STARTUP DB INIT WARNING] {e}")
     yield
     # Shutdown logic if any
 
