@@ -1,6 +1,7 @@
 import sqlite3
 import datetime
 import os
+import io
 from collections import Counter
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
@@ -366,7 +367,7 @@ def get_week_report(conn: DBAdapter, user_id: int | None = None) -> dict:
         "text": report_text,
     }
 
-def export_excel(conn: DBAdapter, month_key: str | None = None, user_id: int | None = None) -> str:
+def export_excel(conn: DBAdapter, month_key: str | None = None, user_id: int | None = None) -> bytes:
     m = get_month_report(conn, month_key, user_id=user_id)
     wb = Workbook()
     ws = wb.active
@@ -461,7 +462,7 @@ def export_excel(conn: DBAdapter, month_key: str | None = None, user_id: int | N
     for c_idx, w in col_widths.items():
         ws.column_dimensions[get_column_letter(c_idx)].width = w
 
-    os.makedirs(settings.EXPORTS_DIR, exist_ok=True)
-    fpath = os.path.join(settings.EXPORTS_DIR, f"report_{m['month_key']}_{user_id or 'anon'}.xlsx")
-    wb.save(fpath)
-    return fpath
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output.getvalue()
