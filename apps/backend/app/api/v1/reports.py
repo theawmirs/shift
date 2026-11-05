@@ -1,7 +1,7 @@
 import sqlite3
 from typing import Any
 import os
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import FileResponse
 from app.api.deps import get_db, get_current_user
 from app.schemas.reports import (
@@ -80,11 +80,12 @@ def export_excel(month: str | None = None, uid: int = Depends(get_current_user),
                 raise ValueError()
         except Exception:
             raise HTTPException(status_code=400, detail="فرمت ماه نامعتبر است (YYYY-MM بین ۱۴۰۰ تا ۱۴۲۰)")
-    path = report_service.export_excel(conn, month_key=month, user_id=uid)
-    return FileResponse(
-        path,
+    excel_bytes = report_service.export_excel(conn, month_key=month, user_id=uid)
+    filename = f"report_{month or 'current'}.xlsx"
+    return Response(
+        content=excel_bytes,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        filename=os.path.basename(path),
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 @router.get("/holidays", response_model=HolidayListResponse, summary="Get list of holidays")
