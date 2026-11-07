@@ -7,6 +7,9 @@ class MonthSummaryTotals(BaseModel):
     leave: float
     overtime: float
     deficit: float
+    raw_overtime: float | None = None
+    raw_deficit: float | None = None
+    compensated_hours: float | None = None
     late_total: float
     late_days: int
     work_days: int
@@ -36,6 +39,9 @@ class WeekTotals(BaseModel):
     net: float
     overtime: float
     deficit: float
+    raw_overtime: float | None = None
+    raw_deficit: float | None = None
+    compensated_hours: float | None = None
     leave: float
     work_days: int
     remote_days: int

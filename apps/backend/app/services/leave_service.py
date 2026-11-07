@@ -68,8 +68,9 @@ def create_daily_leave(conn: sqlite3.Connection, user_id: int, start_date: str, 
     
     today = record_service.today_str()
     max_date = today_shamsi_plus_days(30)
-    if start_date < today:
-        raise ValueError("تاریخ شروع نمی‌تواند قبل از امروز باشد")
+    sy, sm, sd = record_service.parse_date(start_date)
+    if not (1400 <= sy <= 1420):
+        raise ValueError("سال تاریخ نامعتبر است")
     if end_date > max_date:
         raise ValueError("تاریخ پایان حداکثر تا 30 روز بعد از امروز")
     
@@ -115,9 +116,6 @@ def delete_daily_leave(conn: sqlite3.Connection, user_id: int, lid: int) -> bool
     row = conn.execute("SELECT id, start_date FROM daily_leaves WHERE id=? AND user_id=?", (lid, user_id)).fetchone()
     if not row:
         return False
-    today = record_service.today_str()
-    if row["start_date"] <= today:
-        raise ValueError("مرخصی شروع شده، قابل لغو نیست")
     conn.execute("DELETE FROM daily_leaves WHERE id=?", (lid,))
     conn.commit()
     return True

@@ -27,6 +27,19 @@ def month_days(jy: int, jm: int) -> list[str]:
             pass
     return [jalali.jalali_date_str(jy, jm, d) for d in range(1, days_in_month + 1)]
 
+def net_overtime_and_deficit(overtime: float, deficit: float) -> tuple[float, float, float]:
+    """
+    Nets overtime against deficit.
+    Overtime is used first to compensate deficit.
+    Returns: (net_overtime, net_deficit, compensated_hours)
+    """
+    ot = max(0.0, float(overtime or 0.0))
+    df = max(0.0, float(deficit or 0.0))
+    compensated = min(ot, df)
+    final_ot = ot - compensated
+    final_df = df - compensated
+    return round(final_ot, 2), round(final_df, 2), round(compensated, 2)
+
 def compute_month(conn: DBAdapter, month_key: str, user_id: int | None = None) -> dict:
     parts = month_key.split("-")
     jy, jm = int(parts[0]), int(parts[1])
@@ -99,6 +112,21 @@ def compute_month(conn: DBAdapter, month_key: str, user_id: int | None = None) -
         wm = work_mode_map.get(sdate, default_work_mode)
         events = events_by_date.get(sdate, [])
 
+        # Check daily leave
+        dl_for_day = None
+        for r in dl_rows:
+            if r["start_date"] <= sdate <= r["end_date"]:
+                dl_for_day = {
+                    "id": r["id"],
+                    "start_date": r["start_date"],
+                    "end_date": r["end_date"],
+                    "type": r["type"],
+                    "reason": r["reason"],
+                    "hours": r["hours"],
+                    "label": leave_service.DAILY_LEAVE_LABEL.get(r["type"], r["type"]),
+                }
+                break
+
         in_dt = None
         out_dt = None
         leave_intervals = []
@@ -142,11 +170,26 @@ def compute_month(conn: DBAdapter, month_key: str, user_id: int | None = None) -
             if in_clock > lim_in:
                 late = (in_clock - lim_in).total_seconds() / 3600.0
 
-        if is_hol:
+        is_dl_workday = bool(dl_for_day is not None and not is_hol)
+        if is_dl_workday:
+            leave_h = 8.0
+            gross = 0.0
+            net = 0.0
+            late = 0.0
+            deficit = 0.0
+            overtime = 0.0
+            ot_declared = False
+            ds = "on_leave"
+            dsl = "مرخصی روزانه"
+            dsr = f"مرخصی روزانه ({dl_for_day['label']})" + (f" — {dl_for_day['reason']}" if dl_for_day.get('reason') else "")
+        elif is_hol:
             net = max(0.0, gross - leave_h)
             overtime = net
             deficit = 0.0
             ot_declared = True
+            ds = "idle"
+            dsl = "آماده"
+            dsr = None
         else:
             if ot_declared and overtime > 0:
                 net = max(0.0, gross - leave_h)
@@ -157,6 +200,9 @@ def compute_month(conn: DBAdapter, month_key: str, user_id: int | None = None) -
                 net = max(0.0, gross - leave_h)
 
             deficit = max(0.0, standard - net) if (in_dt or out_dt) else 0.0
+            ds = "idle"
+            dsl = "آماده"
+            dsr = None
 
         ot_interval_str = None
         if out_dt and overtime > 0:
@@ -190,9 +236,11 @@ def compute_month(conn: DBAdapter, month_key: str, user_id: int | None = None) -
             "ot_declared": ot_declared,
             "work_mode": wm,
             "work_mode_label": record_service.WORK_MODE_LABEL.get(wm, wm),
-            "day_status": "idle",
-            "day_status_label": "آماده",
-            "day_status_reason": None,
+            "day_status": ds,
+            "day_status_label": dsl,
+            "day_status_reason": dsr,
+            "daily_leave": dl_for_day,
+            "is_daily_leave": is_dl_workday,
         }
 
         if is_hol:
@@ -200,10 +248,10 @@ def compute_month(conn: DBAdapter, month_key: str, user_id: int | None = None) -
             if has_events:
                 holiday_worked += 1
         else:
-            if has_events:
+            if has_events or is_dl_workday:
                 work_days += 1
 
-        if has_events:
+        if has_events or is_dl_workday:
             rows.append(d_item)
             total_net += d_item["net"]
             total_gross += d_item["gross"]
@@ -252,14 +300,10 @@ def get_month_report(conn: DBAdapter, month_key: str | None = None, user_id: int
                 dl_by_date[sdate] = r
 
     summary = Counter()
-    workday_dl = 0
     for s, dl in dl_by_date.items():
         summary[dl["type"]] += 1
-        is_hol, _ = record_service.holiday_name(conn, s)
-        if not is_hol:
-            workday_dl += 1
 
-    m_leave_adj = m["leave"] + workday_dl * 8.0
+    m_leave_adj = m["leave"]
     jy = m["jy"]
     quota = float(m["u_settings"].get("leave_quota_hours", "208") or 208.0)
     
@@ -294,12 +338,17 @@ def get_month_report(conn: DBAdapter, month_key: str | None = None, user_id: int
         "daily_annual": round(annual_daily, 2),
     }
 
+    net_ot, net_df, compensated = net_overtime_and_deficit(m["overtime"], m["deficit"])
+
     totals = {
         "net": round(m["net"], 2),
         "gross": round(m["gross"], 2),
         "leave": round(m_leave_adj, 2),
-        "overtime": round(m["overtime"], 2),
-        "deficit": round(m["deficit"], 2),
+        "overtime": net_ot,
+        "deficit": net_df,
+        "raw_overtime": round(m["overtime"], 2),
+        "raw_deficit": round(m["deficit"], 2),
+        "compensated_hours": compensated,
         "late_total": round(m["late_total"], 2),
         "late_days": m["late_days"],
         "work_days": m["work_days"],
@@ -309,6 +358,8 @@ def get_month_report(conn: DBAdapter, month_key: str | None = None, user_id: int
     }
 
     report_text = f"گزارش ماه {m['month_name']} {m['jy']}\nکارکرد خالص: {totals['net']} ساعت\nکسری کار: {totals['deficit']} ساعت\nاضافه کار: {totals['overtime']} ساعت"
+    if compensated > 0:
+        report_text += f"\n(تهاتر شده: {compensated} ساعت اضافه کار برای جبران کسری کار)"
 
     return {
         "month_key": mk,
@@ -339,7 +390,7 @@ def get_week_report(conn: DBAdapter, user_id: int | None = None) -> dict:
         cy, cm, cd = jalali.gregorian_to_jalali(cur_d.year, cur_d.month, cur_d.day)
         sdate = jalali.jalali_date_str(cy, cm, cd)
         d = record_service.day_payload(conn, sdate, user_id=user_id)
-        if d.get("has_events") or (d.get("net") and d.get("net") > 0) or d.get("in"):
+        if d.get("has_events") or (d.get("net") and d.get("net") > 0) or d.get("in") or d.get("is_daily_leave"):
             days.append(d)
             total_net += d.get("net", 0.0)
             total_ot += d.get("overtime", 0.0)
@@ -350,16 +401,23 @@ def get_week_report(conn: DBAdapter, user_id: int | None = None) -> dict:
             if d.get("work_mode") == "remote":
                 remote_days += 1
 
+    net_ot, net_df, compensated = net_overtime_and_deficit(total_ot, total_def)
+
     totals = {
         "net": round(total_net, 2),
-        "overtime": round(total_ot, 2),
-        "deficit": round(total_def, 2),
+        "overtime": net_ot,
+        "deficit": net_df,
+        "raw_overtime": round(total_ot, 2),
+        "raw_deficit": round(total_def, 2),
+        "compensated_hours": compensated,
         "leave": round(total_leave, 2),
         "work_days": work_days,
         "remote_days": remote_days,
     }
 
     report_text = f"گزارش هفته جاری\nکارکرد خالص: {totals['net']} ساعت\nکسری کار: {totals['deficit']} ساعت\nاضافه کار: {totals['overtime']} ساعت"
+    if compensated > 0:
+        report_text += f"\n(تهاتر شده: {compensated} ساعت اضافه کار برای جبران کسری کار)"
 
     return {
         "days": days,

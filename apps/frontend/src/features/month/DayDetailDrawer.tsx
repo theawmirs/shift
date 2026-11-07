@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Drawer } from "../../shared/ui/Drawer";
 import { Button } from "../../shared/ui/Button";
 import { fmtHoursFa, formatShamsiDateText, computeOvertimeRange } from "../../shared/lib/format";
-import { Edit3, Building2, Home, Trash2, AlertTriangle } from "lucide-react";
+import { Edit3, Building2, Home, Trash2, AlertTriangle, Palmtree } from "lucide-react";
 import { API } from "../../shared/lib/api";
 import { useToast } from "../../shared/ui/Toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -31,6 +31,11 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
   const [workMode, setWorkMode] = useState<"office" | "remote">("office");
   const [notes, setNotes] = useState("");
 
+  // Daily leave states
+  const [editTab, setEditTab] = useState<"work" | "leave">("work");
+  const [leaveType, setLeaveType] = useState<string>("annual");
+  const [leaveReason, setLeaveReason] = useState("");
+
   useEffect(() => {
     if (day) {
       setActiveDay(day);
@@ -42,6 +47,15 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
       setOvertimeHours(String(day.overtime || 0));
       setWorkMode(day.work_mode === "remote" ? "remote" : "office");
       setNotes(day.note || "");
+      if (day.daily_leave) {
+        setEditTab("leave");
+        setLeaveType(day.daily_leave.type || "annual");
+        setLeaveReason(day.daily_leave.reason || "");
+      } else {
+        setEditTab("work");
+        setLeaveType("annual");
+        setLeaveReason("");
+      }
     }
   }, [day]);
 
@@ -119,6 +133,48 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
     }
   };
 
+  const handleSaveDailyLeave = async () => {
+    if (!currentDay) return;
+    setLoading(true);
+    try {
+      if (currentDay.daily_leave?.id) {
+        await API.deleteDailyLeave(currentDay.daily_leave.id);
+      }
+      await API.createDailyLeave({
+        date: currentDay.date,
+        end_date: currentDay.date,
+        type: leaveType,
+        reason: leaveReason.trim() || undefined,
+      });
+      await queryClient.invalidateQueries();
+      push(`🌴 مرخصی روزانه تاریخ ${dateFormatted} با موفقیت ثبت شد`);
+      setIsEditing(false);
+      onUpdated?.();
+      onClose();
+    } catch (e: any) {
+      push(`❌ خطا در ثبت مرخصی: ${e.message}`, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteDailyLeave = async () => {
+    if (!currentDay?.daily_leave?.id) return;
+    setLoading(true);
+    try {
+      await API.deleteDailyLeave(currentDay.daily_leave.id);
+      await queryClient.invalidateQueries();
+      push(`🗑 مرخصی روزانه تاریخ ${dateFormatted} حذف شد`);
+      setIsEditing(false);
+      onUpdated?.();
+      onClose();
+    } catch (e: any) {
+      push(`❌ خطا در حذف مرخصی: ${e.message}`, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
       <Drawer open={open} onClose={onClose} title={title}>
@@ -147,110 +203,231 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                   </button>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800 }}>ساعت ورود:</span>
-                    <input
-                      type="time"
-                      value={inTime}
-                      onChange={(e) => setInTime(e.target.value)}
-                      className="mono input"
-                      style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center", direction: "ltr" }}
-                    />
-                  </label>
-
-                  <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800 }}>ساعت خروج:</span>
-                    <input
-                      type="time"
-                      value={outTime}
-                      onChange={(e) => setOutTime(e.target.value)}
-                      className="mono input"
-                      style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center", direction: "ltr" }}
-                    />
-                  </label>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800 }}>مرخصی ساعتی (ساعت):</span>
-                    <input
-                      type="number"
-                      step="0.25"
-                      min="0"
-                      max="12"
-                      value={leaveHours}
-                      onChange={(e) => setLeaveHours(e.target.value)}
-                      className="mono"
-                      placeholder="0"
-                      style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center" }}
-                    />
-                  </label>
-
-                  <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800 }}>اضافه‌کاری (ساعت):</span>
-                    <input
-                      type="number"
-                      step="0.25"
-                      min="0"
-                      max="12"
-                      value={overtimeHours}
-                      onChange={(e) => setOvertimeHours(e.target.value)}
-                      className="mono"
-                      placeholder="0"
-                      style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center" }}
-                    />
-                  </label>
-                </div>
-
-                {/* Work Mode Selector */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 2px" }}>
-                  <span style={{ fontSize: 12, fontWeight: 800 }}>نحوه حضور:</span>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button
-                      type="button"
-                      className={`btn ${workMode === "office" ? "btn-primary" : "btn-ghost"}`}
-                      style={{ padding: "6px 12px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
-                      onClick={() => setWorkMode("office")}
-                    >
-                      <Building2 size={13} /> حضوری
-                    </button>
-                    <button
-                      type="button"
-                      className={`btn ${workMode === "remote" ? "btn-primary" : "btn-ghost"}`}
-                      style={{ padding: "6px 12px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
-                      onClick={() => setWorkMode("remote")}
-                    >
-                      <Home size={13} /> دورکار
-                    </button>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-                  <Button
-                    variant="primary"
-                    style={{ flex: 2, padding: "10px", fontWeight: 800, fontSize: 13 }}
-                    onClick={handleSaveEdit}
-                    loading={loading}
-                    loadingText="در حال ذخیره…"
+                {/* ── MODE SWITCH: WORK HOURS vs DAILY LEAVE ── */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 4,
+                    background: "var(--surface-3, #f1f5f9)",
+                    padding: 3,
+                    borderRadius: 10,
+                    border: "1.5px solid var(--border-strong, #000)",
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{
+                      padding: "7px 8px",
+                      fontSize: 12,
+                      fontWeight: 800,
+                      background: editTab === "work" ? "var(--surface, #fff)" : "transparent",
+                      color: editTab === "work" ? "var(--text, #0f172a)" : "var(--muted, #64748b)",
+                      border: editTab === "work" ? "1.5px solid #000" : "1.5px solid transparent",
+                      boxShadow: editTab === "work" ? "1.5px 1.5px 0 #000" : "none",
+                      borderRadius: 8,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 5,
+                      cursor: "pointer",
+                    }}
+                    onClick={() => setEditTab("work")}
                   >
-                    ذخیره ساعت کاری
-                  </Button>
-
-                  {hasWork && (
-                    <Button
-                      variant="ghost"
-                      style={{ flex: 1, padding: "10px", color: "var(--red)", borderColor: "var(--red)" }}
-                      onClick={() => setShowConfirmDelete(true)}
-                      disabled={loading}
-                      title="حذف کامل ثبت کارکرد این روز"
-                      icon={<Trash2 size={15} />}
-                    >
-                      پاک‌کردن
-                    </Button>
-                  )}
+                    <Building2 size={13} /> ثبت ساعت کاری
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{
+                      padding: "7px 8px",
+                      fontSize: 12,
+                      fontWeight: 800,
+                      background: editTab === "leave" ? "var(--surface, #fff)" : "transparent",
+                      color: editTab === "leave" ? "var(--text, #0f172a)" : "var(--muted, #64748b)",
+                      border: editTab === "leave" ? "1.5px solid #000" : "1.5px solid transparent",
+                      boxShadow: editTab === "leave" ? "1.5px 1.5px 0 #000" : "none",
+                      borderRadius: 8,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 5,
+                      cursor: "pointer",
+                    }}
+                    onClick={() => setEditTab("leave")}
+                  >
+                    <Palmtree size={13} /> مرخصی روزانه
+                  </button>
                 </div>
+
+                {editTab === "work" ? (
+                  <>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800 }}>ساعت ورود:</span>
+                        <input
+                          type="time"
+                          value={inTime}
+                          onChange={(e) => setInTime(e.target.value)}
+                          className="mono input"
+                          style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center", direction: "ltr" }}
+                        />
+                      </label>
+
+                      <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800 }}>ساعت خروج:</span>
+                        <input
+                          type="time"
+                          value={outTime}
+                          onChange={(e) => setOutTime(e.target.value)}
+                          className="mono input"
+                          style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center", direction: "ltr" }}
+                        />
+                      </label>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800 }}>مرخصی ساعتی (ساعت):</span>
+                        <input
+                          type="number"
+                          step="0.25"
+                          min="0"
+                          max="12"
+                          value={leaveHours}
+                          onChange={(e) => setLeaveHours(e.target.value)}
+                          className="mono"
+                          placeholder="0"
+                          style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center" }}
+                        />
+                      </label>
+
+                      <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800 }}>اضافه‌کاری (ساعت):</span>
+                        <input
+                          type="number"
+                          step="0.25"
+                          min="0"
+                          max="12"
+                          value={overtimeHours}
+                          onChange={(e) => setOvertimeHours(e.target.value)}
+                          className="mono"
+                          placeholder="0"
+                          style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center" }}
+                        />
+                      </label>
+                    </div>
+
+                    {/* Work Mode Selector */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 2px" }}>
+                      <span style={{ fontSize: 12, fontWeight: 800 }}>نحوه حضور:</span>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button
+                          type="button"
+                          className={`btn ${workMode === "office" ? "btn-primary" : "btn-ghost"}`}
+                          style={{ padding: "6px 12px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
+                          onClick={() => setWorkMode("office")}
+                        >
+                          <Building2 size={13} /> حضوری
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn ${workMode === "remote" ? "btn-primary" : "btn-ghost"}`}
+                          style={{ padding: "6px 12px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
+                          onClick={() => setWorkMode("remote")}
+                        >
+                          <Home size={13} /> دورکار
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                      <Button
+                        variant="primary"
+                        style={{ flex: 2, padding: "10px", fontWeight: 800, fontSize: 13 }}
+                        onClick={handleSaveEdit}
+                        loading={loading}
+                        loadingText="در حال ذخیره…"
+                      >
+                        ذخیره ساعت کاری
+                      </Button>
+
+                      {hasWork && (
+                        <Button
+                          variant="ghost"
+                          style={{ flex: 1, padding: "10px", color: "var(--red)", borderColor: "var(--red)" }}
+                          onClick={() => setShowConfirmDelete(true)}
+                          disabled={loading}
+                          title="حذف کامل ثبت کارکرد این روز"
+                          icon={<Trash2 size={15} />}
+                        >
+                          پاک‌کردن
+                        </Button>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  /* ── DAILY LEAVE FORM ── */
+                  <div style={{ display: "grid", gap: 10, padding: "4px 0" }}>
+                    <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                      <span style={{ fontSize: 11, fontWeight: 800 }}>نوع مرخصی روزانه:</span>
+                      <select
+                        value={leaveType}
+                        onChange={(e) => setLeaveType(e.target.value)}
+                        className="mono input"
+                        style={{ width: "100%", padding: "8px 10px", fontSize: 13 }}
+                      >
+                        <option value="annual">🌴 مرخصی استحقاقی (سالانه)</option>
+                        <option value="sick">🩺 مرخصی استعلاجی (پزشکی)</option>
+                        <option value="unpaid">💼 مرخصی بدون حقوق</option>
+                        <option value="casual">⭐ مرخصی تشویقی / ساعتی</option>
+                      </select>
+                    </label>
+
+                    <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                      <span style={{ fontSize: 11, fontWeight: 800 }}>علت یا توضیحات (اختیاری):</span>
+                      <input
+                        type="text"
+                        value={leaveReason}
+                        onChange={(e) => setLeaveReason(e.target.value)}
+                        placeholder="مثال: سرماخوردگی، امور اداری، سفر..."
+                        className="input"
+                        style={{ width: "100%", padding: "8px 10px", fontSize: 13 }}
+                        maxLength={200}
+                      />
+                    </label>
+
+                    <div style={{ fontSize: 11, color: "var(--muted)", background: "rgba(96,165,250,0.08)", padding: "8px 10px", borderRadius: 8, border: "1px dashed #60a5fa" }}>
+                      ℹ️ مرخصی روزانه معادل ۸ ساعت موظفی کامل محاسبه می‌شود و کسری کار این روز را به صفر می‌رساند.
+                    </div>
+
+                    <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                      <Button
+                        variant="primary"
+                        style={{ flex: 2, padding: "10px", fontWeight: 800, fontSize: 13 }}
+                        onClick={handleSaveDailyLeave}
+                        loading={loading}
+                        loadingText="در حال ثبت…"
+                      >
+                        {currentDay.daily_leave ? "بروزرسانی مرخصی روزانه" : "ثبت مرخصی روزانه"}
+                      </Button>
+
+                      {currentDay.daily_leave && (
+                        <Button
+                          variant="ghost"
+                          style={{ flex: 1, padding: "10px", color: "var(--red)", borderColor: "var(--red)" }}
+                          onClick={handleDeleteDailyLeave}
+                          disabled={loading}
+                          icon={<Trash2 size={15} />}
+                        >
+                          حذف مرخصی
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               /* ── READ-ONLY SUMMARY VIEW ── */
@@ -286,10 +463,17 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                       borderRadius: 10,
                       boxShadow: "2px 2px 0 #000",
                     }}
-                    onClick={() => setIsEditing(true)}
+                    onClick={() => {
+                      if (currentDay.daily_leave) {
+                        setEditTab("leave");
+                      } else {
+                        setEditTab("work");
+                      }
+                      setIsEditing(true);
+                    }}
                   >
                     <Edit3 size={12} />
-                    <span>{hasWork ? "ویرایش" : "ثبت کارکرد"}</span>
+                    <span>{currentDay.daily_leave ? "ویرایش مرخصی" : hasWork ? "ویرایش" : "ثبت کارکرد / مرخصی"}</span>
                   </button>
                 </div>
 
@@ -305,8 +489,34 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
 
                 {/* No work recorded message */}
                 {!hasWork && !currentDay.daily_leave && (
-                  <div style={{ color: "var(--muted)", fontSize: 13, textAlign: "center", padding: "14px 0" }}>
-                    {currentDay.is_holiday ? "در این روز تعطیل کارکردی ثبت نشده است." : "ثبت کاری برای این روز وجود ندارد."}
+                  <div style={{ color: "var(--muted)", fontSize: 13, textAlign: "center", padding: "14px 0", display: "grid", gap: 10 }}>
+                    <div>
+                      {currentDay.is_holiday ? "در این روز تعطیل کارکردی ثبت نشده است." : "ثبت کاری یا مرخصی برای این روز وجود ندارد."}
+                    </div>
+                    <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                      <button
+                        type="button"
+                        className="btn btn-primary mono"
+                        style={{ fontSize: 11, padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: 4 }}
+                        onClick={() => {
+                          setEditTab("work");
+                          setIsEditing(true);
+                        }}
+                      >
+                        <Edit3 size={12} /> ثبت ساعت کاری
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost mono"
+                        style={{ fontSize: 11, padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: 4 }}
+                        onClick={() => {
+                          setEditTab("leave");
+                          setIsEditing(true);
+                        }}
+                      >
+                        <Palmtree size={12} /> ثبت مرخصی روزانه
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -435,12 +645,39 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
 
                 {/* Daily Leave details if any */}
                 {currentDay.daily_leave && (
-                  <div className="row" style={{ background: "rgba(96,165,250,.08)", borderColor: "#60a5fa" }}>
-                    <b>مرخصی روزانه</b>
-                    <span className="mono" style={{ fontSize: 12 }}>
-                      {currentDay.daily_leave.label || currentDay.daily_leave.type} ({currentDay.daily_leave.hours || 8} ساعت)
-                      {currentDay.daily_leave.reason ? ` · ${currentDay.daily_leave.reason}` : ""}
-                    </span>
+                  <div
+                    className="row"
+                    style={{
+                      background: "rgba(96,165,250,.08)",
+                      borderColor: "#60a5fa",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 14 }}>🌴</span>
+                        <b>مرخصی روزانه</b>
+                        <span className="badge" style={{ background: "#dbeafe", color: "#1e40af", borderColor: "#3b82f6", fontSize: 11 }}>
+                          {currentDay.daily_leave.label || currentDay.daily_leave.type} ({currentDay.daily_leave.hours || 8} ساعت)
+                        </span>
+                      </div>
+                      {currentDay.daily_leave.reason && (
+                        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+                          علت: {currentDay.daily_leave.reason}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      style={{ color: "var(--red)", borderColor: "var(--red)", padding: "4px 8px", fontSize: 11, display: "inline-flex", alignItems: "center", gap: 4 }}
+                      onClick={handleDeleteDailyLeave}
+                      disabled={loading}
+                    >
+                      <Trash2 size={13} /> حذف
+                    </button>
                   </div>
                 )}
               </>

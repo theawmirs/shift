@@ -31,6 +31,7 @@ export function WeekSummary() {
   const netTotal = data.totals?.net || 0;
   const deficitTotal = data.totals?.deficit || 0;
   const overtimeTotal = data.totals?.overtime || 0;
+  const compensatedHours = data.totals?.compensated_hours || 0;
   const remoteDays = data.totals?.remote_days || 0;
 
   return (
@@ -98,6 +99,24 @@ export function WeekSummary() {
           </div>
         </div>
       </div>
+
+      {compensatedHours > 0 && (
+        <div
+          className="row"
+          style={{
+            padding: "8px 12px",
+            background: "rgba(59, 130, 246, 0.08)",
+            borderColor: "#3b82f6",
+            borderWidth: 1.5,
+            gap: 6,
+          }}
+        >
+          <span style={{ fontSize: 11, color: "#1d4ed8", fontWeight: 700 }}>⚖️ تهاتر عملکرد هفته:</span>
+          <span style={{ fontSize: 12, color: "#1e40af" }}>
+            {fmtHoursCompactFa(compensatedHours)} اضافه کار برای جبران کسری کار تهاتر شد
+          </span>
+        </div>
+      )}
 
       {deficitTotal > 0 && (
         <div
