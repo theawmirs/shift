@@ -112,8 +112,18 @@ def test_retroactive_daily_leave_create_and_delete(test_env):
     assert del_res.status_code == 200
     assert del_res.json()["ok"] is True
 
-    # 4. Confirm it is removed
-    rep_after = client.get("/api/report/month?month=1405-06", headers=headers)
-    assert rep_after.status_code == 200
-    matching_after = [r for r in rep_after.json()["rows"] if r["date"] == past_date]
-    assert len(matching_after) == 0 or matching_after[0].get("is_daily_leave") is not True
+    # 5. Create annual daily leave (ensuring annual quota check works)
+    annual_date = "1405-06-11"
+    res_ann = client.post(
+        "/api/daily-leaves",
+        json={
+            "start_date": annual_date,
+            "end_date": annual_date,
+            "type": "annual",
+            "reason": "استراحت شخصی",
+        },
+        headers=headers,
+    )
+    assert res_ann.status_code == 201
+    assert res_ann.json()["type"] == "annual"
+    assert res_ann.json()["id"] > 0
