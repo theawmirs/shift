@@ -120,10 +120,11 @@ def create_daily_leave(conn: sqlite3.Connection, user_id: int, start_date: str, 
         if hours > remaining:
             raise ValueError(f"سهمیه استحقاقی کافی نیست — مانده {max(0, remaining):.1f} ساعت")
             
+    lbl = DAILY_LEAVE_LABEL.get(leave_type, leave_type)
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
     cur = conn.execute(
-        "INSERT INTO daily_leaves(user_id, start_date, end_date, type, reason, hours, created_at) VALUES(?,?,?,?,?,?,?)",
-        (user_id, start_date, end_date, leave_type, reason, hours, now_iso),
+        "INSERT INTO daily_leaves(user_id, start_date, end_date, type, label, reason, hours, created_at) VALUES(?,?,?,?,?,?,?,?)",
+        (user_id, start_date, end_date, leave_type, lbl, reason, hours, now_iso),
     )
     conn.commit()
     lid = getattr(cur, "lastrowid", None)

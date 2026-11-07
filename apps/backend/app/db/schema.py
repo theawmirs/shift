@@ -170,6 +170,10 @@ def init_db(conn: DBAdapter) -> None:
         for k, v in DEFAULT_SETTINGS.items():
             conn.execute("INSERT INTO settings(key, value) VALUES(?, ?) ON CONFLICT (key) DO NOTHING", (k, v))
         conn.execute("DELETE FROM settings WHERE key IN ('jwt_secret', 'auth_password_hash')")
+        try:
+            conn.execute("ALTER TABLE daily_leaves ALTER COLUMN label DROP NOT NULL;")
+        except Exception:
+            pass
         for d, n in HOLIDAYS_1405:
             conn.execute("INSERT INTO holidays(date, name) VALUES(?, ?) ON CONFLICT (date) DO NOTHING", (d, n))
         conn.commit()
