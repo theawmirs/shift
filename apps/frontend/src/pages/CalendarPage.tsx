@@ -359,6 +359,7 @@ export function CalendarPage() {
             const isHoliday = isFriday || Boolean(officialHolidayName);
             const today = isToday(d);
             const dayRow = telemetryMap.get(dateStr) || telemetryMap.get(dateNorm);
+            const isDailyLeave = Boolean(dayRow?.daily_leave || dayRow?.is_daily_leave);
             const isWorked = Boolean(dayRow?.has_events || (dayRow?.net != null && Number(dayRow.net) > 0) || dayRow?.in);
             const isRemote = dayRow?.work_mode === "remote";
 
@@ -366,7 +367,11 @@ export function CalendarPage() {
             let bg = "var(--surface-2)";
             let textColor = "var(--text)";
 
-            if (isWorked && isRemote) {
+            if (isDailyLeave) {
+              borderColor = "#3b82f6";
+              bg = "rgba(59, 130, 246, 0.12)";
+              textColor = "#1e40af";
+            } else if (isWorked && isRemote) {
               borderColor = "var(--violet)";
               bg = "rgba(124,58,237,0.12)";
               textColor = "#4C1D95";
@@ -396,12 +401,14 @@ export function CalendarPage() {
                   border: `2px solid ${borderColor}`,
                   background: bg,
                   color: textColor,
-                  fontWeight: today ? 900 : isWorked || isHoliday ? 800 : 600,
+                  fontWeight: today ? 900 : isWorked || isHoliday || isDailyLeave ? 800 : 600,
                   fontSize: 13,
                   cursor: "pointer",
                   position: "relative",
                   boxShadow: today
                     ? "0 0 0 2.5px #0F172A inset"
+                    : isDailyLeave
+                    ? "2px 2px 0 rgba(59,130,246,0.2)"
                     : isWorked
                     ? "2px 2px 0 rgba(0,0,0,0.15)"
                     : isHoliday
@@ -417,6 +424,17 @@ export function CalendarPage() {
               >
                 <span>{d}</span>
                 <div style={{ display: "flex", gap: 3, marginTop: 2, alignItems: "center" }}>
+                  {isDailyLeave && (
+                    <span
+                      style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: "50%",
+                        background: "#3b82f6",
+                      }}
+                      title="مرخصی روزانه"
+                    />
+                  )}
                   {isWorked && (
                     <span
                       style={{

@@ -73,6 +73,7 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
   const netHours = m.totals?.net || 0;
   const overtimeHours = m.totals?.overtime || 0;
   const deficitHours = m.totals?.deficit || 0;
+  const compensatedHours = m.totals?.compensated_hours || 0;
   const remoteDays = m.totals?.remote_days || 0;
   const workDays = m.totals?.work_days || 0;
   const holidayDays = m.totals?.holiday_days || 0;
@@ -284,6 +285,25 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
         </div>
       </div>
 
+      {/* ── Compensated Overtime/Deficit Notice ── */}
+      {compensatedHours > 0 && (
+        <div
+          className="row"
+          style={{
+            padding: "8px 12px",
+            background: "rgba(59, 130, 246, 0.08)",
+            borderColor: "#3b82f6",
+            borderWidth: 1.5,
+            gap: 6,
+          }}
+        >
+          <span style={{ fontSize: 11, color: "#1d4ed8", fontWeight: 700 }}>⚖️ تهاتر عملکرد:</span>
+          <span style={{ fontSize: 12, color: "#1e40af" }}>
+            {fmtHoursCompactFa(compensatedHours)} اضافه کار برای جبران کسری کار تهاتر شد
+          </span>
+        </div>
+      )}
+
       {/* ── Annual Leave Balance Progress Track ── */}
       <div
         style={{
@@ -356,7 +376,7 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
 
         <div className="custom-scroll" style={{ display: "grid", gap: 6, maxHeight: 300, overflowY: "auto", paddingLeft: 4, paddingRight: 2 }}>
           {m.rows
-            ?.filter((r: any) => r.has_events || r.is_holiday)
+            ?.filter((r: any) => r.has_events || r.is_holiday || r.daily_leave || r.is_daily_leave)
             .map((r: any) => {
               const isRemote = r.work_mode === "remote";
               return (
