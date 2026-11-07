@@ -47,6 +47,33 @@ def daily_leave_overlaps(conn: sqlite3.Connection, user_id: int, start_date: str
     ).fetchone()
     return bool(row)
 
+def calculate_hourly_leave_in_year(conn: sqlite3.Connection, user_id: int | None, jy: int) -> float:
+    if user_id is None:
+        yr_events = conn.execute(
+            "SELECT ts_utc, event_type, note, shamsi_date FROM events WHERE substr(shamsi_date,1,4)=? AND user_id IS NULL ORDER BY ts_utc ASC",
+            (f"{jy:04d}",),
+        ).fetchall()
+    else:
+        yr_events = conn.execute(
+            "SELECT ts_utc, event_type, note, shamsi_date FROM events WHERE substr(shamsi_date,1,4)=? AND user_id=? ORDER BY ts_utc ASC",
+            (f"{jy:04d}", user_id),
+        ).fetchall()
+
+    hourly_consumed = 0.0
+    cur_ls = None
+    for r in yr_events:
+        et = r["event_type"]
+        dt = datetime.datetime.fromisoformat(r["ts_utc"])
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        dt_tehran = dt.astimezone(settings.tehran_tz)
+        if et == "leave_start":
+            cur_ls = dt_tehran
+        elif et == "leave_end" and cur_ls is not None:
+            hourly_consumed += (record_service.company_clock(dt_tehran) - record_service.company_clock(cur_ls)).total_seconds() / 3600.0
+            cur_ls = None
+    return hourly_consumed
+
 def daily_leave_annual_hours_in_year(conn: sqlite3.Connection, user_id: int, jy: int) -> float:
     rows = conn.execute(
         "SELECT hours FROM daily_leaves WHERE user_id=? AND type='annual' AND substr(start_date,1,4)=?",
@@ -87,8 +114,7 @@ def create_daily_leave(conn: sqlite3.Connection, user_id: int, start_date: str, 
         from app.db.schema import get_user_settings
         u_settings = get_user_settings(conn, user_id=user_id)
         quota = float(u_settings.get("leave_quota_hours", "208") or 208.0)
-        from app.services import report_service
-        _, hourly_consumed = report_service.leave_balance(conn, jy, user_id=user_id)
+        hourly_consumed = calculate_hourly_leave_in_year(conn, user_id, jy)
         annual_daily = daily_leave_annual_hours_in_year(conn, user_id, jy)
         remaining = quota - hourly_consumed - annual_daily
         if hours > remaining:
@@ -100,9 +126,16 @@ def create_daily_leave(conn: sqlite3.Connection, user_id: int, start_date: str, 
         (user_id, start_date, end_date, leave_type, reason, hours, now_iso),
     )
     conn.commit()
-    lid = cur.lastrowid
+    lid = getattr(cur, "lastrowid", None)
+    if not lid:
+        row = conn.execute(
+            "SELECT id FROM daily_leaves WHERE user_id=? AND start_date=? AND end_date=? ORDER BY id DESC LIMIT 1",
+            (user_id, start_date, end_date),
+        ).fetchone()
+        if row:
+            lid = row["id"] if (isinstance(row, dict) or hasattr(row, "keys")) else row[0]
     return {
-        "id": lid,
+        "id": lid or 0,
         "start_date": start_date,
         "end_date": end_date,
         "type": leave_type,
