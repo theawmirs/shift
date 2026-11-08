@@ -39,6 +39,7 @@ class DayPayload(BaseModel):
     day_status_label: str = "آماده ورود"
     day_status_reason: str | None = None
     daily_leave: dict[str, Any] | None = None
+    overtime_sessions: list[dict[str, Any]] = []
 
 class StatusResponse(BaseModel):
     date: str
@@ -106,6 +107,34 @@ class OvertimeRequest(BaseModel):
 class OvertimeResponse(BaseModel):
     ok: bool
     message: str
+
+class OvertimeSessionItem(BaseModel):
+    id: int
+    user_id: int
+    shamsi_date: str
+    start_time: str
+    end_time: str
+    hours: float
+    mode: str = "office"
+    is_overnight: bool = False
+    description: str | None = None
+    created_at: str | None = None
+
+class OvertimeSessionCreateRequest(BaseModel):
+    date: str
+    start_time: str
+    end_time: str
+    mode: str = "office"
+    description: str | None = None
+
+class OvertimeSessionCreateResponse(BaseModel):
+    ok: bool = True
+    session: OvertimeSessionItem
+    day: dict[str, Any] | None = None
+
+class OvertimeSessionListResponse(BaseModel):
+    ok: bool = True
+    items: list[OvertimeSessionItem]
 
 class WorkModeRequest(BaseModel):
     date: str | None = None

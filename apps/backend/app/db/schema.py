@@ -136,6 +136,20 @@ def init_db(conn: DBAdapter) -> None:
         );
         CREATE INDEX IF NOT EXISTS idx_day_mode_user_date ON day_work_mode(user_id, shamsi_date);
 
+        CREATE TABLE IF NOT EXISTS overtime_sessions (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          shamsi_date TEXT NOT NULL,
+          start_time TEXT NOT NULL,
+          end_time TEXT NOT NULL,
+          hours DOUBLE PRECISION NOT NULL,
+          mode TEXT NOT NULL DEFAULT 'office' CHECK(mode IN ('office','remote')),
+          is_overnight BOOLEAN NOT NULL DEFAULT FALSE,
+          description TEXT,
+          created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_ot_sessions_user_date ON overtime_sessions(user_id, shamsi_date);
+
         CREATE TABLE IF NOT EXISTS monthly_summaries (
           user_id INTEGER,
           month_key TEXT,
@@ -267,6 +281,20 @@ def init_db(conn: DBAdapter) -> None:
           PRIMARY KEY(shamsi_date, user_id)
         );
         CREATE INDEX IF NOT EXISTS idx_day_mode_user_date ON day_work_mode(user_id, shamsi_date);
+
+        CREATE TABLE IF NOT EXISTS overtime_sessions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL REFERENCES users(id),
+          shamsi_date TEXT NOT NULL,
+          start_time TEXT NOT NULL,
+          end_time TEXT NOT NULL,
+          hours REAL NOT NULL,
+          mode TEXT NOT NULL DEFAULT 'office' CHECK(mode IN ('office','remote')),
+          is_overnight INTEGER NOT NULL DEFAULT 0,
+          description TEXT,
+          created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_ot_sessions_user_date ON overtime_sessions(user_id, shamsi_date);
 
         CREATE TABLE IF NOT EXISTS monthly_summaries (
           user_id INTEGER,
