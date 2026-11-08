@@ -191,15 +191,29 @@ def compute_month(conn: DBAdapter, month_key: str, user_id: int | None = None) -
             dsl = "آماده"
             dsr = None
         else:
+            out_clock = record_service.company_clock(out_dt) if out_dt else None
+            lim_out = out_clock.replace(hour=eh_end, minute=em_end, second=0, microsecond=0) if out_clock else None
+
+            # Automatically calculate overtime for physical presence after end_time_end if not explicitly declared
+            if not ot_declared and out_clock and lim_out and out_clock > lim_out:
+                auto_ot = (out_clock - lim_out).total_seconds() / 3600.0
+                overtime = round(min(auto_ot, max(0.0, gross - leave_h), 8.0), 2)
+                if overtime > 0:
+                    ot_declared = True
+
             if ot_declared and overtime > 0:
                 net = max(0.0, gross - leave_h)
+                deficit = max(0.0, standard - (net - overtime)) if out_dt else 0.0
             elif in_dt and out_dt:
-                effective_presence = max(0.0, gross - leave_h)
-                net = min(standard, effective_presence)
+                effective_out = min(out_clock, lim_out) if (out_clock and lim_out and out_clock > lim_out) else (out_clock or record_service.company_clock(out_dt))
+                effective_gross = max(0.0, (effective_out - record_service.company_clock(in_dt)).total_seconds() / 3600.0)
+                effective_net = max(0.0, effective_gross - leave_h)
+                net = min(standard, effective_net)
+                deficit = max(0.0, standard - net)
             else:
                 net = max(0.0, gross - leave_h)
+                deficit = max(0.0, standard - net) if (in_dt or out_dt) else 0.0
 
-            deficit = max(0.0, standard - net) if (in_dt or out_dt) else 0.0
             ds = "idle"
             dsl = "آماده"
             dsr = None
