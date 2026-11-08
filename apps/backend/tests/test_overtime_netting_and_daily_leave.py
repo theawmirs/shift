@@ -154,10 +154,13 @@ def test_auto_overtime_after_window_and_netting(test_env):
     assert d["in"] == "12:00"
     assert d["out"] == "20:00"
     assert d["gross"] == 8.0
-    assert d["overtime"] == 2.75
+    assert d["raw_overtime"] == 2.75
+    assert d["raw_deficit"] == 2.75
+    assert d["compensated_hours"] == 2.75
+    # Day-level netting: 2.75 overtime compensates 2.75 deficit on that day
+    assert d["overtime"] == 0.0
+    assert d["deficit"] == 0.0
     assert d["overtime_interval"] == ["17:15", "20:00"]
-    # Deficit inside regular hours: 8.0 - (17:15 - 12:00) = 8.0 - 5.25 = 2.75
-    assert d["deficit"] == 2.75
 
     # Month report with netting: Overtime 2.75 compensates Deficit 2.75 -> Deficit = 0.0, Overtime = 0.0!
     rep = client.get("/api/report/month?month=1405-06", headers=headers)

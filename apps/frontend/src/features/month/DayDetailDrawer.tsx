@@ -943,6 +943,25 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                     ))}
                   </div>
                 )}
+                {/* Compensated Overtime notice on day level */}
+                {currentDay.compensated_hours > 0 && (
+                  <div
+                    className="row"
+                    style={{
+                      padding: "8px 12px",
+                      background: "rgba(59, 130, 246, 0.12)",
+                      borderColor: "#3b82f6",
+                      borderWidth: 1.5,
+                      gap: 6,
+                    }}
+                  >
+                    <span style={{ fontSize: 11, color: "#60a5fa", fontWeight: 800 }}>⚖️ تهاتر عملکرد روز:</span>
+                    <span style={{ fontSize: 12, color: "var(--text)" }}>
+                      {fmtHoursFa(currentDay.compensated_hours)} اضافه کار برای جبران کسری کار امروز تهاتر شد
+                    </span>
+                  </div>
+                )}
+
                 {hasDeficit && (
                   <div className="row" style={{ borderColor: "var(--red)", background: "rgba(239,68,68,0.06)" }}>
                     <b>کسری کار</b>

@@ -235,9 +235,16 @@ def compute_day(conn: sqlite3.Connection, sdate: str, user_id: int | None = None
         gross = round(gross + sessions_ot, 2)
         ot_declared = True
 
+    # Day-level netting: Overtime compensates deficit on the same day
+    raw_deficit = round(deficit, 2)
+    raw_overtime = round(overtime, 2)
+    day_compensated = round(min(raw_overtime, raw_deficit), 2)
+    final_overtime = round(raw_overtime - day_compensated, 2)
+    final_deficit = round(raw_deficit - day_compensated, 2)
+
     ot_interval = None
-    if out_dt and overtime > 0:
-        ot_minutes = int(round(overtime * 60))
+    if out_dt and raw_overtime > 0:
+        ot_minutes = int(round(raw_overtime * 60))
         ot_start_dt = out_dt - datetime.timedelta(minutes=ot_minutes)
         if in_dt and ot_start_dt < in_dt:
             ot_start_dt = in_dt
@@ -261,8 +268,11 @@ def compute_day(conn: sqlite3.Connection, sdate: str, user_id: int | None = None
         "leave": leave_h,
         "net": net,
         "late": late,
-        "deficit": deficit,
-        "overtime": overtime,
+        "deficit": final_deficit,
+        "overtime": final_overtime,
+        "raw_deficit": raw_deficit,
+        "raw_overtime": raw_overtime,
+        "compensated_hours": day_compensated,
         "ot_interval": ot_interval,
         "ot_declared": ot_declared,
         "overtime_sessions": ot_sessions,
@@ -316,6 +326,9 @@ def day_payload(conn: sqlite3.Connection, sdate: str, user_id: int | None = None
         "gross": round(d["gross"], 2), "leave": round(d["leave"], 2),
         "net": round(d["net"], 2), "late": round(d["late"], 2),
         "deficit": round(d["deficit"], 2), "overtime": round(d["overtime"], 2),
+        "raw_deficit": round(d.get("raw_deficit", d["deficit"]), 2),
+        "raw_overtime": round(d.get("raw_overtime", d["overtime"]), 2),
+        "compensated_hours": round(d.get("compensated_hours", 0.0), 2),
         "overtime_interval": [fmt_company_time(d["ot_interval"][0]), fmt_company_time(d["ot_interval"][1])] if d.get("ot_interval") else None,
         "ot_declared": d["ot_declared"],
         "overtime_sessions": d.get("overtime_sessions", []),
