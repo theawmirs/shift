@@ -269,24 +269,24 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr 1fr",
-                    gap: 4,
-                    background: "var(--surface-3, #f1f5f9)",
-                    padding: 3,
-                    borderRadius: 10,
-                    border: "1.5px solid var(--border-strong, #000)",
+                    gap: 5,
+                    background: "rgba(255, 255, 255, 0.05)",
+                    padding: 4,
+                    borderRadius: 12,
+                    border: "2px solid var(--border-strong)",
                   }}
                 >
                   <button
                     type="button"
                     className="btn"
                     style={{
-                      padding: "7px 4px",
+                      padding: "8px 4px",
                       fontSize: 11,
                       fontWeight: 800,
-                      background: editTab === "work" ? "var(--surface, #fff)" : "transparent",
-                      color: editTab === "work" ? "var(--text, #0f172a)" : "var(--muted, #64748b)",
-                      border: editTab === "work" ? "1.5px solid #000" : "1.5px solid transparent",
-                      boxShadow: editTab === "work" ? "1.5px 1.5px 0 #000" : "none",
+                      background: editTab === "work" ? "var(--amber)" : "transparent",
+                      color: editTab === "work" ? "#0F172A" : "var(--text)",
+                      border: editTab === "work" ? "2px solid #000" : "2px solid transparent",
+                      boxShadow: editTab === "work" ? "2px 2px 0 #000" : "none",
                       borderRadius: 8,
                       display: "flex",
                       alignItems: "center",
@@ -302,13 +302,13 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                     type="button"
                     className="btn"
                     style={{
-                      padding: "7px 4px",
+                      padding: "8px 4px",
                       fontSize: 11,
                       fontWeight: 800,
-                      background: editTab === "overtime" ? "var(--surface, #fff)" : "transparent",
-                      color: editTab === "overtime" ? "var(--text, #0f172a)" : "var(--muted, #64748b)",
-                      border: editTab === "overtime" ? "1.5px solid #000" : "1.5px solid transparent",
-                      boxShadow: editTab === "overtime" ? "1.5px 1.5px 0 #000" : "none",
+                      background: editTab === "overtime" ? "var(--amber)" : "transparent",
+                      color: editTab === "overtime" ? "#0F172A" : "var(--text)",
+                      border: editTab === "overtime" ? "2px solid #000" : "2px solid transparent",
+                      boxShadow: editTab === "overtime" ? "2px 2px 0 #000" : "none",
                       borderRadius: 8,
                       display: "flex",
                       alignItems: "center",
@@ -324,13 +324,13 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                     type="button"
                     className="btn"
                     style={{
-                      padding: "7px 4px",
+                      padding: "8px 4px",
                       fontSize: 11,
                       fontWeight: 800,
-                      background: editTab === "leave" ? "var(--surface, #fff)" : "transparent",
-                      color: editTab === "leave" ? "var(--text, #0f172a)" : "var(--muted, #64748b)",
-                      border: editTab === "leave" ? "1.5px solid #000" : "1.5px solid transparent",
-                      boxShadow: editTab === "leave" ? "1.5px 1.5px 0 #000" : "none",
+                      background: editTab === "leave" ? "var(--amber)" : "transparent",
+                      color: editTab === "leave" ? "#0F172A" : "var(--text)",
+                      border: editTab === "leave" ? "2px solid #000" : "2px solid transparent",
+                      boxShadow: editTab === "leave" ? "2px 2px 0 #000" : "none",
                       borderRadius: 8,
                       display: "flex",
                       alignItems: "center",
@@ -490,20 +490,21 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                         return (
                           <div
                             style={{
-                              background: "rgba(124, 58, 237, 0.08)",
-                              border: "1.5px solid var(--violet)",
-                              borderRadius: 10,
-                              padding: "8px 10px",
+                              background: "rgba(99, 102, 241, 0.18)",
+                              border: "2px solid #818cf8",
+                              borderRadius: 12,
+                              padding: "10px 12px",
                               fontSize: 12,
-                              color: "#4C1D95",
+                              color: "#e0e7ff",
                               display: "flex",
                               alignItems: "center",
-                              gap: 6,
+                              gap: 8,
                             }}
                           >
-                            <Moon size={15} />
+                            <Moon size={16} style={{ color: "#a5b4fc", flexShrink: 0 }} />
                             <span>
-                              <b>شیفت شبانه (عبور از نیمه‌شب):</b> {prev.hours} ساعت اضافه کار برای این تاریخ منظور می‌شود.
+                              <b style={{ color: "#ffffff", fontWeight: 800 }}>شیفت شبانه (عبور از نیمه‌شب):</b>{" "}
+                              <span style={{ color: "#c7d2fe" }}>{prev.hours} ساعت اضافه کار برای این تاریخ منظور می‌شود.</span>
                             </span>
                           </div>
                         );
@@ -511,20 +512,21 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                       return (
                         <div
                           style={{
-                            background: "rgba(34, 197, 94, 0.08)",
-                            border: "1.5px solid #22c55e",
-                            borderRadius: 10,
-                            padding: "8px 10px",
+                            background: "rgba(34, 197, 94, 0.16)",
+                            border: "2px solid #4ade80",
+                            borderRadius: 12,
+                            padding: "10px 12px",
                             fontSize: 12,
-                            color: "#15803d",
+                            color: "#dcfce7",
                             display: "flex",
                             alignItems: "center",
-                            gap: 6,
+                            gap: 8,
                           }}
                         >
-                          <Clock size={15} />
+                          <Clock size={16} style={{ color: "#4ade80", flexShrink: 0 }} />
                           <span>
-                            <b>مدت اضافه‌کاری:</b> {prev.hours} ساعت
+                            <b style={{ color: "#ffffff", fontWeight: 800 }}>مدت اضافه‌کاری:</b>{" "}
+                            <span style={{ color: "#bbf7d0" }}>{prev.hours} ساعت</span>
                           </span>
                         </div>
                       );
@@ -717,25 +719,45 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                       </button>
                       <button
                         type="button"
-                        className="btn btn-ghost mono"
-                        style={{ fontSize: 11, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 4, borderColor: "#EAB308", color: "#854D0E" }}
+                        className="btn mono"
+                        style={{
+                          fontSize: 11,
+                          padding: "6px 10px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          borderColor: "var(--amber)",
+                          background: "rgba(245, 158, 11, 0.16)",
+                          color: "var(--text)",
+                          boxShadow: "none",
+                        }}
                         onClick={() => {
                           setEditTab("overtime");
                           setIsEditing(true);
                         }}
                       >
-                        <Zap size={12} style={{ color: "#EAB308" }} /> اضافه کار مجزا
+                        <Zap size={12} style={{ color: "var(--amber)" }} /> اضافه کار مجزا
                       </button>
                       <button
                         type="button"
-                        className="btn btn-ghost mono"
-                        style={{ fontSize: 11, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 4 }}
+                        className="btn mono"
+                        style={{
+                          fontSize: 11,
+                          padding: "6px 10px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          borderColor: "var(--border-strong)",
+                          background: "var(--surface-2)",
+                          color: "var(--text)",
+                          boxShadow: "none",
+                        }}
                         onClick={() => {
                           setEditTab("leave");
                           setIsEditing(true);
                         }}
                       >
-                        <Palmtree size={12} /> مرخصی روزانه
+                        <Palmtree size={12} style={{ color: "#60a5fa" }} /> مرخصی روزانه
                       </button>
                     </div>
                   </div>
@@ -856,39 +878,61 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                         key={s.id}
                         className="row"
                         style={{
-                          background: s.mode === "remote" ? "rgba(124,58,237,.06)" : "rgba(34, 197, 94, 0.06)",
-                          borderColor: s.mode === "remote" ? "var(--violet)" : "#22C55E",
+                          background: s.mode === "remote" ? "rgba(99, 102, 241, 0.12)" : "rgba(34, 197, 94, 0.12)",
+                          borderColor: s.mode === "remote" ? "#818cf8" : "#4ade80",
                           borderWidth: 1.5,
-                          padding: "8px 10px",
+                          padding: "10px 12px",
                           display: "flex",
                           justifyContent: "space-between",
                           alignItems: "center",
                         }}
                       >
-                        <div style={{ display: "grid", gap: 2 }}>
+                        <div style={{ display: "grid", gap: 3 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                             {s.is_overnight && (
-                              <span className="badge" style={{ background: "#4C1D95", color: "#fff", borderColor: "#000", fontSize: 10, padding: "2px 6px" }}>
+                              <span className="badge" style={{ background: "#5B21B6", color: "#EDE9FE", borderColor: "#8B5CF6", fontSize: 10, padding: "2px 6px" }}>
                                 🌙 شبانه (+۱ روز)
                               </span>
                             )}
-                            <b className="mono" style={{ fontSize: 13, direction: "ltr" }}>
+                            <b className="mono" style={{ fontSize: 14, direction: "ltr", color: "var(--text)" }}>
                               {s.start_time} تا {s.end_time}
                             </b>
-                            <span className="badge" style={{ fontSize: 10, padding: "2px 6px", background: s.mode === "remote" ? "#DDD6FE" : "#DCFCE7", color: s.mode === "remote" ? "#4C1D95" : "#15803d", borderColor: "#000" }}>
+                            <span
+                              className="badge"
+                              style={{
+                                fontSize: 10,
+                                padding: "2px 6px",
+                                background: s.mode === "remote" ? "rgba(99,102,241,0.25)" : "rgba(34,197,94,0.25)",
+                                color: s.mode === "remote" ? "#c7d2fe" : "#bbf7d0",
+                                borderColor: s.mode === "remote" ? "#818cf8" : "#4ade80",
+                              }}
+                            >
                               {s.mode === "remote" ? "🏠 دورکار" : "🏢 حضوری"}
                             </span>
                           </div>
                           <div style={{ fontSize: 11, color: "var(--muted)", display: "flex", gap: 8, alignItems: "center" }}>
-                            <span>مدت: <b>{fmtHoursFa(s.hours)}</b></span>
-                            {s.description && <span>· {s.description}</span>}
+                            <span>مدت: <b style={{ color: "var(--text)" }}>{fmtHoursFa(s.hours)}</b></span>
+                            {s.description && <span style={{ color: "var(--text)" }}>· {s.description}</span>}
                           </div>
                         </div>
 
                         <button
                           type="button"
-                          className="btn btn-ghost"
-                          style={{ color: "var(--red)", borderColor: "var(--red)", padding: "4px 8px", fontSize: 11, display: "inline-flex", alignItems: "center", gap: 3 }}
+                          className="btn"
+                          style={{
+                            width: "auto",
+                            background: "rgba(239, 68, 68, 0.12)",
+                            color: "var(--red)",
+                            borderColor: "var(--red)",
+                            borderWidth: 1.5,
+                            padding: "6px 10px",
+                            fontSize: 11,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 3,
+                            boxShadow: "none",
+                            borderRadius: 8,
+                          }}
                           onClick={() => handleDeleteOtSession(s.id)}
                           disabled={loading}
                           title="حذف این بازه اضافه‌کاری"
@@ -957,29 +1001,32 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                 )}
 
                 {/* Quick Add Separate Overtime Button */}
-                <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
+                <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
                   <button
                     type="button"
-                    className="btn btn-ghost mono"
+                    className="btn mono"
                     style={{
                       width: "100%",
-                      padding: "8px 12px",
+                      padding: "10px 14px",
                       fontSize: 12,
-                      fontWeight: 700,
+                      fontWeight: 800,
                       display: "inline-flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: 6,
-                      borderRadius: 10,
-                      borderColor: "var(--border-strong)",
-                      background: "var(--surface-2)",
+                      gap: 8,
+                      borderRadius: 12,
+                      border: "2px solid var(--amber)",
+                      background: "rgba(245, 158, 11, 0.16)",
+                      color: "var(--text)",
+                      boxShadow: "2px 2px 0 rgba(0,0,0,0.4)",
+                      cursor: "pointer",
                     }}
                     onClick={() => {
                       setEditTab("overtime");
                       setIsEditing(true);
                     }}
                   >
-                    <Plus size={14} />
+                    <Plus size={15} style={{ color: "var(--amber)" }} />
                     <span>افزودن بازه اضافه‌کاری مجزا (شبانه / دورکاری / کار فورس)</span>
                   </button>
                 </div>
