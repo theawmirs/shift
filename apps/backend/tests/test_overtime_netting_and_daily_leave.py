@@ -127,3 +127,42 @@ def test_retroactive_daily_leave_create_and_delete(test_env):
     assert res_ann.status_code == 201
     assert res_ann.json()["type"] == "annual"
     assert res_ann.json()["id"] > 0
+
+def test_auto_overtime_after_window_and_netting(test_env):
+    client = test_env["client"]
+    conn = sqlite3.connect(test_env["db_path"], check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("INSERT INTO users(telegram_id, username, created_at) VALUES(998877, 'auto_ot_user', '2026-08-26T00:00:00')")
+    conn.commit()
+    user_id = conn.execute("SELECT id FROM users WHERE telegram_id=998877").fetchone()["id"]
+    access_token, _ = auth_service.issue_token_pair(conn, user_id, 998877)
+    conn.close()
+
+    headers = {"Authorization": f"Bearer {access_token}"}
+    test_date = "1405-06-15"
+
+    # User arrives late at 12:00 and leaves late at 20:00 (8h gross presence) without explicit OT note
+    client.post("/api/record", json={"event_type": "in", "at": "12:00", "date": test_date}, headers=headers)
+    client.post("/api/record", json={"event_type": "out", "at": "20:00", "date": test_date}, headers=headers)
+
+    conn = sqlite3.connect(test_env["db_path"], check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    d = record_service.day_payload(conn, test_date, user_id=user_id)
+    conn.close()
+
+    # Automatic overtime should kick in for presence after 17:15 (2 hours 45 mins = 2.75 hours)
+    assert d["in"] == "12:00"
+    assert d["out"] == "20:00"
+    assert d["gross"] == 8.0
+    assert d["overtime"] == 2.75
+    assert d["overtime_interval"] == ["17:15", "20:00"]
+    # Deficit inside regular hours: 8.0 - (17:15 - 12:00) = 8.0 - 5.25 = 2.75
+    assert d["deficit"] == 2.75
+
+    # Month report with netting: Overtime 2.75 compensates Deficit 2.75 -> Deficit = 0.0, Overtime = 0.0!
+    rep = client.get("/api/report/month?month=1405-06", headers=headers)
+    assert rep.status_code == 200
+    totals = rep.json()["totals"]
+    assert totals["compensated_hours"] == 2.75
+    assert totals["deficit"] == 0.0
+    assert totals["overtime"] == 0.0
