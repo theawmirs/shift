@@ -233,9 +233,15 @@ def compute_month(conn: DBAdapter, month_key: str, user_id: int | None = None) -
             gross = round(gross + sessions_ot, 2)
             ot_declared = True
 
+        raw_deficit = round(deficit, 2)
+        raw_overtime = round(overtime, 2)
+        day_comp = round(min(raw_overtime, raw_deficit), 2)
+        final_ot = round(raw_overtime - day_comp, 2)
+        final_df = round(raw_deficit - day_comp, 2)
+
         ot_interval_str = None
-        if out_dt and overtime > 0:
-            ot_minutes = int(round(overtime * 60))
+        if out_dt and raw_overtime > 0:
+            ot_minutes = int(round(raw_overtime * 60))
             ot_start_dt = out_dt - datetime.timedelta(minutes=ot_minutes)
             if in_dt and ot_start_dt < in_dt:
                 ot_start_dt = in_dt
@@ -259,8 +265,11 @@ def compute_month(conn: DBAdapter, month_key: str, user_id: int | None = None) -
             "leave": round(leave_h, 2),
             "net": round(net, 2),
             "late": round(late, 2),
-            "deficit": round(deficit, 2),
-            "overtime": round(overtime, 2),
+            "deficit": final_df,
+            "overtime": final_ot,
+            "raw_deficit": raw_deficit,
+            "raw_overtime": raw_overtime,
+            "compensated_hours": day_comp,
             "overtime_interval": ot_interval_str,
             "overtime_sessions": day_ot_sessions,
             "ot_declared": ot_declared,
@@ -287,8 +296,8 @@ def compute_month(conn: DBAdapter, month_key: str, user_id: int | None = None) -
             total_gross += d_item["gross"]
             total_leave += d_item["leave"]
             if d_item["ot_declared"]:
-                total_ot += d_item["overtime"]
-            total_deficit += d_item["deficit"]
+                total_ot += raw_overtime
+            total_deficit += raw_deficit
             if d_item["late"] > 0:
                 total_late += d_item["late"]
                 late_days += 1
@@ -423,8 +432,8 @@ def get_week_report(conn: DBAdapter, user_id: int | None = None) -> dict:
         if d.get("has_events") or (d.get("net") and d.get("net") > 0) or d.get("in") or d.get("is_daily_leave"):
             days.append(d)
             total_net += d.get("net", 0.0)
-            total_ot += d.get("overtime", 0.0)
-            total_def += d.get("deficit", 0.0)
+            total_ot += d.get("raw_overtime", d.get("overtime", 0.0))
+            total_def += d.get("raw_deficit", d.get("deficit", 0.0))
             total_leave += d.get("leave", 0.0)
             if not d.get("is_holiday"):
                 work_days += 1
