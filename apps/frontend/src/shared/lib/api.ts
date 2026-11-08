@@ -323,6 +323,25 @@ export const API = {
   deleteDailyLeave(id: number | string): Promise<any> {
     return this.jdel(`/api/daily-leaves/${id}`);
   },
+  listOvertimeSessions(opts: { date?: string; month?: string } = {}): Promise<any> {
+    const qs = new URLSearchParams();
+    if (opts.date) qs.set("date", opts.date);
+    if (opts.month) qs.set("month", opts.month);
+    const q = qs.toString() ? `?${qs}` : "";
+    return this.jget(`/api/overtime/sessions${q}`);
+  },
+  createOvertimeSession(body: {
+    date: string;
+    start_time: string;
+    end_time: string;
+    mode?: string;
+    description?: string;
+  }): Promise<any> {
+    return this.jpost("/api/overtime/sessions", body);
+  },
+  deleteOvertimeSession(id: number | string): Promise<any> {
+    return this.jdel(`/api/overtime/sessions/${id}`);
+  },
   months(): Promise<any> {
     return this.jget("/api/months");
   },

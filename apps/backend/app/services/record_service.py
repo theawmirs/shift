@@ -225,6 +225,16 @@ def compute_day(conn: sqlite3.Connection, sdate: str, user_id: int | None = None
                 deficit = 0.0
             overtime = 0.0
 
+    # Fetch separate overtime sessions
+    from app.services import overtime_service
+    ot_sessions = overtime_service.list_overtime_sessions_for_date(conn, user_id, sdate)
+    sessions_ot = sum(float(s["hours"]) for s in ot_sessions)
+    if sessions_ot > 0:
+        overtime = round(overtime + sessions_ot, 2)
+        net = round(net + sessions_ot, 2)
+        gross = round(gross + sessions_ot, 2)
+        ot_declared = True
+
     ot_interval = None
     if out_dt and overtime > 0:
         ot_minutes = int(round(overtime * 60))
@@ -255,7 +265,8 @@ def compute_day(conn: sqlite3.Connection, sdate: str, user_id: int | None = None
         "overtime": overtime,
         "ot_interval": ot_interval,
         "ot_declared": ot_declared,
-        "has_events": len(events) > 0,
+        "overtime_sessions": ot_sessions,
+        "has_events": (len(events) > 0) or (len(ot_sessions) > 0),
     }
 
 def compute_day_status(is_holiday: bool, in_dt: datetime.datetime | None, out_dt: datetime.datetime | None, leave_open: bool, holiday_name: str | None = None) -> tuple[str, str, str | None]:
@@ -307,6 +318,7 @@ def day_payload(conn: sqlite3.Connection, sdate: str, user_id: int | None = None
         "deficit": round(d["deficit"], 2), "overtime": round(d["overtime"], 2),
         "overtime_interval": [fmt_company_time(d["ot_interval"][0]), fmt_company_time(d["ot_interval"][1])] if d.get("ot_interval") else None,
         "ot_declared": d["ot_declared"],
+        "overtime_sessions": d.get("overtime_sessions", []),
         "work_mode": d["work_mode"], "work_mode_label": d["work_mode_label"],
         "day_status": ds, "day_status_label": dsl, "day_status_reason": dsr,
         "daily_leave": dl,

@@ -166,3 +166,79 @@ def test_auto_overtime_after_window_and_netting(test_env):
     assert totals["compensated_hours"] == 2.75
     assert totals["deficit"] == 0.0
     assert totals["overtime"] == 0.0
+
+def test_separate_overtime_sessions_and_overnight(test_env):
+    client = test_env["client"]
+    conn = sqlite3.connect(test_env["db_path"], check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("INSERT INTO users(telegram_id, username, created_at) VALUES(554433, 'ot_session_user', '2026-08-26T00:00:00')")
+    conn.commit()
+    user_id = conn.execute("SELECT id FROM users WHERE telegram_id=554433").fetchone()["id"]
+    access_token, _ = auth_service.issue_token_pair(conn, user_id, 554433)
+    conn.close()
+
+    headers = {"Authorization": f"Bearer {access_token}"}
+    test_date = "1405-06-20"
+
+    # 1. Add normal evening session: 19:00 to 21:00 (2h, office)
+    r1 = client.post(
+        "/api/overtime/sessions",
+        json={
+            "date": test_date,
+            "start_time": "19:00",
+            "end_time": "21:00",
+            "mode": "office",
+            "description": "دیپلوی شبانه",
+        },
+        headers=headers,
+    )
+    assert r1.status_code == 201
+    s1 = r1.json()["session"]
+    assert s1["hours"] == 2.0
+    assert s1["is_overnight"] is False
+    assert s1["mode"] == "office"
+    sid1 = s1["id"]
+
+    # 2. Add overnight remote session: 23:00 to 02:00 (3h, remote, crosses midnight)
+    r2 = client.post(
+        "/api/overtime/sessions",
+        json={
+            "date": test_date,
+            "start_time": "23:00",
+            "end_time": "02:00",
+            "mode": "remote",
+            "description": "رفع باگ فورس کلاود",
+        },
+        headers=headers,
+    )
+    assert r2.status_code == 201
+    s2 = r2.json()["session"]
+    assert s2["hours"] == 3.0
+    assert s2["is_overnight"] is True
+    assert s2["mode"] == "remote"
+
+    # 3. List sessions for the date
+    r_list = client.get(f"/api/overtime/sessions?date={test_date}", headers=headers)
+    assert r_list.status_code == 200
+    items = r_list.json()["items"]
+    assert len(items) == 2
+
+    # 4. Check day payload reflects 5 hours overtime
+    conn = sqlite3.connect(test_env["db_path"], check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    d = record_service.day_payload(conn, test_date, user_id=user_id)
+    conn.close()
+
+    assert d["overtime"] == 5.0
+    assert d["net"] == 5.0
+    assert len(d["overtime_sessions"]) == 2
+
+    # 5. Delete session 1
+    r_del = client.delete(f"/api/overtime/sessions/{sid1}", headers=headers)
+    assert r_del.status_code == 200
+    assert r_del.json()["ok"] is True
+
+    # 6. Verify only session 2 remains (3.0 hours)
+    r_list2 = client.get(f"/api/overtime/sessions?date={test_date}", headers=headers)
+    assert len(r_list2.json()["items"]) == 1
+    assert r_list2.json()["items"][0]["hours"] == 3.0

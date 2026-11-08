@@ -360,7 +360,9 @@ export function CalendarPage() {
             const today = isToday(d);
             const dayRow = telemetryMap.get(dateStr) || telemetryMap.get(dateNorm);
             const isDailyLeave = Boolean(dayRow?.daily_leave || dayRow?.is_daily_leave);
-            const isWorked = Boolean(dayRow?.has_events || (dayRow?.net != null && Number(dayRow.net) > 0) || dayRow?.in);
+            const hasOtSessions = Array.isArray(dayRow?.overtime_sessions) && dayRow.overtime_sessions.length > 0;
+            const hasOvernight = hasOtSessions && dayRow.overtime_sessions.some((s: any) => s.is_overnight);
+            const isWorked = Boolean(dayRow?.has_events || (dayRow?.net != null && Number(dayRow.net) > 0) || dayRow?.in || hasOtSessions);
             const isRemote = dayRow?.work_mode === "remote";
 
             let borderColor = "var(--border-strong)";
@@ -433,6 +435,17 @@ export function CalendarPage() {
                         background: "#3b82f6",
                       }}
                       title="مرخصی روزانه"
+                    />
+                  )}
+                  {hasOvernight && (
+                    <span
+                      style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: "50%",
+                        background: "#7c3aed",
+                      }}
+                      title="اضافه‌کاری شبانه"
                     />
                   )}
                   {isWorked && (
