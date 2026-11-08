@@ -86,6 +86,12 @@ def compute_month(conn: DBAdapter, month_key: str, user_id: int | None = None) -
     else:
         dl_rows = conn.execute("SELECT id, user_id, start_date, end_date, type, reason, hours, created_at FROM daily_leaves WHERE user_id=? AND substr(start_date,1,7) <= ? AND substr(end_date,1,7) >= ?", (user_id, month_key, month_key)).fetchall()
 
+    from app.services import overtime_service
+    ot_sessions_list = overtime_service.list_overtime_sessions_for_month(conn, user_id, month_key)
+    ot_sessions_by_date = {}
+    for ots in ot_sessions_list:
+        ot_sessions_by_date.setdefault(ots["shamsi_date"], []).append(ots)
+
     sh_end, sm_end = record_service.parse_time_str(start_time_end_str, "09:15")
     eh_end, em_end = record_service.parse_time_str(end_time_end_str, "17:15")
 
@@ -218,6 +224,15 @@ def compute_month(conn: DBAdapter, month_key: str, user_id: int | None = None) -
             dsl = "آماده"
             dsr = None
 
+        # Add overtime sessions for the day
+        day_ot_sessions = ot_sessions_by_date.get(sdate, [])
+        sessions_ot = sum(float(s["hours"]) for s in day_ot_sessions)
+        if sessions_ot > 0:
+            overtime = round(overtime + sessions_ot, 2)
+            net = round(net + sessions_ot, 2)
+            gross = round(gross + sessions_ot, 2)
+            ot_declared = True
+
         ot_interval_str = None
         if out_dt and overtime > 0:
             ot_minutes = int(round(overtime * 60))
@@ -226,7 +241,7 @@ def compute_month(conn: DBAdapter, month_key: str, user_id: int | None = None) -
                 ot_start_dt = in_dt
             ot_interval_str = [ot_start_dt.strftime("%H:%M"), out_dt.strftime("%H:%M")]
 
-        has_events = bool(events)
+        has_events = bool(events) or bool(day_ot_sessions)
         d_item = {
             "date": sdate,
             "year": jy_d,
@@ -247,6 +262,7 @@ def compute_month(conn: DBAdapter, month_key: str, user_id: int | None = None) -
             "deficit": round(deficit, 2),
             "overtime": round(overtime, 2),
             "overtime_interval": ot_interval_str,
+            "overtime_sessions": day_ot_sessions,
             "ot_declared": ot_declared,
             "work_mode": wm,
             "work_mode_label": record_service.WORK_MODE_LABEL.get(wm, wm),

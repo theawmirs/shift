@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Drawer } from "../../shared/ui/Drawer";
 import { Button } from "../../shared/ui/Button";
 import { fmtHoursFa, formatShamsiDateText, computeOvertimeRange } from "../../shared/lib/format";
-import { Edit3, Building2, Home, Trash2, AlertTriangle, Palmtree } from "lucide-react";
+import { Edit3, Building2, Home, Trash2, AlertTriangle, Palmtree, Zap, Moon, Clock, Plus } from "lucide-react";
 import { API } from "../../shared/lib/api";
 import { useToast } from "../../shared/ui/Toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -32,9 +32,29 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
   const [notes, setNotes] = useState("");
 
   // Daily leave states
-  const [editTab, setEditTab] = useState<"work" | "leave">("work");
+  const [editTab, setEditTab] = useState<"work" | "overtime" | "leave">("work");
   const [leaveType, setLeaveType] = useState<string>("annual");
   const [leaveReason, setLeaveReason] = useState("");
+
+  // Separate Overtime Session states
+  const [otStartTime, setOtStartTime] = useState("");
+  const [otEndTime, setOtEndTime] = useState("");
+  const [otMode, setOtMode] = useState<"office" | "remote">("remote");
+  const [otDesc, setOtDesc] = useState("");
+
+  const computeOtPreview = () => {
+    if (!otStartTime || !otEndTime) return null;
+    const [sh, sm] = otStartTime.split(":").map(Number);
+    const [eh, em] = otEndTime.split(":").map(Number);
+    if (isNaN(sh) || isNaN(sm) || isNaN(eh) || isNaN(em)) return null;
+    const startM = sh * 60 + sm;
+    const endM = eh * 60 + em;
+    if (startM === endM) return { hours: 0, isOvernight: false };
+    const isOvernight = endM < startM;
+    const durM = isOvernight ? (endM + 24 * 60) - startM : endM - startM;
+    const hours = Math.round((durM / 60) * 100) / 100;
+    return { hours, isOvernight };
+  };
 
   useEffect(() => {
     if (day) {
@@ -78,7 +98,8 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
   const hasOvertime = currentDay?.overtime != null && Number(currentDay.overtime) > 0;
   const hasDeficit = currentDay?.deficit != null && Number(currentDay.deficit) > 0;
   const hasLate = currentDay?.late != null && Number(currentDay.late) > 0;
-  const hasWork = hasIn || hasOut || hasNet || hasGross || Boolean(currentDay?.has_events);
+  const hasOtSessions = Array.isArray(currentDay?.overtime_sessions) && currentDay.overtime_sessions.length > 0;
+  const hasWork = hasIn || hasOut || hasNet || hasGross || Boolean(currentDay?.has_events) || hasOtSessions;
   const standardHours = 8;
   const otRange = currentDay?.overtime_interval || computeOvertimeRange(currentDay?.out, currentDay?.overtime, currentDay?.in);
 
@@ -175,6 +196,46 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
     }
   };
 
+  const handleSaveOtSession = async () => {
+    if (!currentDay || !otStartTime || !otEndTime) return;
+    setLoading(true);
+    try {
+      await API.createOvertimeSession({
+        date: currentDay.date,
+        start_time: otStartTime.trim(),
+        end_time: otEndTime.trim(),
+        mode: otMode,
+        description: otDesc.trim() || undefined,
+      });
+      await queryClient.invalidateQueries();
+      push(`⚡ بازه اضافه‌کاری تاریخ ${dateFormatted} ثبت شد`);
+      setOtStartTime("");
+      setOtEndTime("");
+      setOtDesc("");
+      setIsEditing(false);
+      onUpdated?.();
+      onClose();
+    } catch (e: any) {
+      push(`❌ خطا در ثبت اضافه‌کاری: ${e.message}`, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteOtSession = async (sid: number) => {
+    setLoading(true);
+    try {
+      await API.deleteOvertimeSession(sid);
+      await queryClient.invalidateQueries();
+      push(`🗑 بازه اضافه‌کاری حذف شد`);
+      onUpdated?.();
+    } catch (e: any) {
+      push(`❌ خطا در حذف اضافه‌کاری: ${e.message}`, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
       <Drawer open={open} onClose={onClose} title={title}>
@@ -203,11 +264,11 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                   </button>
                 </div>
 
-                {/* ── MODE SWITCH: WORK HOURS vs DAILY LEAVE ── */}
+                {/* ── MODE SWITCH: WORK HOURS vs OVERTIME vs DAILY LEAVE ── */}
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
+                    gridTemplateColumns: "1fr 1fr 1fr",
                     gap: 4,
                     background: "var(--surface-3, #f1f5f9)",
                     padding: 3,
@@ -219,8 +280,8 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                     type="button"
                     className="btn"
                     style={{
-                      padding: "7px 8px",
-                      fontSize: 12,
+                      padding: "7px 4px",
+                      fontSize: 11,
                       fontWeight: 800,
                       background: editTab === "work" ? "var(--surface, #fff)" : "transparent",
                       color: editTab === "work" ? "var(--text, #0f172a)" : "var(--muted, #64748b)",
@@ -230,19 +291,41 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: 5,
+                      gap: 4,
                       cursor: "pointer",
                     }}
                     onClick={() => setEditTab("work")}
                   >
-                    <Building2 size={13} /> ثبت ساعت کاری
+                    <Building2 size={12} /> ساعت کاری
                   </button>
                   <button
                     type="button"
                     className="btn"
                     style={{
-                      padding: "7px 8px",
-                      fontSize: 12,
+                      padding: "7px 4px",
+                      fontSize: 11,
+                      fontWeight: 800,
+                      background: editTab === "overtime" ? "var(--surface, #fff)" : "transparent",
+                      color: editTab === "overtime" ? "var(--text, #0f172a)" : "var(--muted, #64748b)",
+                      border: editTab === "overtime" ? "1.5px solid #000" : "1.5px solid transparent",
+                      boxShadow: editTab === "overtime" ? "1.5px 1.5px 0 #000" : "none",
+                      borderRadius: 8,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 4,
+                      cursor: "pointer",
+                    }}
+                    onClick={() => setEditTab("overtime")}
+                  >
+                    <Zap size={12} /> اضافه کار مجزا
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{
+                      padding: "7px 4px",
+                      fontSize: 11,
                       fontWeight: 800,
                       background: editTab === "leave" ? "var(--surface, #fff)" : "transparent",
                       color: editTab === "leave" ? "var(--text, #0f172a)" : "var(--muted, #64748b)",
@@ -252,12 +335,12 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: 5,
+                      gap: 4,
                       cursor: "pointer",
                     }}
                     onClick={() => setEditTab("leave")}
                   >
-                    <Palmtree size={13} /> مرخصی روزانه
+                    <Palmtree size={12} /> مرخصی
                   </button>
                 </div>
 
@@ -368,6 +451,133 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                       )}
                     </div>
                   </>
+                ) : editTab === "overtime" ? (
+                  /* ── SEPARATE OVERTIME SESSION FORM ── */
+                  <div style={{ display: "grid", gap: 10, padding: "4px 0" }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>
+                      ثبت بازه کاری مجزا خارج از ساعت اداری (کار فورس، شیفت شب، پشتیبانی):
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800 }}>ساعت شروع:</span>
+                        <input
+                          type="time"
+                          value={otStartTime}
+                          onChange={(e) => setOtStartTime(e.target.value)}
+                          className="mono input"
+                          style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center", direction: "ltr" }}
+                        />
+                      </label>
+
+                      <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800 }}>ساعت پایان:</span>
+                        <input
+                          type="time"
+                          value={otEndTime}
+                          onChange={(e) => setOtEndTime(e.target.value)}
+                          className="mono input"
+                          style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center", direction: "ltr" }}
+                        />
+                      </label>
+                    </div>
+
+                    {/* Overnight or duration calculation banner */}
+                    {(() => {
+                      const prev = computeOtPreview();
+                      if (!prev) return null;
+                      if (prev.isOvernight) {
+                        return (
+                          <div
+                            style={{
+                              background: "rgba(124, 58, 237, 0.08)",
+                              border: "1.5px solid var(--violet)",
+                              borderRadius: 10,
+                              padding: "8px 10px",
+                              fontSize: 12,
+                              color: "#4C1D95",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                            }}
+                          >
+                            <Moon size={15} />
+                            <span>
+                              <b>شیفت شبانه (عبور از نیمه‌شب):</b> {prev.hours} ساعت اضافه کار برای این تاریخ منظور می‌شود.
+                            </span>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div
+                          style={{
+                            background: "rgba(34, 197, 94, 0.08)",
+                            border: "1.5px solid #22c55e",
+                            borderRadius: 10,
+                            padding: "8px 10px",
+                            fontSize: 12,
+                            color: "#15803d",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <Clock size={15} />
+                          <span>
+                            <b>مدت اضافه‌کاری:</b> {prev.hours} ساعت
+                          </span>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Mode Selector */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 2px" }}>
+                      <span style={{ fontSize: 12, fontWeight: 800 }}>نوع حضور:</span>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button
+                          type="button"
+                          className={`btn ${otMode === "remote" ? "btn-primary" : "btn-ghost"}`}
+                          style={{ padding: "6px 12px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
+                          onClick={() => setOtMode("remote")}
+                        >
+                          <Home size={13} /> دورکاری
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn ${otMode === "office" ? "btn-primary" : "btn-ghost"}`}
+                          style={{ padding: "6px 12px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
+                          onClick={() => setOtMode("office")}
+                        >
+                          <Building2 size={13} /> حضوری
+                        </button>
+                      </div>
+                    </div>
+
+                    <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                      <span style={{ fontSize: 11, fontWeight: 800 }}>علت یا تسک فورس (اختیاری):</span>
+                      <input
+                        type="text"
+                        value={otDesc}
+                        onChange={(e) => setOtDesc(e.target.value)}
+                        placeholder="مثال: دیپلوی نسخه جدید، رفع باگ فورس..."
+                        className="input"
+                        style={{ width: "100%", padding: "8px 10px", fontSize: 13 }}
+                        maxLength={200}
+                      />
+                    </label>
+
+                    <Button
+                      variant="primary"
+                      style={{ padding: "10px", fontWeight: 800, fontSize: 13, marginTop: 4 }}
+                      onClick={handleSaveOtSession}
+                      disabled={!otStartTime || !otEndTime}
+                      loading={loading}
+                      loadingText="در حال ثبت بازه…"
+                      icon={<Zap size={14} />}
+                    >
+                      ثبت بازه اضافه‌کاری
+                    </Button>
+                  </div>
                 ) : (
                   /* ── DAILY LEAVE FORM ── */
                   <div style={{ display: "grid", gap: 10, padding: "4px 0" }}>
@@ -491,30 +701,41 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                 {!hasWork && !currentDay.daily_leave && (
                   <div style={{ color: "var(--muted)", fontSize: 13, textAlign: "center", padding: "14px 0", display: "grid", gap: 10 }}>
                     <div>
-                      {currentDay.is_holiday ? "در این روز تعطیل کارکردی ثبت نشده است." : "ثبت کاری یا مرخصی برای این روز وجود ندارد."}
+                      {currentDay.is_holiday ? "در این روز تعطیل کارکردی ثبت نشده است." : "ثبت کاری، اضافه کار یا مرخصی برای این روز وجود ندارد."}
                     </div>
-                    <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
                       <button
                         type="button"
                         className="btn btn-primary mono"
-                        style={{ fontSize: 11, padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: 4 }}
+                        style={{ fontSize: 11, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 4 }}
                         onClick={() => {
                           setEditTab("work");
                           setIsEditing(true);
                         }}
                       >
-                        <Edit3 size={12} /> ثبت ساعت کاری
+                        <Edit3 size={12} /> ساعت کاری
                       </button>
                       <button
                         type="button"
                         className="btn btn-ghost mono"
-                        style={{ fontSize: 11, padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: 4 }}
+                        style={{ fontSize: 11, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 4, borderColor: "#EAB308", color: "#854D0E" }}
+                        onClick={() => {
+                          setEditTab("overtime");
+                          setIsEditing(true);
+                        }}
+                      >
+                        <Zap size={12} style={{ color: "#EAB308" }} /> اضافه کار مجزا
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost mono"
+                        style={{ fontSize: 11, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 4 }}
                         onClick={() => {
                           setEditTab("leave");
                           setIsEditing(true);
                         }}
                       >
-                        <Palmtree size={12} /> ثبت مرخصی روزانه
+                        <Palmtree size={12} /> مرخصی روزانه
                       </button>
                     </div>
                   </div>
@@ -623,7 +844,61 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                   </div>
                 )}
 
-                {/* Deficit Hours (کسری کار) */}
+                {/* Separate Overtime Sessions List */}
+                {Array.isArray(currentDay.overtime_sessions) && currentDay.overtime_sessions.length > 0 && (
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                      <Zap size={13} style={{ color: "#EAB308" }} />
+                      <span>بازه‌های اضافه‌کاری مجزا:</span>
+                    </div>
+                    {currentDay.overtime_sessions.map((s: any) => (
+                      <div
+                        key={s.id}
+                        className="row"
+                        style={{
+                          background: s.mode === "remote" ? "rgba(124,58,237,.06)" : "rgba(34, 197, 94, 0.06)",
+                          borderColor: s.mode === "remote" ? "var(--violet)" : "#22C55E",
+                          borderWidth: 1.5,
+                          padding: "8px 10px",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <div style={{ display: "grid", gap: 2 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            {s.is_overnight && (
+                              <span className="badge" style={{ background: "#4C1D95", color: "#fff", borderColor: "#000", fontSize: 10, padding: "2px 6px" }}>
+                                🌙 شبانه (+۱ روز)
+                              </span>
+                            )}
+                            <b className="mono" style={{ fontSize: 13, direction: "ltr" }}>
+                              {s.start_time} تا {s.end_time}
+                            </b>
+                            <span className="badge" style={{ fontSize: 10, padding: "2px 6px", background: s.mode === "remote" ? "#DDD6FE" : "#DCFCE7", color: s.mode === "remote" ? "#4C1D95" : "#15803d", borderColor: "#000" }}>
+                              {s.mode === "remote" ? "🏠 دورکار" : "🏢 حضوری"}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 11, color: "var(--muted)", display: "flex", gap: 8, alignItems: "center" }}>
+                            <span>مدت: <b>{fmtHoursFa(s.hours)}</b></span>
+                            {s.description && <span>· {s.description}</span>}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          style={{ color: "var(--red)", borderColor: "var(--red)", padding: "4px 8px", fontSize: 11, display: "inline-flex", alignItems: "center", gap: 3 }}
+                          onClick={() => handleDeleteOtSession(s.id)}
+                          disabled={loading}
+                          title="حذف این بازه اضافه‌کاری"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {hasDeficit && (
                   <div className="row" style={{ borderColor: "var(--red)", background: "rgba(239,68,68,0.06)" }}>
                     <b>کسری کار</b>
@@ -680,6 +955,34 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                     </button>
                   </div>
                 )}
+
+                {/* Quick Add Separate Overtime Button */}
+                <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
+                  <button
+                    type="button"
+                    className="btn btn-ghost mono"
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                      borderRadius: 10,
+                      borderColor: "var(--border-strong)",
+                      background: "var(--surface-2)",
+                    }}
+                    onClick={() => {
+                      setEditTab("overtime");
+                      setIsEditing(true);
+                    }}
+                  >
+                    <Plus size={14} />
+                    <span>افزودن بازه اضافه‌کاری مجزا (شبانه / دورکاری / کار فورس)</span>
+                  </button>
+                </div>
               </>
             )}
           </div>

@@ -11,6 +11,10 @@ from app.schemas.attendance import (
     HourlyLeaveDeleteRequest,
     HourlyLeaveResponse,
     OvertimeRequest,
+    OvertimeSessionItem,
+    OvertimeSessionCreateRequest,
+    OvertimeSessionCreateResponse,
+    OvertimeSessionListResponse,
     WorkModeRequest,
     WorkModeResponse,
     DayEditRequest,
@@ -139,6 +143,60 @@ def api_overtime(
         return {"ok": True, "message": msg}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/overtime/sessions", response_model=OvertimeSessionListResponse, summary="List separate overtime sessions")
+def api_list_overtime_sessions(
+    date: str | None = Query(None),
+    month: str | None = Query(None),
+    uid: int = Depends(get_current_user),
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    from app.services import overtime_service
+    if date:
+        items = overtime_service.list_overtime_sessions_for_date(conn, uid, date)
+    elif month:
+        items = overtime_service.list_overtime_sessions_for_month(conn, uid, month)
+    else:
+        items = overtime_service.list_overtime_sessions_for_date(conn, uid, record_service.today_str())
+    return OvertimeSessionListResponse(ok=True, items=[OvertimeSessionItem(**it) for it in items])
+
+@router.post("/overtime/sessions", response_model=OvertimeSessionCreateResponse, status_code=201, summary="Create a separate overtime session")
+def api_create_overtime_session(
+    body: OvertimeSessionCreateRequest,
+    uid: int = Depends(get_current_user),
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    from app.services import overtime_service
+    try:
+        session = overtime_service.create_overtime_session(
+            conn=conn,
+            user_id=uid,
+            sdate=body.date,
+            start_time=body.start_time,
+            end_time=body.end_time,
+            mode=body.mode,
+            description=body.description,
+        )
+        day = record_service.day_payload(conn, body.date, user_id=uid)
+        return OvertimeSessionCreateResponse(
+            ok=True,
+            session=OvertimeSessionItem(**session),
+            day=day,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.delete("/overtime/sessions/{session_id}", summary="Delete an overtime session")
+def api_delete_overtime_session(
+    session_id: int,
+    uid: int = Depends(get_current_user),
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    from app.services import overtime_service
+    ok = overtime_service.delete_overtime_session(conn, uid, session_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="بازه اضافه‌کاری یافت نشد")
+    return {"ok": True, "message": "بازه اضافه‌کاری با موفقیت حذف شد"}
 
 @router.post("/leave/hourly", response_model=HourlyLeaveResponse, summary="Add manual hourly leave interval")
 def api_add_hourly_leave(

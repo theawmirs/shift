@@ -133,6 +133,7 @@ def hard_delete_user(conn: sqlite3.Connection, user_id: int) -> None:
         "events",
         "tasks",
         "daily_leaves",
+        "overtime_sessions",
         "day_work_mode",
         "monthly_summaries",
         "user_settings",
