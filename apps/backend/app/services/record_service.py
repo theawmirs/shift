@@ -195,18 +195,24 @@ def compute_day(conn: sqlite3.Connection, sdate: str, user_id: int | None = None
         deficit = 0.0
         ot_declared = True
     else:
+        out_clock = company_clock(out_dt) if out_dt else None
+        lim_out = out_clock.replace(hour=eh_end, minute=em_end, second=0, microsecond=0) if out_clock else None
+
+        # Automatically calculate overtime for physical presence after end_time_end if not explicitly declared
+        if not ot_declared and out_clock and lim_out and out_clock > lim_out:
+            auto_ot = (out_clock - lim_out).total_seconds() / 3600.0
+            overtime = round(min(auto_ot, max(0.0, gross - leave_h), 8.0), 2)
+            if overtime > 0:
+                ot_declared = True
+
         if ot_declared and overtime > 0:
-            # When overtime is explicitly declared, net includes the full overtime duration
+            # When overtime is declared or auto-calculated, net includes the full overtime duration
             net = max(0.0, gross - leave_h)
             deficit = max(0.0, standard - (net - overtime)) if out_dt else 0.0
         else:
-            # Overtime is NOT declared (or rejected):
-            # 1. Physical presence after end_time_end is excluded from standard shift net
-            # 2. Net cannot exceed standard_hours (capped)
+            # Physical presence without overtime
             if in_dt and out_dt:
-                out_clock = company_clock(out_dt)
-                lim_out = out_clock.replace(hour=eh_end, minute=em_end, second=0, microsecond=0)
-                effective_out = min(out_clock, lim_out) if out_clock > lim_out else out_clock
+                effective_out = min(out_clock, lim_out) if (out_clock and lim_out and out_clock > lim_out) else (out_clock or company_clock(out_dt))
                 effective_gross = max(0.0, (effective_out - company_clock(in_dt)).total_seconds() / 3600.0)
                 effective_net = max(0.0, effective_gross - leave_h)
                 net = min(standard, effective_net)
