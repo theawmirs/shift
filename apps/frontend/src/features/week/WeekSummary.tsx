@@ -105,14 +105,14 @@ export function WeekSummary() {
           className="row"
           style={{
             padding: "8px 12px",
-            background: "rgba(59, 130, 246, 0.08)",
+            background: "rgba(59, 130, 246, 0.12)",
             borderColor: "#3b82f6",
             borderWidth: 1.5,
             gap: 6,
           }}
         >
-          <span style={{ fontSize: 11, color: "#1d4ed8", fontWeight: 700 }}>⚖️ تهاتر عملکرد هفته:</span>
-          <span style={{ fontSize: 12, color: "#1e40af" }}>
+          <span style={{ fontSize: 11, color: "#60a5fa", fontWeight: 800 }}>⚖️ تهاتر عملکرد هفته:</span>
+          <span style={{ fontSize: 12, color: "var(--text)" }}>
             {fmtHoursCompactFa(compensatedHours)} اضافه کار برای جبران کسری کار تهاتر شد
           </span>
         </div>
