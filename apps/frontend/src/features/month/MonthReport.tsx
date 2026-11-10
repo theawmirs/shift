@@ -321,7 +321,7 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
             <span>مانده مرخصی سال {m.year}:</span>
           </span>
           <b className="mono" style={{ fontSize: 12 }}>
-            {leaveRemaining} از {leaveQuota} ساعت
+            {fmtHoursFa(leaveRemaining)} از {fmtHoursFa(leaveQuota)}
           </b>
         </div>
 
@@ -352,7 +352,7 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
               }}
             >
               <span className="mono" style={{ fontSize: 12 }}>
-                {it.start_date} {it.end_date !== it.start_date ? `تا ${it.end_date}` : ""} · {it.label} ({it.hours} ساعت)
+                {it.start_date} {it.end_date !== it.start_date ? `تا ${it.end_date}` : ""} · {it.label} ({fmtHoursFa(it.hours)})
                 {it.reason ? ` · ${it.reason}` : ""}
               </span>
               <button
