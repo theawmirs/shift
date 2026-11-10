@@ -18,7 +18,7 @@ router = APIRouter(tags=["Reports & Analytics"])
 def report_today(uid: int = Depends(get_current_user), conn: Any = Depends(get_db)):
     sdate = record_service.today_str()
     d_payload = record_service.day_payload(conn, sdate, user_id=uid)
-    text = f"گزارش امروز {sdate}:\nکارکرد خالص: {d_payload['net']} ساعت\nکسری: {d_payload['deficit']} ساعت\nوضعیت: {d_payload['day_status_label']}"
+    text = f"گزارش امروز {sdate}:\nکارکرد خالص: {report_service.format_hours_fa(d_payload['net'])}\nکسری: {report_service.format_hours_fa(d_payload['deficit'])}\nوضعیت: {d_payload['day_status_label']}"
     return TodayReportResponse(text=text, day=d_payload)
 
 @router.get("/report/week", response_model=WeekReportResponse, summary="Get weekly attendance summary")
