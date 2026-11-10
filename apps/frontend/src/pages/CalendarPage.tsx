@@ -372,23 +372,23 @@ export function CalendarPage() {
             if (isDailyLeave) {
               borderColor = "#3b82f6";
               bg = "rgba(59, 130, 246, 0.12)";
-              textColor = "#1e40af";
+              textColor = "#60a5fa";
             } else if (isWorked && isRemote) {
               borderColor = "var(--violet)";
               bg = "rgba(124,58,237,0.12)";
-              textColor = "#4C1D95";
+              textColor = "#a78bfa";
             } else if (isWorked && isHoliday) {
               borderColor = "#10b981";
               bg = "rgba(16,185,129,0.14)";
-              textColor = "#047857";
+              textColor = "#34d399";
             } else if (isWorked) {
               borderColor = "#10b981";
               bg = "rgba(16,185,129,0.08)";
-              textColor = "#047857";
+              textColor = "#34d399";
             } else if (isHoliday) {
               borderColor = "#ef4444";
               bg = "rgba(239,68,68,0.08)";
-              textColor = "#dc2626";
+              textColor = "#f87171";
             }
 
             return (
