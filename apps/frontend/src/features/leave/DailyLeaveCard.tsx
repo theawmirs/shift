@@ -5,7 +5,7 @@ import { Drawer } from "../../shared/ui/Drawer";
 import { Button } from "../../shared/ui/Button";
 import { ShamsiCalendar } from "../../shared/ui/ShamsiCalendar";
 import { useLeavesQuery, useDailyLeaveMutation, useDeleteLeaveMutation } from "../../shared/api/queries";
-import { formatShamsiDateText } from "../../shared/lib/format";
+import { formatShamsiDateText, fmtHoursFa } from "../../shared/lib/format";
 
 const TYPES = [
   { v: "annual", label: "استحقاقی" },
@@ -186,9 +186,9 @@ export function DailyLeaveDrawer({
       onClose?.();
       onChanged?.();
       push(
-        `✅ مرخصی ثبت شد — ${r.start_date}${r.end_date !== r.start_date ? ` تا ${r.end_date}` : ""} · ${
+        `✅ مرخصی ثبت شد — ${r.start_date}${r.end_date !== r.start_date ? ` تا ${r.end_date}` : ""} · ${fmtHoursFa(
           r.hours
-        } ساعت`
+        )}`
       );
     } catch (e: any) {
       push(`❌ ${e.message}`, "error");
@@ -360,7 +360,7 @@ export function DailyLeaveDrawer({
                 <div key={it.id} className="row" style={{ padding: "8px 10px" }}>
                   <small className="mono" style={{ fontSize: 11 }}>
                     {it.start_date}
-                    {it.end_date !== it.start_date ? ` → ${it.end_date}` : ""} · {it.label} · {it.hours} ساعت
+                    {it.end_date !== it.start_date ? ` → ${it.end_date}` : ""} · {it.label} · {fmtHoursFa(it.hours)}
                     {it.reason ? ` · ${it.reason}` : ""}
                   </small>
                   <Button
@@ -409,7 +409,7 @@ export function DailyLeaveList({ month }: { month?: string }) {
         <div key={it.id} className="row" style={{ padding: "8px 10px" }}>
           <small className="mono">
             {it.start_date}
-            {it.end_date !== it.start_date ? ` → ${it.end_date}` : ""} · {it.label} · {it.hours} ساعت{" "}
+            {it.end_date !== it.start_date ? ` → ${it.end_date}` : ""} · {it.label} · {fmtHoursFa(it.hours)}{" "}
             {it.reason ? `· ${it.reason}` : ""}
           </small>
           <Button

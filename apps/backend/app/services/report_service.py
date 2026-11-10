@@ -40,6 +40,31 @@ def net_overtime_and_deficit(overtime: float, deficit: float) -> tuple[float, fl
     final_df = df - compensated
     return round(final_ot, 2), round(final_df, 2), round(compensated, 2)
 
+def format_hours_fa(hours: float | int | None) -> str:
+    """Formats decimal hours into human-readable Persian hours and minutes.
+    Example: 7.9 -> '۷ ساعت و ۵۴ دقیقه'
+             0.25 -> '۱۵ دقیقه'
+             8.0 -> '۸ ساعت'
+    """
+    if hours is None:
+        return "۰ دقیقه"
+    try:
+        val = float(hours)
+    except (ValueError, TypeError):
+        return "۰ دقیقه"
+    if val == 0:
+        return "۰ دقیقه"
+    total_minutes = int(round(abs(val) * 60))
+    h = total_minutes // 60
+    m = total_minutes % 60
+    if h == 0 and m == 0:
+        return "۰ دقیقه"
+    if h == 0:
+        return f"{m} دقیقه"
+    if m == 0:
+        return f"{h} ساعت"
+    return f"{h} ساعت و {m} دقیقه"
+
 def compute_month(conn: DBAdapter, month_key: str, user_id: int | None = None) -> dict:
     parts = month_key.split("-")
     jy, jm = int(parts[0]), int(parts[1])
@@ -396,9 +421,9 @@ def get_month_report(conn: DBAdapter, month_key: str | None = None, user_id: int
         "remote_days": m["remote_days"],
     }
 
-    report_text = f"گزارش ماه {m['month_name']} {m['jy']}\nکارکرد خالص: {totals['net']} ساعت\nکسری کار: {totals['deficit']} ساعت\nاضافه کار: {totals['overtime']} ساعت"
+    report_text = f"گزارش ماه {m['month_name']} {m['jy']}\nکارکرد خالص: {format_hours_fa(totals['net'])}\nکسری کار: {format_hours_fa(totals['deficit'])}\nاضافه کار: {format_hours_fa(totals['overtime'])}"
     if compensated > 0:
-        report_text += f"\n(تهاتر شده: {compensated} ساعت اضافه کار برای جبران کسری کار)"
+        report_text += f"\n(تهاتر شده: {format_hours_fa(compensated)} اضافه کار برای جبران کسری کار)"
 
     return {
         "month_key": mk,
@@ -454,9 +479,9 @@ def get_week_report(conn: DBAdapter, user_id: int | None = None) -> dict:
         "remote_days": remote_days,
     }
 
-    report_text = f"گزارش هفته جاری\nکارکرد خالص: {totals['net']} ساعت\nکسری کار: {totals['deficit']} ساعت\nاضافه کار: {totals['overtime']} ساعت"
+    report_text = f"گزارش هفته جاری\nکارکرد خالص: {format_hours_fa(totals['net'])}\nکسری کار: {format_hours_fa(totals['deficit'])}\nاضافه کار: {format_hours_fa(totals['overtime'])}"
     if compensated > 0:
-        report_text += f"\n(تهاتر شده: {compensated} ساعت اضافه کار برای جبران کسری کار)"
+        report_text += f"\n(تهاتر شده: {format_hours_fa(compensated)} اضافه کار برای جبران کسری کار)"
 
     return {
         "days": days,
@@ -497,7 +522,7 @@ def export_excel(conn: DBAdapter, month_key: str | None = None, user_id: int | N
     ws.row_dimensions[1].height = 40
 
     headers = [
-        "ردیف", "تاریخ شمسی", "روز هفته", "وضعیت", "ورود", "خروج", "کارکرد (ساعت)", "کسری کار", "اضافه‌کار", "مرخصی"
+        "ردیف", "تاریخ شمسی", "روز هفته", "وضعیت", "ورود", "خروج", "کارکرد", "کسری کار", "اضافه‌کار", "مرخصی"
     ]
     
     ws.append(headers)
@@ -518,10 +543,10 @@ def export_excel(conn: DBAdapter, month_key: str | None = None, user_id: int | N
             r["work_mode_label"] if not r["is_holiday"] else (r["holiday_name"] or "تعطیل"),
             r["in"] or "—",
             r["out"] or "—",
-            r["net"],
-            r["deficit"],
-            r["overtime"],
-            r["leave"],
+            format_hours_fa(r["net"]) if r["net"] > 0 else "—",
+            format_hours_fa(r["deficit"]) if r["deficit"] > 0 else "—",
+            format_hours_fa(r["overtime"]) if r["overtime"] > 0 else "—",
+            format_hours_fa(r["leave"]) if r["leave"] > 0 else "—",
         ]
         ws.append(row_data)
         curr_row = idx + 2
@@ -544,10 +569,10 @@ def export_excel(conn: DBAdapter, month_key: str | None = None, user_id: int | N
     tc.font = f_tot
     tc.alignment = align_right
     
-    ws.cell(row=tot_row, column=7, value=m["totals"]["net"]).font = f_tot
-    ws.cell(row=tot_row, column=8, value=m["totals"]["deficit"]).font = f_tot
-    ws.cell(row=tot_row, column=9, value=m["totals"]["overtime"]).font = f_tot
-    ws.cell(row=tot_row, column=10, value=m["totals"]["leave"]).font = f_tot
+    ws.cell(row=tot_row, column=7, value=format_hours_fa(m["totals"]["net"])).font = f_tot
+    ws.cell(row=tot_row, column=8, value=format_hours_fa(m["totals"]["deficit"])).font = f_tot
+    ws.cell(row=tot_row, column=9, value=format_hours_fa(m["totals"]["overtime"])).font = f_tot
+    ws.cell(row=tot_row, column=10, value=format_hours_fa(m["totals"]["leave"])).font = f_tot
 
     for col_idx in range(1, 11):
         ws.cell(row=tot_row, column=col_idx).border = border_cell
@@ -555,7 +580,7 @@ def export_excel(conn: DBAdapter, month_key: str | None = None, user_id: int | N
     ws.views.sheetView[0].rightToLeft = True
 
     # Adjust widths
-    col_widths = {1: 8, 2: 14, 3: 12, 4: 16, 5: 10, 6: 10, 7: 15, 8: 12, 9: 12, 10: 12}
+    col_widths = {1: 8, 2: 14, 3: 12, 4: 16, 5: 10, 6: 10, 7: 20, 8: 18, 9: 18, 10: 18}
     for c_idx, w in col_widths.items():
         ws.column_dimensions[get_column_letter(c_idx)].width = w
 

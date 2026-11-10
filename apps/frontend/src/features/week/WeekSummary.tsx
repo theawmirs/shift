@@ -17,7 +17,7 @@ export function WeekSummary() {
     );
   if (isLoading || !data) return <CardSkeleton rows={3} />;
 
-  const fmtHM = (h: any) => (h == null || Number(h) === 0 ? "—" : `${Number(h).toFixed(2)} ساعت`);
+  const fmtHM = (h: any) => (h == null || Number(h) === 0 ? "—" : fmtHoursCompactFa(h));
 
   if (!data.days || !data.days.length)
     return (

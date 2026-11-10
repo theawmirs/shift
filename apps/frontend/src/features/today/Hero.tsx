@@ -1,4 +1,5 @@
 import { Clock3, BadgeCheck, BarChart3, Radio, Hourglass, Pencil } from "lucide-react";
+import { fmtHoursFa, fmtHoursCompactFa } from "../../shared/lib/format";
 
 export function Hero({
   liveMinutes,
@@ -25,9 +26,7 @@ export function Hero({
   const diffMinutes = Math.round(standardHours * 60 - liveMinutes);
   const isCompleted = diffMinutes <= 0;
   const remAbs = Math.abs(diffMinutes);
-  const remH = Math.floor(remAbs / 60);
-  const remM = remAbs % 60;
-  const remFormatted = `${remH}:${String(remM).padStart(2, "0")}`;
+  const remFormatted = fmtHoursCompactFa(remAbs / 60);
 
   return (
     <div
@@ -100,7 +99,7 @@ export function Hero({
               <>
                 تا الان{" "}
                 <span style={{ color: "var(--amber)", letterSpacing: "-0.02em" }}>
-                  {Math.floor(liveHours)}:{String(Math.round((liveHours % 1) * 60)).padStart(2, "0")}
+                  {fmtHoursFa(liveHours)}
                 </span>{" "}
                 کار کردی
               </>
@@ -118,7 +117,7 @@ export function Hero({
         {/* Telemetry Chips in Single Responsive Row — No redundancy */}
         <div className="time-row">
           <div className="time-chip">
-            <BadgeCheck size={15} /> موظفی ۸:۰۰
+            <BadgeCheck size={15} /> موظفی ۸ ساعت
           </div>
 
           <div

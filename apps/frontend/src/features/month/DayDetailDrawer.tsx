@@ -384,6 +384,11 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                           placeholder="0"
                           style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center" }}
                         />
+                        {leaveHours && parseFloat(leaveHours) > 0 ? (
+                          <span style={{ fontSize: 11, color: "var(--amber-2)", fontWeight: 700 }}>
+                            معادل: {fmtHoursFa(parseFloat(leaveHours))}
+                          </span>
+                        ) : null}
                       </label>
 
                       <label className="field" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
@@ -399,6 +404,11 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                           placeholder="0"
                           style={{ width: "100%", padding: "8px 10px", fontSize: 14, textAlign: "center" }}
                         />
+                        {overtimeHours && parseFloat(overtimeHours) > 0 ? (
+                          <span style={{ fontSize: 11, color: "var(--green)", fontWeight: 700 }}>
+                            معادل: {fmtHoursFa(parseFloat(overtimeHours))}
+                          </span>
+                        ) : null}
                       </label>
                     </div>
 
@@ -504,7 +514,7 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                             <Moon size={16} style={{ color: "#a5b4fc", flexShrink: 0 }} />
                             <span>
                               <b style={{ color: "#ffffff", fontWeight: 800 }}>شیفت شبانه (عبور از نیمه‌شب):</b>{" "}
-                              <span style={{ color: "#c7d2fe" }}>{prev.hours} ساعت اضافه کار برای این تاریخ منظور می‌شود.</span>
+                              <span style={{ color: "#c7d2fe" }}>{fmtHoursFa(prev.hours)} اضافه کار برای این تاریخ منظور می‌شود.</span>
                             </span>
                           </div>
                         );
@@ -526,7 +536,7 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                           <Clock size={16} style={{ color: "#4ade80", flexShrink: 0 }} />
                           <span>
                             <b style={{ color: "#ffffff", fontWeight: 800 }}>مدت اضافه‌کاری:</b>{" "}
-                            <span style={{ color: "#bbf7d0" }}>{prev.hours} ساعت</span>
+                            <span style={{ color: "#bbf7d0" }}>{fmtHoursFa(prev.hours)}</span>
                           </span>
                         </div>
                       );
@@ -823,7 +833,7 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                 {!currentDay.is_holiday && hasWork && (
                   <div className="row">
                     <b>ساعت موظفی</b>
-                    <span className="mono">{standardHours} ساعت</span>
+                    <span className="mono">{fmtHoursFa(standardHours)}</span>
                   </div>
                 )}
 
@@ -997,8 +1007,8 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <span style={{ fontSize: 14 }}>🌴</span>
                         <b>مرخصی روزانه</b>
-                        <span className="badge" style={{ background: "#dbeafe", color: "#1e40af", borderColor: "#3b82f6", fontSize: 11 }}>
-                          {currentDay.daily_leave.label || currentDay.daily_leave.type} ({currentDay.daily_leave.hours || 8} ساعت)
+                        <span className="badge badge-warn" style={{ fontSize: 10 }}>
+                          {currentDay.daily_leave.label || currentDay.daily_leave.type} ({fmtHoursFa(currentDay.daily_leave.hours || 8)})
                         </span>
                       </div>
                       {currentDay.daily_leave.reason && (
