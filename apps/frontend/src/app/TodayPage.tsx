@@ -195,14 +195,14 @@ export function TodayPage() {
         style={{
           borderColor: "#60a5fa",
           background: "rgba(96,165,250,.10)",
-          color: "#1e40af",
+          color: "var(--text)",
           display: "flex",
           alignItems: "center",
           gap: 10,
           padding: "12px 14px",
         }}
       >
-        <Info size={20} style={{ flexShrink: 0, color: "#2563eb" }} />
+        <Info size={20} style={{ flexShrink: 0, color: "#60a5fa" }} />
         <div>
           <b style={{ fontSize: 13 }}>{label}</b>
           {bannerReason && bannerReason !== label ? (
