@@ -1,5 +1,5 @@
 import { Clock3, BadgeCheck, BarChart3, Radio, Hourglass, Pencil } from "lucide-react";
-import { fmtHoursFa, fmtHoursCompactFa } from "../../shared/lib/format";
+import { fmtHoursFa, fmtHoursCompactFa, toFaDigits } from "../../shared/lib/format";
 
 export function Hero({
   liveMinutes,
@@ -114,10 +114,14 @@ export function Hero({
           </p>
         </div>
 
-        {/* Telemetry Chips in Single Responsive Row — No redundancy */}
+        {/* Telemetry Chips — 3 equal tiles, wrap-safe (no horizontal overflow) */}
         <div className="time-row">
           <div className="time-chip">
-            <BadgeCheck size={15} /> موظفی ۸ ساعت
+            <BadgeCheck size={15} />
+            <span className="tc-body">
+              <span className="tc-label">موظفی</span>
+              <span className="tc-value">۸ ساعت</span>
+            </span>
           </div>
 
           <div
@@ -129,13 +133,18 @@ export function Hero({
             }}
           >
             <Hourglass size={14} />
-            <span>
-              {isCompleted ? `+${remFormatted} اضافه‌کار` : `${remFormatted} تا تکمیل`}
+            <span className="tc-body">
+              <span className="tc-label">{isCompleted ? "اضافه‌کار" : "تا تکمیل"}</span>
+              <span className="tc-value">{isCompleted ? `+${remFormatted}` : remFormatted}</span>
             </span>
           </div>
 
           <div className="time-chip time-chip--violet">
-            <BarChart3 size={15} /> پیشرفت {pct}%
+            <BarChart3 size={15} />
+            <span className="tc-body">
+              <span className="tc-label">پیشرفت</span>
+              <span className="tc-value">{toFaDigits(pct)}٪</span>
+            </span>
           </div>
         </div>
 

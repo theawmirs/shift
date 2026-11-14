@@ -213,31 +213,43 @@ button{font:inherit; font-family:inherit}
 .rotate1{transform: rotate(.6deg)}
 
 /* Hero */
-.hero{display:grid; gap:12px}
+.hero{display:grid; gap:12px; min-width:0}
+.hero > *{min-width:0}
 .hero-top{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap}
 .kicker{font-size:10px; letter-spacing:.14em; color: var(--amber-2); font-weight:800}
 [data-theme="light"] .kicker{ color:#B45309 }
-.hero-title{margin:0; font-size:26px; line-height:.95; font-weight:800; color: var(--text)}
+.hero-title{margin:0; font-size:clamp(21px, 6vw, 26px); line-height:1.28; font-weight:800; color: var(--text); text-wrap:balance; overflow-wrap:anywhere}
 .hero-sub{margin:0; color:var(--muted); font-size:12px; line-height:1.6}
-.time-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:6px}
+.time-row{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; margin-top:6px}
 .time-chip{
-  display:flex; align-items:center; gap:8px;
-  background:#0B1220; color:#F1F5F9; border:2px solid #000; border-radius:14px; padding:8px 10px;
-  box-shadow: 4px 4px 0 #000; font-weight:800; font-size:12px; white-space:nowrap;
+  display:flex; align-items:center; gap:7px; min-width:0;
+  background:#0B1220; color:#F1F5F9; border:2px solid #000; border-radius:14px; padding:8px 9px;
+  box-shadow: 4px 4px 0 #000; font-weight:800; font-size:12px;
 }
+.time-chip svg{flex-shrink:0}
+.time-chip .tc-body{display:flex; flex-direction:column; gap:1px; min-width:0}
+.time-chip .tc-label{font-size:9.5px; font-weight:800; line-height:1.15; color: rgba(241,245,249,.6); white-space:nowrap}
+.time-chip .tc-value{font-size:12.5px; font-weight:800; line-height:1.3; overflow-wrap:anywhere}
 [data-theme="light"] .time-chip{ background:#0F172A; color:#FFF7ED }
+[data-theme="light"] .time-chip .tc-label{ color: rgba(255,247,237,.66) }
 .time-chip--light{background:#fff !important; color:#0F172A !important}
+.time-chip--light .tc-label{color: rgba(15,23,42,.6) !important}
 .time-chip--violet{background:var(--violet) !important; color:#fff !important; border-color:#000 !important}
+.time-chip--violet .tc-label{color: rgba(255,255,255,.78) !important}
 
 @media (max-width: 430px){
-  .time-row{ flex-wrap:nowrap; gap:6px }
-  .time-chip{ flex:1 1 0; justify-content:center; padding:7px 6px; font-size:11px; gap:5px; min-width:0 }
-  .time-chip svg{ width:14px; height:14px; flex-shrink:0 }
+  .time-row{ gap:6px }
+  .time-chip{ padding:7px 7px; gap:5px; box-shadow: 3px 3px 0 #000 }
+  .time-chip svg{ width:14px; height:14px }
+  .time-chip .tc-value{ font-size:11.5px }
+  .time-chip .tc-label{ font-size:9px }
 }
 @media (max-width: 360px){
   .time-row{ gap:5px }
-  .time-chip{ padding:6px 5px; font-size:10.5px; gap:4px }
-  .time-chip svg{ width:13px; height:13px }
+  .time-chip{ padding:6px 6px; gap:4px }
+  .time-chip svg{ width:12px; height:12px }
+  .time-chip .tc-value{ font-size:10.5px }
+  .time-chip .tc-label{ font-size:8.5px }
 }
 .progress{height:10px; border-radius:999px; background: rgba(255,255,255,.08); border:2px solid #000; overflow:hidden; box-shadow: 3px 3px 0 #000}
 [data-theme="light"] .progress{ background: rgba(15,23,42,.08)}
