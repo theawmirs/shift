@@ -919,79 +919,137 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
 
                 {/* Separate Overtime Sessions List */}
                 {Array.isArray(currentDay.overtime_sessions) && currentDay.overtime_sessions.length > 0 && (
-                  <div style={{ display: "grid", gap: 6 }}>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-                      <Zap size={13} style={{ color: "#EAB308" }} />
-                      <span>بازه‌های اضافه‌کاری مجزا:</span>
-                    </div>
-                    {currentDay.overtime_sessions.map((s: any) => (
-                      <div
-                        key={s.id}
-                        className="row"
+                  <div style={{ display: "grid", gap: 8, marginTop: 4 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                      <span
                         style={{
-                          background: s.mode === "remote" ? "rgba(99, 102, 241, 0.12)" : "rgba(34, 197, 94, 0.12)",
-                          borderColor: s.mode === "remote" ? "#818cf8" : "#4ade80",
-                          borderWidth: 1.5,
-                          padding: "10px 12px",
-                          display: "flex",
-                          justifyContent: "space-between",
+                          fontSize: 11,
+                          fontWeight: 800,
+                          color: "var(--muted)",
+                          display: "inline-flex",
                           alignItems: "center",
+                          gap: 5,
                         }}
                       >
-                        <div style={{ display: "grid", gap: 3 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            {s.is_overnight && (
-                              <span className="badge" style={{ background: "#5B21B6", color: "#EDE9FE", borderColor: "#8B5CF6", fontSize: 10, padding: "2px 6px" }}>
-                                🌙 شبانه (+۱ روز)
+                        <Zap size={12} style={{ color: "var(--amber)" }} /> بازه‌های اضافه‌کاری مجزا
+                      </span>
+                      <span className="mono" style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)" }}>
+                        {currentDay.overtime_sessions.length} بازه
+                      </span>
+                    </div>
+
+                    {currentDay.overtime_sessions.map((s: any) => {
+                      const isRemote = s.mode === "remote";
+                      const accent = isRemote ? "#818cf8" : "#4ade80";
+                      return (
+                        <div
+                          key={s.id}
+                          style={{
+                            background: isRemote ? "rgba(99,102,241,.10)" : "rgba(34,197,94,.10)",
+                            border: `1.5px solid ${accent}`,
+                            borderRadius: 14,
+                            padding: "10px 11px",
+                            display: "grid",
+                            gap: 9,
+                          }}
+                        >
+                          {/* Header: mode + overnight chips, delete */}
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 800,
+                                  color: isRemote ? "#c7d2fe" : "#bbf7d0",
+                                  background: isRemote ? "rgba(99,102,241,.22)" : "rgba(34,197,94,.22)",
+                                  border: `1.5px solid ${accent}`,
+                                  borderRadius: 999,
+                                  padding: "2px 8px",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {isRemote ? "🏠 دورکاری" : "🏢 حضوری"}
                               </span>
-                            )}
-                            <b className="mono" style={{ fontSize: 14, direction: "ltr", color: "var(--text)" }}>
-                              {s.start_time} تا {s.end_time}
-                            </b>
-                            <span
-                              className="badge"
+                              {s.is_overnight && (
+                                <span
+                                  style={{
+                                    fontSize: 10,
+                                    fontWeight: 800,
+                                    color: "#e9d5ff",
+                                    background: "rgba(139,92,246,.28)",
+                                    border: "1.5px solid #a78bfa",
+                                    borderRadius: 999,
+                                    padding: "2px 8px",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  🌙 شبانه +۱ روز
+                                </span>
+                              )}
+                            </div>
+
+                            <button
+                              type="button"
+                              className="btn"
                               style={{
-                                fontSize: 10,
-                                padding: "2px 6px",
-                                background: s.mode === "remote" ? "rgba(99,102,241,0.25)" : "rgba(34,197,94,0.25)",
-                                color: s.mode === "remote" ? "#c7d2fe" : "#bbf7d0",
-                                borderColor: s.mode === "remote" ? "#818cf8" : "#4ade80",
+                                width: 30,
+                                height: 30,
+                                flexShrink: 0,
+                                padding: 0,
+                                borderRadius: 9,
+                                border: "1.5px solid var(--red)",
+                                background: "rgba(239,68,68,.12)",
+                                color: "var(--red)",
+                                boxShadow: "none",
+                                display: "grid",
+                                placeItems: "center",
+                              }}
+                              onClick={() => handleDeleteOtSession(s.id)}
+                              disabled={loading}
+                              title="حذف این بازه اضافه‌کاری"
+                              aria-label="حذف این بازه اضافه‌کاری"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+
+                          {/* Time range + duration (bidi-isolated so order never flips) */}
+                          <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
+                            <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--muted)" }}>از</span>
+                            <bdi
+                              className="mono"
+                              style={{ fontSize: 16, fontWeight: 900, color: "var(--text)", letterSpacing: ".01em" }}
+                            >
+                              {s.start_time}
+                            </bdi>
+                            <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--muted)" }}>تا</span>
+                            <bdi
+                              className="mono"
+                              style={{ fontSize: 16, fontWeight: 900, color: "var(--text)", letterSpacing: ".01em" }}
+                            >
+                              {s.end_time}
+                            </bdi>
+                            <span
+                              style={{
+                                marginInlineStart: "auto",
+                                fontSize: 11,
+                                fontWeight: 800,
+                                color: isRemote ? "#a5b4fc" : "#4ade80",
+                                whiteSpace: "nowrap",
                               }}
                             >
-                              {s.mode === "remote" ? "🏠 دورکار" : "🏢 حضوری"}
+                              {fmtHoursFa(s.hours)}
                             </span>
                           </div>
-                          <div style={{ fontSize: 11, color: "var(--muted)", display: "flex", gap: 8, alignItems: "center" }}>
-                            <span>مدت: <b style={{ color: "var(--text)" }}>{fmtHoursFa(s.hours)}</b></span>
-                            {s.description && <span style={{ color: "var(--text)" }}>· {s.description}</span>}
-                          </div>
-                        </div>
 
-                        <button
-                          type="button"
-                          className="btn"
-                          style={{
-                            width: "auto",
-                            background: "rgba(239, 68, 68, 0.12)",
-                            color: "var(--red)",
-                            borderColor: "var(--red)",
-                            borderWidth: 1.5,
-                            padding: "6px 10px",
-                            fontSize: 11,
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 3,
-                            boxShadow: "none",
-                            borderRadius: 8,
-                          }}
-                          onClick={() => handleDeleteOtSession(s.id)}
-                          disabled={loading}
-                          title="حذف این بازه اضافه‌کاری"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    ))}
+                          {s.description && (
+                            <small style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.7 }}>
+                              {s.description}
+                            </small>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
                 {/* Compensated Overtime notice on day level */}
