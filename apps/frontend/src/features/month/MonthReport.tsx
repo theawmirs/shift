@@ -291,13 +291,14 @@ export function MonthReport({ onExcel }: { onExcel?: (msg: string, variant?: "su
           className="row"
           style={{
             padding: "8px 12px",
-            background: "rgba(59, 130, 246, 0.12)",
-            borderColor: "#3b82f6",
+            background: "var(--tint-blue-bg)",
+            borderColor: "var(--tint-blue-bd)",
             borderWidth: 1.5,
             gap: 6,
+            flexWrap: "wrap",
           }}
         >
-          <span style={{ fontSize: 11, color: "#60a5fa", fontWeight: 800 }}>⚖️ تهاتر عملکرد:</span>
+          <span style={{ fontSize: 11, color: "var(--tint-blue-txt)", fontWeight: 800 }}>⚖️ تهاتر عملکرد:</span>
           <span style={{ fontSize: 12, color: "var(--text)" }}>
             {fmtHoursCompactFa(compensatedHours)} اضافه کار برای جبران کسری کار تهاتر شد
           </span>
