@@ -239,20 +239,22 @@ export function Drawer({
                     </b>
                     <button
                       type="button"
-                      className="btn btn-ghost"
+                      className="icon-btn"
                       style={{
-                        width: "auto",
-                        padding: "4px 10px",
-                        fontSize: 12,
-                        borderRadius: 999,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
+                        width: 30,
+                        height: 30,
+                        borderRadius: 10,
+                        border: "2px solid var(--border-strong)",
+                        background: "var(--surface-2)",
+                        color: "var(--text)",
+                        boxShadow: "2px 2px 0 rgba(0,0,0,.35)",
                       }}
                       onPointerDown={(e) => e.stopPropagation()}
                       onClick={onClose}
+                      title="بستن"
+                      aria-label="بستن"
                     >
-                      ✕ بستن
+                      <X size={15} />
                     </button>
                   </div>
                 </div>
