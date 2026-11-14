@@ -51,7 +51,7 @@ export function fmtHoursFa(val: number | string | null | undefined): string {
  */
 const FA_DIGITS = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
 
-function toFaDigits(n: number | string): string {
+export function toFaDigits(n: number | string): string {
   return String(n).replace(/[0-9]/g, (d) => FA_DIGITS[Number(d)]);
 }
 
