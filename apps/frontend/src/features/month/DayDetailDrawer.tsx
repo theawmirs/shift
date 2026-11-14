@@ -678,9 +678,9 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                         style={{
                           fontSize: 11,
                           fontWeight: 800,
-                          color: "#a78bfa",
-                          background: "rgba(124,58,237,.14)",
-                          border: "1.5px solid #8b5cf6",
+                          color: "var(--tint-violet)",
+                          background: "var(--tint-violet-bg)",
+                          border: "1.5px solid var(--tint-violet-bd)",
                           borderRadius: 999,
                           padding: "3px 9px",
                           whiteSpace: "nowrap",
@@ -695,9 +695,9 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                         style={{
                           fontSize: 11,
                           fontWeight: 800,
-                          color: "var(--amber-2)",
-                          background: "rgba(245,158,11,.14)",
-                          border: "1.5px solid var(--amber)",
+                          color: "var(--tint-amber)",
+                          background: "var(--tint-amber-bg)",
+                          border: "1.5px solid var(--tint-amber-bd)",
                           borderRadius: 999,
                           padding: "3px 9px",
                           whiteSpace: "nowrap",
@@ -883,8 +883,8 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                   <div
                     className="row"
                     style={{
-                      borderColor: "#22C55E",
-                      background: "rgba(34, 197, 94, 0.08)",
+                      borderColor: "var(--tint-green-bd)",
+                      background: "var(--ot-office-bg)",
                       flexDirection: "column",
                       alignItems: "stretch",
                       gap: 6,
@@ -892,7 +892,7 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <b style={{ color: "var(--text)" }}>اضافه‌کاری</b>
-                      <span className="mono" style={{ fontWeight: 800, color: "#22C55E" }}>
+                      <span className="mono" style={{ fontWeight: 800, color: "var(--tint-green-txt)" }}>
                         {fmtH(currentDay.overtime)}
                       </span>
                     </div>
@@ -909,8 +909,8 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                       >
                         <span style={{ color: "var(--muted)", fontWeight: 700 }}>بازه اضافه‌کاری:</span>
                         <span className="mono" style={{ fontWeight: 800, color: "var(--text)" }}>
-                          از <span style={{ color: "#22C55E" }}>{otRange[0]}</span> تا{" "}
-                          <span style={{ color: "#22C55E" }}>{otRange[1]}</span>
+                          از <span style={{ color: "var(--tint-green-txt)" }}>{otRange[0]}</span> تا{" "}
+                          <span style={{ color: "var(--tint-green-txt)" }}>{otRange[1]}</span>
                         </span>
                       </div>
                     )}
@@ -940,12 +940,12 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
 
                     {currentDay.overtime_sessions.map((s: any) => {
                       const isRemote = s.mode === "remote";
-                      const accent = isRemote ? "#818cf8" : "#4ade80";
+                      const accent = isRemote ? "var(--tint-violet-bd)" : "var(--tint-green-bd)";
                       return (
                         <div
                           key={s.id}
                           style={{
-                            background: isRemote ? "rgba(99,102,241,.10)" : "rgba(34,197,94,.10)",
+                            background: isRemote ? "var(--ot-remote-bg)" : "var(--ot-office-bg)",
                             border: `1.5px solid ${accent}`,
                             borderRadius: 14,
                             padding: "10px 11px",
@@ -960,8 +960,8 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                                 style={{
                                   fontSize: 10,
                                   fontWeight: 800,
-                                  color: isRemote ? "#c7d2fe" : "#bbf7d0",
-                                  background: isRemote ? "rgba(99,102,241,.22)" : "rgba(34,197,94,.22)",
+                                  color: isRemote ? "var(--tint-violet)" : "var(--tint-green)",
+                                  background: isRemote ? "var(--tint-violet-bg)" : "var(--tint-green-bg)",
                                   border: `1.5px solid ${accent}`,
                                   borderRadius: 999,
                                   padding: "2px 8px",
@@ -975,9 +975,9 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                                   style={{
                                     fontSize: 10,
                                     fontWeight: 800,
-                                    color: "#e9d5ff",
-                                    background: "rgba(139,92,246,.28)",
-                                    border: "1.5px solid #a78bfa",
+                                    color: "var(--tint-night)",
+                                    background: "var(--tint-night-bg)",
+                                    border: "1.5px solid var(--tint-night-bd)",
                                     borderRadius: 999,
                                     padding: "2px 8px",
                                     whiteSpace: "nowrap",
@@ -1034,7 +1034,7 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                                 marginInlineStart: "auto",
                                 fontSize: 11,
                                 fontWeight: 800,
-                                color: isRemote ? "#a5b4fc" : "#4ade80",
+                                color: isRemote ? "var(--tint-violet-txt)" : "var(--tint-green-txt)",
                                 whiteSpace: "nowrap",
                               }}
                             >
@@ -1058,13 +1058,14 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                     className="row"
                     style={{
                       padding: "8px 12px",
-                      background: "rgba(59, 130, 246, 0.12)",
-                      borderColor: "#3b82f6",
+                      background: "var(--tint-blue-bg)",
+                      borderColor: "var(--tint-blue-bd)",
                       borderWidth: 1.5,
                       gap: 6,
+                      flexWrap: "wrap",
                     }}
                   >
-                    <span style={{ fontSize: 11, color: "#60a5fa", fontWeight: 800 }}>⚖️ تهاتر عملکرد روز:</span>
+                    <span style={{ fontSize: 11, color: "var(--tint-blue-txt)", fontWeight: 800 }}>⚖️ تهاتر عملکرد روز:</span>
                     <span style={{ fontSize: 12, color: "var(--text)" }}>
                       {fmtHoursFa(currentDay.compensated_hours)} اضافه کار برای جبران کسری کار امروز تهاتر شد
                     </span>
@@ -1113,9 +1114,9 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                             style={{
                               fontSize: 10,
                               fontWeight: 800,
-                              color: "var(--amber-2)",
-                              background: "rgba(245,158,11,.16)",
-                              border: "1.5px solid var(--amber)",
+                              color: "var(--tint-amber)",
+                              background: "var(--tint-amber-bg)",
+                              border: "1.5px solid var(--tint-amber-bd)",
                               borderRadius: 999,
                               padding: "2px 7px",
                               whiteSpace: "nowrap",
