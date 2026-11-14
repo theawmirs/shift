@@ -655,35 +655,76 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
               /* ── READ-ONLY SUMMARY VIEW ── */
               <>
                 {/* Status and Action Header */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span className="badge badge-muted mono" style={{ fontSize: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 2 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
+                    <span
+                      className="mono"
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 800,
+                        color: "var(--muted)",
+                        background: "var(--surface-2)",
+                        border: "1.5px solid var(--border-strong)",
+                        borderRadius: 999,
+                        padding: "3px 9px",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
                       {currentDay.day_status_label || (currentDay.is_holiday ? "تعطیل (کاری)" : "کاری")}
                     </span>
                     {currentDay.work_mode === "remote" && (
-                      <span className="badge" style={{ background: "#DDD6FE", color: "#4C1D95", borderColor: "#000" }}>
+                      <span
+                        className="mono"
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 800,
+                          color: "#a78bfa",
+                          background: "rgba(124,58,237,.14)",
+                          border: "1.5px solid #8b5cf6",
+                          borderRadius: 999,
+                          padding: "3px 9px",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         🏠 دورکار
                       </span>
                     )}
                     {currentDay.is_holiday && hasWork && (
-                      <span className="badge badge-warn">
+                      <span
+                        className="mono"
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 800,
+                          color: "var(--amber-2)",
+                          background: "rgba(245,158,11,.14)",
+                          border: "1.5px solid var(--amber)",
+                          borderRadius: 999,
+                          padding: "3px 9px",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         ⚡ کار در تعطیلی
                       </span>
                     )}
                   </div>
 
-                  {/* Polished Edit Button with Auto Width */}
+                  {/* Compact Edit Action */}
                   <button
-                    className="btn btn-ghost mono"
+                    className="btn mono"
                     style={{
                       width: "auto",
-                      padding: "5px 10px",
+                      flexShrink: 0,
+                      padding: "6px 11px",
                       fontSize: 11,
+                      fontWeight: 800,
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 5,
                       borderRadius: 10,
-                      boxShadow: "2px 2px 0 #000",
+                      border: "2px solid var(--amber)",
+                      background: "rgba(245,158,11,.14)",
+                      color: "var(--text)",
+                      boxShadow: "2px 2px 0 rgba(0,0,0,.35)",
                     }}
                     onClick={() => {
                       if (currentDay.daily_leave) {
@@ -694,8 +735,8 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                       setIsEditing(true);
                     }}
                   >
-                    <Edit3 size={12} />
-                    <span>{currentDay.daily_leave ? "ویرایش مرخصی" : hasWork ? "ویرایش" : "ثبت کارکرد / مرخصی"}</span>
+                    <Edit3 size={12} style={{ color: "var(--amber)" }} />
+                    <span>{currentDay.daily_leave ? "ویرایش مرخصی" : hasWork ? "ویرایش" : "ثبت کارکرد"}</span>
                   </button>
                 </div>
 
@@ -996,69 +1037,115 @@ export function DayDetailDrawer({ open, onClose, day, onUpdated }: DayDetailDraw
                   <div
                     className="row"
                     style={{
-                      background: "rgba(96,165,250,.08)",
+                      background: "rgba(96,165,250,.10)",
                       borderColor: "#60a5fa",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
+                      borderWidth: 1.5,
+                      padding: "10px 12px",
+                      alignItems: "flex-start",
+                      gap: 10,
                     }}
                   >
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 14 }}>🌴</span>
-                        <b>مرخصی روزانه</b>
-                        <span className="badge badge-warn" style={{ fontSize: 10 }}>
-                          {currentDay.daily_leave.label || currentDay.daily_leave.type} ({fmtHoursFa(currentDay.daily_leave.hours || 8)})
-                        </span>
-                      </div>
-                      {currentDay.daily_leave.reason && (
-                        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-                          علت: {currentDay.daily_leave.reason}
+                    <div style={{ display: "flex", gap: 9, alignItems: "flex-start", minWidth: 0 }}>
+                      <span style={{ fontSize: 16, lineHeight: 1.3 }}>🌴</span>
+                      <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                          <b style={{ fontSize: 13 }}>مرخصی روزانه</b>
+                          <span
+                            className="mono"
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 800,
+                              color: "var(--amber-2)",
+                              background: "rgba(245,158,11,.16)",
+                              border: "1.5px solid var(--amber)",
+                              borderRadius: 999,
+                              padding: "2px 7px",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {currentDay.daily_leave.label || currentDay.daily_leave.type}
+                          </span>
                         </div>
-                      )}
+                        <small style={{ color: "var(--muted)", fontSize: 11, lineHeight: 1.6 }}>
+                          {fmtHoursFa(currentDay.daily_leave.hours || 8)}
+                          {currentDay.daily_leave.reason ? ` · علت: ${currentDay.daily_leave.reason}` : ""}
+                        </small>
+                      </div>
                     </div>
                     <button
                       type="button"
-                      className="btn btn-ghost"
-                      style={{ color: "var(--red)", borderColor: "var(--red)", padding: "4px 8px", fontSize: 11, display: "inline-flex", alignItems: "center", gap: 4 }}
+                      className="btn"
+                      style={{
+                        width: 32,
+                        height: 32,
+                        flexShrink: 0,
+                        padding: 0,
+                        marginTop: 2,
+                        borderRadius: 10,
+                        border: "2px solid var(--red)",
+                        background: "rgba(239,68,68,.12)",
+                        color: "var(--red)",
+                        boxShadow: "2px 2px 0 rgba(0,0,0,.35)",
+                        display: "grid",
+                        placeItems: "center",
+                      }}
                       onClick={handleDeleteDailyLeave}
                       disabled={loading}
+                      title="حذف مرخصی روزانه"
+                      aria-label="حذف مرخصی روزانه"
                     >
-                      <Trash2 size={13} /> حذف
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 )}
 
                 {/* Quick Add Separate Overtime Button */}
-                <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
-                  <button
-                    type="button"
-                    className="btn mono"
+                <button
+                  type="button"
+                  className="mono"
+                  style={{
+                    width: "100%",
+                    marginTop: 8,
+                    padding: "10px 12px",
+                    borderRadius: 14,
+                    border: "2px solid var(--amber)",
+                    background: "rgba(245, 158, 11, 0.14)",
+                    color: "var(--text)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    justifyContent: "flex-start",
+                    textAlign: "right",
+                    boxShadow: "3px 3px 0 rgba(0,0,0,.35)",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                  onClick={() => {
+                    setEditTab("overtime");
+                    setIsEditing(true);
+                  }}
+                >
+                  <span
                     style={{
-                      width: "100%",
-                      padding: "10px 14px",
-                      fontSize: 12,
-                      fontWeight: 800,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 8,
-                      borderRadius: 12,
-                      border: "2px solid var(--amber)",
-                      background: "rgba(245, 158, 11, 0.16)",
-                      color: "var(--text)",
-                      boxShadow: "2px 2px 0 rgba(0,0,0,0.4)",
-                      cursor: "pointer",
-                    }}
-                    onClick={() => {
-                      setEditTab("overtime");
-                      setIsEditing(true);
+                      width: 30,
+                      height: 30,
+                      flexShrink: 0,
+                      borderRadius: 10,
+                      background: "var(--amber)",
+                      color: "#0F172A",
+                      display: "grid",
+                      placeItems: "center",
                     }}
                   >
-                    <Plus size={15} style={{ color: "var(--amber)" }} />
-                    <span>افزودن بازه اضافه‌کاری مجزا (شبانه / دورکاری / کار فورس)</span>
-                  </button>
-                </div>
+                    <Plus size={16} />
+                  </span>
+                  <span style={{ display: "grid", gap: 2, minWidth: 0 }}>
+                    <b style={{ fontSize: 12.5, fontWeight: 800 }}>افزودن بازه اضافه‌کاری مجزا</b>
+                    <small style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700 }}>
+                      شبانه · دورکاری · کار فورس
+                    </small>
+                  </span>
+                </button>
               </>
             )}
           </div>

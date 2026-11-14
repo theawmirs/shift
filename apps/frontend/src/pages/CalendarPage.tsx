@@ -251,68 +251,65 @@ export function CalendarPage() {
           </button>
         </div>
 
-        {/* Quick Month Metrics (No-wrap single line format + explicit semantic borders) */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+        {/* Quick Month Metrics — unified stat strip (equal heights, no overflow) */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            border: "2px solid var(--border-strong)",
+            borderRadius: 14,
+            overflow: "hidden",
+            background: "var(--surface-2)",
+          }}
+        >
           <div
-            className="row"
             style={{
-              padding: "8px 6px",
-              flexDirection: "column",
-              alignItems: "center",
+              padding: "10px 6px",
+              display: "grid",
               gap: 3,
-              background: "rgba(245, 158, 11, 0.08)",
-              borderColor: "var(--amber)",
-              borderWidth: 2,
+              justifyItems: "center",
+              textAlign: "center",
+              background: "rgba(245, 158, 11, 0.10)",
             }}
           >
             <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>کارکرد کل</span>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 2 }}>
-              <b className="mono" style={{ fontSize: 13, color: "var(--amber-2)" }}>
-                {fmtHoursCompactFa(monthNetHours)}
-              </b>
-            </div>
+            <b className="mono" style={{ fontSize: 12, lineHeight: 1.55, color: "var(--amber-2)" }}>
+              {fmtHoursCompactFa(monthNetHours)}
+            </b>
           </div>
 
           <div
-            className="row"
             style={{
-              padding: "8px 6px",
-              flexDirection: "column",
-              alignItems: "center",
+              padding: "10px 6px",
+              display: "grid",
               gap: 3,
-              background: "var(--surface-2)",
-              borderColor: "var(--border-strong)",
-              borderWidth: 2,
+              justifyItems: "center",
+              textAlign: "center",
+              borderInlineStart: "2px solid var(--border-strong)",
             }}
           >
             <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>روزهای کاری</span>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 2, whiteSpace: "nowrap" }}>
-              <b className="mono" style={{ fontSize: 14 }}>
-                {monthWorkDays}
-              </b>
+            <b className="mono" style={{ fontSize: 16, lineHeight: 1.15 }}>
+              {monthWorkDays}{" "}
               <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>روز</span>
-            </div>
+            </b>
           </div>
 
           <div
-            className="row"
             style={{
-              padding: "8px 6px",
-              flexDirection: "column",
-              alignItems: "center",
+              padding: "10px 6px",
+              display: "grid",
               gap: 3,
-              background: "var(--surface-2)",
-              borderColor: "var(--border-strong)",
-              borderWidth: 2,
+              justifyItems: "center",
+              textAlign: "center",
+              borderInlineStart: "2px solid var(--border-strong)",
             }}
           >
             <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>دورکاری</span>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 2, whiteSpace: "nowrap" }}>
-              <b className="mono" style={{ fontSize: 14, color: "#818CF8" }}>
-                {monthRemoteDays}
-              </b>
+            <b className="mono" style={{ fontSize: 16, lineHeight: 1.15, color: "#818CF8" }}>
+              {monthRemoteDays}{" "}
               <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>روز</span>
-            </div>
+            </b>
           </div>
         </div>
       </div>
@@ -408,7 +405,7 @@ export function CalendarPage() {
                   cursor: "pointer",
                   position: "relative",
                   boxShadow: today
-                    ? "0 0 0 2.5px #0F172A inset"
+                    ? "0 0 0 2.5px var(--text) inset"
                     : isDailyLeave
                     ? "2px 2px 0 rgba(59,130,246,0.2)"
                     : isWorked
